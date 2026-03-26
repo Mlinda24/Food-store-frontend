@@ -27,3 +27,5 @@ A comprehensive food delivery mobile application built with Flutter.
 ```bash
 git clone <repository-url>
 cd foodie_express_mobile
+
+on 26th march, pushed the whole frontend structure and features shared
