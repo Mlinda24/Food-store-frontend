@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
-import '../../providers/auth_provider.dart';
-import '../../models/models.dart';
-import '../../widgets/sidebar_menu.dart';
+import '../../providers/driver_provider.dart';
+import '../../models/delivery_request.dart';
+import '../../widgets/driver/stat_card.dart';
+import '../../widgets/driver/schedule_item.dart';
+import '../../widgets/driver/earnings_item.dart';
+import '../../widgets/driver/status_chip.dart';
+import '../../widgets/driver/progress_timeline.dart';
+import '../../widgets/driver/info_section.dart';
+import '../../widgets/dialogs/new_request_dialog.dart';
+import '../../widgets/dialogs/update_status_dialog.dart';
+import 'available_orders_screen.dart';
+import 'delivery_history_screen.dart';
+import 'driver_earnings_screen.dart';
 
 class DriverDashboardScreen extends StatefulWidget {
   const DriverDashboardScreen({super.key});
@@ -15,39 +24,66 @@ class DriverDashboardScreen extends StatefulWidget {
 
 class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   int _selectedIndex = 0;
-  bool _isOnline = true;
-  late DriverStats _stats;
-  
-  final List<Widget> _screens = [
-    const _DriverDashboardContent(),
-    const _AvailableOrdersContent(),
-    const _ActiveDeliveriesContent(),
-    const _DeliveryHistoryContent(),
-  ];
-  
-  final List<SidebarMenuItem> _menuItems = const [
-    SidebarMenuItem(title: 'Dashboard', icon: Icons.dashboard_outlined, route: '/driver/dashboard'),
-    SidebarMenuItem(title: 'Available Orders', icon: Icons.delivery_dining_outlined, route: '/driver/available'),
-    SidebarMenuItem(title: 'Active Deliveries', icon: Icons.local_shipping_outlined, route: '/driver/active'),
-    SidebarMenuItem(title: 'History', icon: Icons.history_outlined, route: '/driver/history'),
-    SidebarMenuItem(title: 'Profile', icon: Icons.person_outline, route: '/driver/profile'),
-    SidebarMenuItem(title: 'Earnings', icon: Icons.attach_money_outlined, route: '/driver/earnings'),
+  bool _showActiveDeliveryFullView = false;
+
+  final List<Map<String, dynamic>> _navItems = [
+    {'icon': Icons.dashboard, 'label': 'Dashboard'},
+    {'icon': Icons.delivery_dining, 'label': 'Available'},
+    {'icon': Icons.history, 'label': 'History'},
+    {'icon': Icons.attach_money, 'label': 'Earnings'},
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadStats();
+    _checkForIncomingRequests();
   }
 
-  void _loadStats() {
-    _stats = DriverStats(
-      todayEarnings: 2450,
-      totalDeliveries: 342,
-      rating: 4.8,
-      totalEarnings: 45800,
-      activeDeliveries: 2,
-      completedToday: 5,
+  void _checkForIncomingRequests() {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (driverProvider.isOnline && 
+          driverProvider.activeDelivery == null && 
+          driverProvider.availableOrders.isNotEmpty) {
+        _showNewRequestDialog();
+      }
+    });
+  }
+
+  void _showNewRequestDialog() {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    if (driverProvider.availableOrders.isEmpty) return;
+    
+    final order = driverProvider.availableOrders.first;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => NewRequestDialog(
+        request: order,
+        onAccept: () {
+          driverProvider.acceptOrder(order);
+          Navigator.pop(context);
+          _showSnackBar('Order accepted! Head to the restaurant.');
+          setState(() {
+            _selectedIndex = 0;
+            _showActiveDeliveryFullView = true;
+          });
+        },
+        onDecline: () {
+          driverProvider.declineOrder(order);
+          Navigator.pop(context);
+          _showSnackBar('Order declined', isError: true);
+          Future.delayed(const Duration(seconds: 2), () {
+            if (driverProvider.isOnline && 
+                driverProvider.activeDelivery == null && 
+                driverProvider.availableOrders.isNotEmpty) {
+              _showNewRequestDialog();
+            }
+          });
+        },
+      ),
     );
   }
 
@@ -61,147 +97,178 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  void _handleLogout() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    authProvider.logout();
-    context.go('/login');
+  void _updateOrderStatus(String newStatus) {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    driverProvider.updateOrderStatus(newStatus);
+    
+    if (newStatus == 'delivered') {
+      _showSnackBar('Delivery completed! Great job! 🎉');
+      setState(() {
+        _showActiveDeliveryFullView = false;
+      });
+    } else {
+      _showSnackBar('Status updated to: ${_getStatusDisplay(newStatus)}');
+    }
   }
 
-  String _getCurrentRoute() {
-    switch (_selectedIndex) {
-      case 0:
-        return '/driver/dashboard';
-      case 1:
-        return '/driver/available';
-      case 2:
-        return '/driver/active';
-      case 3:
-        return '/driver/history';
-      default:
-        return '/driver/dashboard';
+  String _getStatusDisplay(String status) {
+    switch (status) {
+      case 'accepted': return 'Accepted';
+      case 'picked_up': return 'Picked Up';
+      case 'delivered': return 'Delivered';
+      default: return status;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final driverName = authProvider.currentUser?.name ?? 'Driver';
+    final driverProvider = Provider.of<DriverProvider>(context);
+    final driverName = 'John Driver';
+    final stats = driverProvider.stats;
+    final activeDelivery = driverProvider.activeDelivery;
 
-    return SidebarMenu(
-      currentRoute: _getCurrentRoute(),
-      items: _menuItems,
-      onLogout: _handleLogout,
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: AppTheme.mainBackground,
+      appBar: AppBar(
         backgroundColor: AppTheme.mainBackground,
-        appBar: AppBar(
-          backgroundColor: AppTheme.mainBackground,
-          elevation: 0,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                driverName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryText,
-                ),
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              driverName,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryText,
               ),
-              const SizedBox(height: 2),
-              Text(
-                'Driver Dashboard',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.mutedText,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            // Online Status Toggle
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _isOnline ? AppTheme.success.withOpacity(0.2) : AppTheme.error.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _isOnline ? AppTheme.success : AppTheme.error,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _isOnline ? AppTheme.success : AppTheme.error,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _isOnline ? 'Online' : 'Offline',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: _isOnline ? AppTheme.success : AppTheme.error,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Switch(
-                    value: _isOnline,
-                    onChanged: (value) {
-                      setState(() {
-                        _isOnline = value;
-                      });
-                      _showSnackBar(
-                        _isOnline ? 'You are now online' : 'You are now offline',
-                      );
-                    },
-                    activeColor: AppTheme.success,
-                    inactiveThumbColor: AppTheme.error,
-                    inactiveTrackColor: AppTheme.error.withOpacity(0.3),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              _selectedIndex == 0 ? 'Driver Dashboard' : _navItems[_selectedIndex]['label'] as String,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.mutedText,
               ),
             ),
           ],
         ),
-        body: _screens[_selectedIndex],
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: driverProvider.isOnline 
+                  ? AppTheme.success.withOpacity(0.2) 
+                  : AppTheme.error.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  driverProvider.isOnline ? 'Online' : 'Offline',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  value: driverProvider.isOnline,
+                  onChanged: (value) {
+                    driverProvider.toggleOnlineStatus(value);
+                    _showSnackBar(
+                      value ? 'You are now online' : 'You are now offline',
+                    );
+                    if (value) {
+                      Future.delayed(const Duration(seconds: 3), () {
+                        if (driverProvider.isOnline && 
+                            driverProvider.activeDelivery == null && 
+                            driverProvider.availableOrders.isNotEmpty) {
+                          _showNewRequestDialog();
+                        }
+                      });
+                    }
+                  },
+                  activeColor: AppTheme.success,
+                  inactiveThumbColor: AppTheme.error,
+                  inactiveTrackColor: AppTheme.error.withOpacity(0.3),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: _selectedIndex == 0
+          ? _buildDashboardContent(context, driverProvider, stats, activeDelivery)
+          : _buildSelectedScreen(_selectedIndex),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: AppTheme.cardBackground,
+        selectedItemColor: AppTheme.primaryRed,
+        unselectedItemColor: AppTheme.mutedText,
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        items: _navItems.map((item) {
+          return BottomNavigationBarItem(
+            icon: Icon(item['icon'] as IconData),
+            label: item['label'] as String,
+          );
+        }).toList(),
       ),
     );
   }
-}
 
-// Driver Dashboard Content
-class _DriverDashboardContent extends StatelessWidget {
-  const _DriverDashboardContent();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildDashboardContent(
+    BuildContext context,
+    DriverProvider driverProvider,
+    DriverStats stats,
+    DeliveryRequest? activeDelivery,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Stats Cards Row
+          if (activeDelivery != null && _showActiveDeliveryFullView)
+            _buildActiveDeliveryExpanded(context, activeDelivery, driverProvider),
+          
+          if (activeDelivery != null && !_showActiveDeliveryFullView)
+            _buildActiveDeliveryBanner(activeDelivery),
+          
           Row(
             children: [
               Expanded(
-                child: _buildStatCard(
+                child: StatCard(
                   title: 'Today\'s Earnings',
-                  value: 'MK2,450',
+                  value: 'MK${stats.todayEarnings.toInt()}',
                   icon: Icons.attach_money,
                   color: AppTheme.primaryRed,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildStatCard(
+                child: StatCard(
                   title: 'Total Deliveries',
-                  value: '342',
+                  value: '${stats.totalDeliveries}',
                   icon: Icons.delivery_dining,
                   color: AppTheme.success,
                 ),
@@ -209,21 +276,22 @@ class _DriverDashboardContent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          
           Row(
             children: [
               Expanded(
-                child: _buildStatCard(
+                child: StatCard(
                   title: 'Rating',
-                  value: '4.8',
+                  value: '${stats.rating} ★',
                   icon: Icons.star,
                   color: AppTheme.yellow,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildStatCard(
+                child: StatCard(
                   title: 'Active Orders',
-                  value: '2',
+                  value: activeDelivery != null ? '1' : '0',
                   icon: Icons.shopping_bag,
                   color: AppTheme.warning,
                 ),
@@ -232,7 +300,6 @@ class _DriverDashboardContent extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           
-          // Today's Schedule
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -252,27 +319,44 @@ class _DriverDashboardContent extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildScheduleItem(
-                  orderId: 'ORD-001',
-                  restaurant: 'Luigi\'s Pizza',
-                  customer: 'John Doe',
-                  time: '12:30 PM',
-                  status: 'Ready for Pickup',
-                ),
-                const SizedBox(height: 12),
-                _buildScheduleItem(
+                if (activeDelivery != null)
+                  ScheduleItem(
+                    orderId: activeDelivery.id,
+                    restaurant: activeDelivery.restaurantName,
+                    customer: activeDelivery.customerName,
+                    time: activeDelivery.estimatedTime,
+                    status: activeDelivery.status == 'accepted' 
+                        ? 'Ready for Pickup' 
+                        : activeDelivery.status == 'picked_up'
+                        ? 'Out for Delivery'
+                        : 'In Progress',
+                    onTap: () {
+                      setState(() {
+                        _showActiveDeliveryFullView = true;
+                      });
+                    },
+                  ),
+                ScheduleItem(
                   orderId: 'ORD-002',
                   restaurant: 'Burger King',
                   customer: 'Jane Smith',
                   time: '1:15 PM',
                   status: 'Preparing',
+                  onTap: () {},
+                ),
+                ScheduleItem(
+                  orderId: 'ORD-003',
+                  restaurant: 'Sushi Master',
+                  customer: 'Mike Johnson',
+                  time: '2:00 PM',
+                  status: 'Scheduled',
+                  onTap: () {},
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
           
-          // Recent Earnings
           const Text(
             'Recent Earnings',
             style: TextStyle(
@@ -287,7 +371,7 @@ class _DriverDashboardContent extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: 3,
             itemBuilder: (context, index) {
-              return _buildEarningsItem(index);
+              return EarningsItem(index: index);
             },
           ),
         ],
@@ -295,13 +379,75 @@ class _DriverDashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
+  Widget _buildActiveDeliveryBanner(DeliveryRequest delivery) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _showActiveDeliveryFullView = true;
+          });
+        },
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.delivery_dining, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Active Delivery',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  Text(
+                    'Order #${delivery.id}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    delivery.restaurantName,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveDeliveryExpanded(
+    BuildContext context,
+    DeliveryRequest activeDelivery,
+    DriverProvider driverProvider,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: AppTheme.cardGlowGradient,
@@ -311,606 +457,156 @@ class _DriverDashboardContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: color),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryText,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppTheme.secondaryText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScheduleItem({
-    required String orderId,
-    required String restaurant,
-    required String customer,
-    required String time,
-    required String status,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.secondaryBackground,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppTheme.cardBackground,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.restaurant, size: 20, color: AppTheme.mutedText),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  restaurant,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryText,
-                  ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Order #${activeDelivery.id}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryText,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Order #$orderId • $customer',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.secondaryText,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppTheme.mutedText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _getStatusColor(status).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              status,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: _getStatusColor(status),
               ),
-            ),
+              Row(
+                children: [
+                  StatusChip(status: activeDelivery.status),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _showActiveDeliveryFullView = false;
+                      });
+                    },
+                    icon: const Icon(Icons.close, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEarningsItem(int index) {
-    final earnings = [
-      {'order': 'ORD-001', 'amount': 'MK450', 'time': '12:30 PM'},
-      {'order': 'ORD-002', 'amount': 'MK380', 'time': '11:15 AM'},
-      {'order': 'ORD-003', 'amount': 'MK520', 'time': '10:00 AM'},
-    ];
-    final earning = earnings[index];
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
+          const SizedBox(height: 16),
+          
+          ProgressTimeline(status: activeDelivery.status),
+          const SizedBox(height: 24),
+          
+          InfoSection(
+            icon: Icons.restaurant,
+            title: 'Restaurant',
+            subtitle: activeDelivery.restaurantName,
+            address: activeDelivery.restaurantAddress,
+          ),
+          const SizedBox(height: 16),
+          
+          InfoSection(
+            icon: Icons.home,
+            title: 'Delivery Address',
+            subtitle: activeDelivery.customerName,
+            address: activeDelivery.deliveryAddress,
+          ),
+          const SizedBox(height: 16),
+          
           Container(
-            width: 40,
-            height: 40,
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppTheme.secondaryBackground,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.receipt, size: 20, color: AppTheme.mutedText),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
+                const Icon(Icons.fastfood, size: 20, color: AppTheme.mutedText),
+                const SizedBox(width: 12),
                 Text(
-                  'Order ${earning['order']}',
+                  activeDelivery.items,
+                  style: const TextStyle(color: AppTheme.secondaryText),
+                ),
+                const Spacer(),
+                const Icon(Icons.attach_money, size: 20, color: AppTheme.primaryRed),
+                const SizedBox(width: 4),
+                Text(
+                  'MK${activeDelivery.earnings.toInt()}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryText,
-                  ),
-                ),
-                Text(
-                  earning['time']!,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.secondaryText,
+                    color: AppTheme.primaryRed,
                   ),
                 ),
               ],
             ),
           ),
-          Text(
-            earning['amount']!,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryRed,
+          const SizedBox(height: 24),
+          
+          if (activeDelivery.status != 'delivered')
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => UpdateStatusDialog(
+                      currentStatus: activeDelivery.status,
+                      onStatusUpdate: (newStatus) {
+                        _updateOrderStatus(newStatus);
+                        if (newStatus == 'delivered') {
+                          setState(() {
+                            _showActiveDeliveryFullView = false;
+                          });
+                        }
+                      },
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryRed,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: const Text(
+                  'Update Delivery Status',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _showActiveDeliveryFullView = false;
+                  });
+                },
+                icon: const Icon(Icons.check_circle),
+                label: const Text('Delivery Completed'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.success,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Ready for Pickup':
-        return AppTheme.success;
-      case 'Preparing':
-        return AppTheme.warning;
+  Widget _buildSelectedScreen(int index) {
+    switch (index) {
+      case 1:
+        return const AvailableOrdersScreen();
+      case 2:
+        return const DeliveryHistoryScreen();
+      case 3:
+        return const DriverEarningsScreen();
       default:
-        return AppTheme.mutedText;
+        return const SizedBox.shrink();
     }
   }
-}
-
-// Available Orders Content
-class _AvailableOrdersContent extends StatelessWidget {
-  const _AvailableOrdersContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: 3,
-      itemBuilder: (context, index) {
-        final orders = [
-          {
-            'restaurant': 'Luigi\'s Pizza',
-            'customer': 'John Doe',
-            'distance': '1.2 km',
-            'earnings': 'MK450',
-            'items': '2 items',
-            'time': '12:30 PM',
-          },
-          {
-            'restaurant': 'Burger King',
-            'customer': 'Jane Smith',
-            'distance': '0.8 km',
-            'earnings': 'MK380',
-            'items': '1 item',
-            'time': '1:15 PM',
-          },
-          {
-            'restaurant': 'Sushi Master',
-            'customer': 'Mike Johnson',
-            'distance': '2.5 km',
-            'earnings': 'MK520',
-            'items': '3 items',
-            'time': '2:00 PM',
-          },
-        ];
-        final order = orders[index];
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: AppTheme.cardGlowGradient,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    order['restaurant']!,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryText,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.success.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      order['earnings']!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.success,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.person, size: 14, color: AppTheme.mutedText),
-                  const SizedBox(width: 4),
-                  Text(
-                    order['customer']!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Icon(Icons.location_on, size: 14, color: AppTheme.mutedText),
-                  const SizedBox(width: 4),
-                  Text(
-                    order['distance']!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.secondaryText,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.fastfood, size: 14, color: AppTheme.mutedText),
-                  const SizedBox(width: 4),
-                  Text(
-                    order['items']!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Icon(Icons.access_time, size: 14, color: AppTheme.mutedText),
-                  const SizedBox(width: 4),
-                  Text(
-                    order['time']!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.secondaryText,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Order accepted!'),
-                        backgroundColor: AppTheme.success,
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.success,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text(
-                    'Accept Delivery',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-// Active Deliveries Content
-class _ActiveDeliveriesContent extends StatelessWidget {
-  const _ActiveDeliveriesContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: 2,
-      itemBuilder: (context, index) {
-        final deliveries = [
-          {
-            'orderId': 'ORD-001',
-            'restaurant': 'Luigi\'s Pizza',
-            'customer': 'John Doe',
-            'address': '123 Main St, Area 3',
-            'status': 'Pickup',
-            'eta': '5 min',
-          },
-          {
-            'orderId': 'ORD-002',
-            'restaurant': 'Burger King',
-            'customer': 'Jane Smith',
-            'address': '456 Oak Ave, Area 47',
-            'status': 'Delivering',
-            'eta': '15 min',
-          },
-        ];
-        final delivery = deliveries[index];
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: AppTheme.cardGlowGradient,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Order #${delivery['orderId']}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryText,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: delivery['status'] == 'Pickup'
-                          ? AppTheme.warning.withOpacity(0.2)
-                          : AppTheme.success.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      delivery['status']!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: delivery['status'] == 'Pickup'
-                            ? AppTheme.warning
-                            : AppTheme.success,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondaryBackground,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.restaurant, size: 16, color: AppTheme.mutedText),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          delivery['restaurant']!,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.primaryText,
-                          ),
-                        ),
-                        Text(
-                          delivery['address']!,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.secondaryText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(Icons.access_time, size: 14, color: AppTheme.mutedText),
-                  const SizedBox(width: 4),
-                  Text(
-                    'ETA: ${delivery['eta']}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.secondaryText,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text('Contact Support'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.success,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text('Update Status'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-// Delivery History Content
-class _DeliveryHistoryContent extends StatelessWidget {
-  const _DeliveryHistoryContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        final deliveries = [
-          {'orderId': 'ORD-001', 'restaurant': 'Luigi\'s Pizza', 'earnings': 'MK450', 'date': 'Today', 'time': '12:30 PM'},
-          {'orderId': 'ORD-002', 'restaurant': 'Burger King', 'earnings': 'MK380', 'date': 'Today', 'time': '11:15 AM'},
-          {'orderId': 'ORD-003', 'restaurant': 'Sushi Master', 'earnings': 'MK520', 'date': 'Yesterday', 'time': '2:00 PM'},
-          {'orderId': 'ORD-004', 'restaurant': 'Tasty Bites', 'earnings': 'MK410', 'date': 'Yesterday', 'time': '12:45 PM'},
-          {'orderId': 'ORD-005', 'restaurant': 'Flame Grill', 'earnings': 'MK490', 'date': '2 days ago', 'time': '6:30 PM'},
-        ];
-        final delivery = deliveries[index];
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: AppTheme.cardGlowGradient,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppTheme.secondaryBackground,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.delivery_dining, size: 25, color: AppTheme.mutedText),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      delivery['restaurant']!,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Order #${delivery['orderId']}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.secondaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${delivery['date']} • ${delivery['time']}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.mutedText,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                delivery['earnings']!,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryRed,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-// Driver Stats Model
-class DriverStats {
-  final double todayEarnings;
-  final int totalDeliveries;
-  final double rating;
-  final double totalEarnings;
-  final int activeDeliveries;
-  final int completedToday;
-
-  DriverStats({
-    required this.todayEarnings,
-    required this.totalDeliveries,
-    required this.rating,
-    required this.totalEarnings,
-    required this.activeDeliveries,
-    required this.completedToday,
-  });
 }

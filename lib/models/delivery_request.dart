@@ -1,0 +1,77 @@
+class DeliveryRequest {
+  final String id;
+  final String restaurantName;
+  final String restaurantAddress;
+  final String customerName;
+  final String deliveryAddress;
+  String status; // pending, accepted, picked_up, delivered
+  final String items;
+  final String distance;
+  final double earnings;
+  final String estimatedTime;
+  final String? customerPhone;
+  final String? specialInstructions;
+
+  DeliveryRequest({
+    required this.id,
+    required this.restaurantName,
+    required this.restaurantAddress,
+    required this.customerName,
+    required this.deliveryAddress,
+    required this.status,
+    required this.items,
+    required this.distance,
+    required this.earnings,
+    required this.estimatedTime,
+    this.customerPhone,
+    this.specialInstructions,
+  });
+
+  DeliveryRequest copyWith({
+    String? id,
+    String? restaurantName,
+    String? restaurantAddress,
+    String? customerName,
+    String? deliveryAddress,
+    String? status,
+    String? items,
+    String? distance,
+    double? earnings,
+    String? estimatedTime,
+    String? customerPhone,
+    String? specialInstructions,
+  }) {
+    return DeliveryRequest(
+      id: id ?? this.id,
+      restaurantName: restaurantName ?? this.restaurantName,
+      restaurantAddress: restaurantAddress ?? this.restaurantAddress,
+      customerName: customerName ?? this.customerName,
+      deliveryAddress: deliveryAddress ?? this.deliveryAddress,
+      status: status ?? this.status,
+      items: items ?? this.items,
+      distance: distance ?? this.distance,
+      earnings: earnings ?? this.earnings,
+      estimatedTime: estimatedTime ?? this.estimatedTime,
+      customerPhone: customerPhone ?? this.customerPhone,
+      specialInstructions: specialInstructions ?? this.specialInstructions,
+    );
+  }
+}
+
+class DriverStats {
+  final double todayEarnings;
+  final int totalDeliveries;
+  final double rating;
+  final double totalEarnings;
+  final int activeDeliveries;
+  final int completedToday;
+
+  DriverStats({
+    required this.todayEarnings,
+    required this.totalDeliveries,
+    required this.rating,
+    required this.totalEarnings,
+    required this.activeDeliveries,
+    required this.completedToday,
+  });
+}
