@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/driver_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/delivery_request.dart';
 import '../../widgets/driver/stat_card.dart';
 import '../../widgets/driver/schedule_item.dart';
@@ -14,6 +16,7 @@ import '../../widgets/dialogs/update_status_dialog.dart';
 import 'available_orders_screen.dart';
 import 'delivery_history_screen.dart';
 import 'driver_earnings_screen.dart';
+import 'driver_settings_screen.dart';
 
 class DriverDashboardScreen extends StatefulWidget {
   const DriverDashboardScreen({super.key});
@@ -36,55 +39,63 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _checkForIncomingRequests();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForIncomingRequests();
+    });
   }
 
   void _checkForIncomingRequests() {
-    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      
       if (driverProvider.isOnline && 
           driverProvider.activeDelivery == null && 
           driverProvider.availableOrders.isNotEmpty) {
         _showNewRequestDialog();
       }
-    });
+    } catch (e) {
+      debugPrint('Provider not ready yet');
+    }
   }
 
   void _showNewRequestDialog() {
-    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
-    if (driverProvider.availableOrders.isEmpty) return;
-    
-    final order = driverProvider.availableOrders.first;
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => NewRequestDialog(
-        request: order,
-        onAccept: () {
-          driverProvider.acceptOrder(order);
-          Navigator.pop(context);
-          _showSnackBar('Order accepted! Head to the restaurant.');
-          setState(() {
-            _selectedIndex = 0;
-            _showActiveDeliveryFullView = true;
-          });
-        },
-        onDecline: () {
-          driverProvider.declineOrder(order);
-          Navigator.pop(context);
-          _showSnackBar('Order declined', isError: true);
-          Future.delayed(const Duration(seconds: 2), () {
-            if (driverProvider.isOnline && 
-                driverProvider.activeDelivery == null && 
-                driverProvider.availableOrders.isNotEmpty) {
-              _showNewRequestDialog();
-            }
-          });
-        },
-      ),
-    );
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      if (driverProvider.availableOrders.isEmpty) return;
+      
+      final order = driverProvider.availableOrders.first;
+      
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => NewRequestDialog(
+          request: order,
+          onAccept: () {
+            driverProvider.acceptOrder(order);
+            Navigator.pop(context);
+            _showSnackBar('Order accepted! Head to the restaurant.');
+            setState(() {
+              _selectedIndex = 0;
+              _showActiveDeliveryFullView = true;
+            });
+          },
+          onDecline: () {
+            driverProvider.declineOrder(order);
+            Navigator.pop(context);
+            _showSnackBar('Order declined', isError: true);
+            Future.delayed(const Duration(seconds: 2), () {
+              if (driverProvider.isOnline && 
+                  driverProvider.activeDelivery == null && 
+                  driverProvider.availableOrders.isNotEmpty) {
+                _showNewRequestDialog();
+              }
+            });
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error showing dialog: $e');
+    }
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -98,16 +109,20 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   }
 
   void _updateOrderStatus(String newStatus) {
-    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
-    driverProvider.updateOrderStatus(newStatus);
-    
-    if (newStatus == 'delivered') {
-      _showSnackBar('Delivery completed! Great job! 🎉');
-      setState(() {
-        _showActiveDeliveryFullView = false;
-      });
-    } else {
-      _showSnackBar('Status updated to: ${_getStatusDisplay(newStatus)}');
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      driverProvider.updateOrderStatus(newStatus);
+      
+      if (newStatus == 'delivered') {
+        _showSnackBar('Delivery completed! Great job! 🎉');
+        setState(() {
+          _showActiveDeliveryFullView = false;
+        });
+      } else {
+        _showSnackBar('Status updated to: ${_getStatusDisplay(newStatus)}');
+      }
+    } catch (e) {
+      debugPrint('Error updating status: $e');
     }
   }
 
@@ -122,120 +137,136 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final driverProvider = Provider.of<DriverProvider>(context);
-    final driverName = 'John Driver';
-    final stats = driverProvider.stats;
-    final activeDelivery = driverProvider.activeDelivery;
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context);
+      final authProvider = Provider.of<AuthProvider>(context);
+      final driverName = authProvider.currentUser?.name ?? 'Driver';
+      final stats = driverProvider.stats;
+      final activeDelivery = driverProvider.activeDelivery;
 
-    return Scaffold(
-      backgroundColor: AppTheme.mainBackground,
-      appBar: AppBar(
+      return Scaffold(
         backgroundColor: AppTheme.mainBackground,
-        elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              driverName,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryText,
+        appBar: AppBar(
+          backgroundColor: AppTheme.mainBackground,
+          elevation: 0,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                driverName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryText,
+                ),
               ),
+              const SizedBox(height: 2),
+              Text(
+                _selectedIndex == 0 ? 'Driver Dashboard' : _navItems[_selectedIndex]['label'] as String,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.mutedText,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            // Settings Icon Button
+            IconButton(
+              icon: const Icon(Icons.settings_outlined, color: AppTheme.primaryText),
+              onPressed: () {
+                context.push('/driver-settings');
+              },
+              tooltip: 'Settings',
             ),
-            const SizedBox(height: 2),
-            Text(
-              _selectedIndex == 0 ? 'Driver Dashboard' : _navItems[_selectedIndex]['label'] as String,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.mutedText,
+            const SizedBox(width: 8),
+            // Online Status Toggle
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: driverProvider.isOnline 
+                    ? AppTheme.success.withOpacity(0.2) 
+                    : AppTheme.error.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    driverProvider.isOnline ? 'Online' : 'Offline',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Switch(
+                    value: driverProvider.isOnline,
+                    onChanged: (value) {
+                      driverProvider.toggleOnlineStatus(value);
+                      _showSnackBar(
+                        value ? 'You are now online' : 'You are now offline',
+                      );
+                      if (value) {
+                        Future.delayed(const Duration(seconds: 3), () {
+                          _checkForIncomingRequests();
+                        });
+                      }
+                    },
+                    activeColor: AppTheme.success,
+                    inactiveThumbColor: AppTheme.error,
+                    inactiveTrackColor: AppTheme.error.withOpacity(0.3),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: driverProvider.isOnline 
-                  ? AppTheme.success.withOpacity(0.2) 
-                  : AppTheme.error.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  driverProvider.isOnline ? 'Online' : 'Offline',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Switch(
-                  value: driverProvider.isOnline,
-                  onChanged: (value) {
-                    driverProvider.toggleOnlineStatus(value);
-                    _showSnackBar(
-                      value ? 'You are now online' : 'You are now offline',
-                    );
-                    if (value) {
-                      Future.delayed(const Duration(seconds: 3), () {
-                        if (driverProvider.isOnline && 
-                            driverProvider.activeDelivery == null && 
-                            driverProvider.availableOrders.isNotEmpty) {
-                          _showNewRequestDialog();
-                        }
-                      });
-                    }
-                  },
-                  activeColor: AppTheme.success,
-                  inactiveThumbColor: AppTheme.error,
-                  inactiveTrackColor: AppTheme.error.withOpacity(0.3),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: _selectedIndex == 0
-          ? _buildDashboardContent(context, driverProvider, stats, activeDelivery)
-          : _buildSelectedScreen(_selectedIndex),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppTheme.cardBackground,
-        selectedItemColor: AppTheme.primaryRed,
-        unselectedItemColor: AppTheme.mutedText,
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        items: _navItems.map((item) {
-          return BottomNavigationBarItem(
-            icon: Icon(item['icon'] as IconData),
-            label: item['label'] as String,
-          );
-        }).toList(),
-      ),
-    );
+        body: _selectedIndex == 0
+            ? _buildDashboardContent(context, driverProvider, stats, activeDelivery)
+            : _buildSelectedScreen(_selectedIndex),
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: AppTheme.cardBackground,
+          selectedItemColor: AppTheme.primaryRed,
+          unselectedItemColor: AppTheme.mutedText,
+          currentIndex: _selectedIndex,
+          onTap: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+          items: _navItems.map((item) {
+            return BottomNavigationBarItem(
+              icon: Icon(item['icon'] as IconData),
+              label: item['label'] as String,
+            );
+          }).toList(),
+        ),
+      );
+    } catch (e) {
+      return const Scaffold(
+        backgroundColor: AppTheme.mainBackground,
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
   }
 
   Widget _buildDashboardContent(
@@ -517,9 +548,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               children: [
                 const Icon(Icons.fastfood, size: 20, color: AppTheme.mutedText),
                 const SizedBox(width: 12),
-                Text(
-                  activeDelivery.items,
-                  style: const TextStyle(color: AppTheme.secondaryText),
+                Expanded(
+                  child: Text(
+                    activeDelivery.items,
+                    style: const TextStyle(color: AppTheme.secondaryText),
+                  ),
                 ),
                 const Spacer(),
                 const Icon(Icons.attach_money, size: 20, color: AppTheme.primaryRed),

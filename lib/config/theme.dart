@@ -3,31 +3,31 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ==================== MAIN BRAND REDS ====================
-  static const Color primaryRed = Color(0xFFFF2E2E);      // Primary Red
-  static const Color brightAccentRed = Color(0xFFFF3B3B); // Bright Accent Red
-  static const Color deepCrimson = Color(0xFFB11226);     // Deep Crimson
-  static const Color darkRedBase = Color(0xFF7A0C18);     // Dark Red Base
+  static const Color primaryRed = Color(0xFFFF2E2E);
+  static const Color brightAccentRed = Color(0xFFFF3B3B);
+  static const Color deepCrimson = Color(0xFFB11226);
+  static const Color darkRedBase = Color(0xFF7A0C18);
   
   // ==================== BACKGROUND COLORS ====================
-  static const Color mainBackground = Color(0xFF0F0A0A);     // Main Background
-  static const Color secondaryBackground = Color(0xFF1A0D0D); // Secondary Background
-  static const Color cardBackground = Color(0xFF2A0F0F);      // Card Background
-  static const Color elevatedPanel = Color(0xFF331313);      // Elevated Panel
+  static const Color mainBackground = Color(0xFF0F0A0A);
+  static const Color secondaryBackground = Color(0xFF1A0D0D);
+  static const Color cardBackground = Color(0xFF2A0F0F);
+  static const Color elevatedPanel = Color(0xFF331313);
   
   // ==================== TEXT COLORS ====================
-  static const Color primaryText = Color(0xFFFFFFFF);        // Primary Text
-  static const Color secondaryText = Color(0xFFC9C9C9);      // Secondary Text
-  static const Color mutedText = Color(0xFF8A8A8A);          // Muted Text
+  static const Color primaryText = Color(0xFFFFFFFF);
+  static const Color secondaryText = Color(0xFFC9C9C9);
+  static const Color mutedText = Color(0xFF8A8A8A);
   
   // ==================== STATUS COLORS ====================
-  static const Color success = Color(0xFF22C55E);             // Success Green
-  static const Color warning = Color(0xFFF97316);             // Warning Orange
-  static const Color error = Color(0xFFEF4444);               // Error Red
+  static const Color success = Color(0xFF22C55E);
+  static const Color warning = Color(0xFFF97316);
+  static const Color error = Color(0xFFEF4444);
   
   // ==================== ACCENT COLORS ====================
-  static const Color yellow = Color(0xFFFACC15);              // Yellow
-  static const Color orange = Color(0xFFFB923C);              // Orange
-  static const Color teal = Color(0xFF14B8A6);                // Teal
+  static const Color yellow = Color(0xFFFACC15);
+  static const Color orange = Color(0xFFFB923C);
+  static const Color teal = Color(0xFF14B8A6);
   
   // ==================== LEGACY/ALIAS COLORS ====================
   static const Color primaryColor = primaryRed;
@@ -73,7 +73,7 @@ class AppTheme {
       error: error,
     ),
     fontFamily: GoogleFonts.poppins().fontFamily,
-    scaffoldBackgroundColor: mainBackground,
+    scaffoldBackgroundColor: Colors.white,
     appBarTheme: const AppBarTheme(
       elevation: 0,
       centerTitle: true,
@@ -133,7 +133,7 @@ class AppTheme {
       labelLarge: TextStyle(color: mainBackground, fontSize: 14, fontWeight: FontWeight.w500),
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: cardBackground,
+      backgroundColor: Colors.white,
       selectedItemColor: primaryRed,
       unselectedItemColor: mutedText,
       type: BottomNavigationBarType.fixed,
@@ -141,7 +141,7 @@ class AppTheme {
     ),
   );
   
-  // ==================== DARK THEME (Main Theme for Driver App) ====================
+  // ==================== DARK THEME ====================
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
@@ -248,7 +248,6 @@ class AppTheme {
       thickness: 0.5,
       space: 1,
     ),
-    // FIXED: Changed DialogTheme to DialogThemeData
     dialogTheme: const DialogThemeData(
       backgroundColor: cardBackground,
       shape: RoundedRectangleBorder(
