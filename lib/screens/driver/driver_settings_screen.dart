@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/driver_provider.dart';
-import '../../providers/theme_provider.dart';
 import '../../widgets/driver/settings_tile.dart';
 
 class DriverSettingsScreen extends StatelessWidget {
@@ -13,7 +13,6 @@ class DriverSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final driverProvider = Provider.of<DriverProvider>(context);
-    final themeProvider = Provider.of<ThemeProvider>(context);
     final driverName = authProvider.currentUser?.name ?? 'John Driver';
     final driverEmail = authProvider.currentUser?.email ?? 'driver@example.com';
     final driverStats = driverProvider.stats;
@@ -41,7 +40,7 @@ class DriverSettingsScreen extends StatelessWidget {
           children: [
             _buildProfileSection(context, driverName, driverEmail, driverStats),
             const SizedBox(height: 12),
-            _buildPreferencesSection(context, themeProvider),
+            _buildPreferencesSection(context),
             const SizedBox(height: 12),
             _buildAccountSection(context),
             const SizedBox(height: 12),
@@ -172,7 +171,7 @@ class DriverSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPreferencesSection(BuildContext context, ThemeProvider themeProvider) {
+  Widget _buildPreferencesSection(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -186,7 +185,7 @@ class DriverSettingsScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              'Preferences',
+              'PREFERENCES',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -198,35 +197,11 @@ class DriverSettingsScreen extends StatelessWidget {
           const Divider(height: 1, color: AppTheme.deepCrimson, thickness: 0.5),
           
           SettingsTile(
-            icon: themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-            title: 'Dark Mode',
-            subtitle: themeProvider.isDarkMode ? 'Switch to light mode' : 'Switch to dark mode',
-            trailing: Switch(
-              value: themeProvider.isDarkMode,
-              onChanged: (value) {
-                themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-              },
-              activeColor: AppTheme.primaryRed,
-              activeTrackColor: AppTheme.primaryRed.withOpacity(0.5),
-            ),
-            iconColor: themeProvider.isDarkMode ? Colors.purple : Colors.orange,
-          ),
-          
-          SettingsTile(
             icon: Icons.language,
             title: 'Language',
             subtitle: 'English',
             onTap: () {
               _showLanguageDialog(context);
-            },
-          ),
-          
-          SettingsTile(
-            icon: Icons.straighten,
-            title: 'Distance Unit',
-            subtitle: 'Kilometers (km)',
-            onTap: () {
-              _showUnitDialog(context);
             },
           ),
           
@@ -257,7 +232,7 @@ class DriverSettingsScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              'Account',
+              'ACCOUNT',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -294,15 +269,6 @@ class DriverSettingsScreen extends StatelessWidget {
               _showComingSoon(context, 'Vehicle Information');
             },
           ),
-          
-          SettingsTile(
-            icon: Icons.assignment,
-            title: 'Delivery Preferences',
-            subtitle: 'Max distance, order size',
-            onTap: () {
-              _showComingSoon(context, 'Delivery Preferences');
-            },
-          ),
         ],
       ),
     );
@@ -322,7 +288,7 @@ class DriverSettingsScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              'Support',
+              'SUPPORT',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -387,7 +353,7 @@ class DriverSettingsScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              'About',
+              'ABOUT',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -530,29 +496,6 @@ class DriverSettingsScreen extends StatelessWidget {
             ),
             ListTile(
               title: const Text('French'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showUnitDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Distance Unit'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Kilometers (km)'),
-              trailing: const Icon(Icons.check, color: AppTheme.primaryRed),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              title: const Text('Miles (mi)'),
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -714,7 +657,7 @@ class DriverSettingsScreen extends StatelessWidget {
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
               authProvider.logout();
               Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/login');
+              context.go('/login');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.error,
