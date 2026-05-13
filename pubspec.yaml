@@ -13,6 +13,9 @@ dependencies:
   # UI & Styling
   google_fonts: ^8.1.0
   flutter_svg: ^2.2.4
+
+  # ... existing dependencies
+  image_picker: ^1.0.5
   
   
   # State Management

@@ -1,6 +1,25 @@
 import 'package:flutter/material.dart';
 import '../models/delivery_request.dart';
 
+// DriverStats class - ONLY HERE, NOT in delivery_request.dart
+class DriverStats {
+  final double todayEarnings;
+  final int totalDeliveries;
+  final double rating;
+  final double totalEarnings;
+  final int activeDeliveries;
+  final int completedToday;
+
+  DriverStats({
+    required this.todayEarnings,
+    required this.totalDeliveries,
+    required this.rating,
+    required this.totalEarnings,
+    required this.activeDeliveries,
+    required this.completedToday,
+  });
+}
+
 class DriverProvider extends ChangeNotifier {
   bool _isOnline = false;
   DeliveryRequest? _activeDelivery;
@@ -98,7 +117,6 @@ class DriverProvider extends ChangeNotifier {
     notifyListeners();
     
     if (_isOnline) {
-      // Simulate incoming request after 5 seconds
       Future.delayed(const Duration(seconds: 5), () {
         if (_isOnline && _activeDelivery == null && _availableOrders.isNotEmpty) {
           notifyListeners();

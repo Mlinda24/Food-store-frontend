@@ -58,20 +58,3 @@ class DeliveryRequest {
   }
 }
 
-class DriverStats {
-  final double todayEarnings;
-  final int totalDeliveries;
-  final double rating;
-  final double totalEarnings;
-  final int activeDeliveries;
-  final int completedToday;
-
-  DriverStats({
-    required this.todayEarnings,
-    required this.totalDeliveries,
-    required this.rating,
-    required this.totalEarnings,
-    required this.activeDeliveries,
-    required this.completedToday,
-  });
-}
