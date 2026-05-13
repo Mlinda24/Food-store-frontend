@@ -6,8 +6,240 @@ import '../../providers/auth_provider.dart';
 import '../../providers/driver_provider.dart';
 import '../../widgets/driver/settings_tile.dart';
 
-class DriverSettingsScreen extends StatelessWidget {
+// Model for a Withdrawal Account - FIXED with non-final properties
+class WithdrawalAccount {
+  String id;
+  String method; // 'airtel' or 'tnm'
+  String accountNumber;
+  String holderName;
+  bool isDefault;
+
+  WithdrawalAccount({
+    required this.id,
+    required this.method,
+    required this.accountNumber,
+    required this.holderName,
+    this.isDefault = false,
+  });
+}
+
+class DriverSettingsScreen extends StatefulWidget {
   const DriverSettingsScreen({super.key});
+
+  @override
+  State<DriverSettingsScreen> createState() => _DriverSettingsScreenState();
+}
+
+class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
+  List<WithdrawalAccount> _withdrawalAccounts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWithdrawalAccounts();
+  }
+
+  // Load saved accounts (mock data for demo)
+  void _loadWithdrawalAccounts() {
+    _withdrawalAccounts = [
+      WithdrawalAccount(
+        id: '1',
+        method: 'airtel',
+        accountNumber: '0999 123 456',
+        holderName: 'John Driver',
+        isDefault: true,
+      ),
+    ];
+    setState(() {});
+  }
+
+  void _addWithdrawalAccount() {
+    _showAccountDialog();
+  }
+
+  void _editWithdrawalAccount(WithdrawalAccount account) {
+    _showAccountDialog(account: account);
+  }
+
+  void _deleteWithdrawalAccount(WithdrawalAccount account) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Account'),
+        content: Text('Are you sure you want to remove ${account.method.toUpperCase()} account ${account.accountNumber}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _withdrawalAccounts.removeWhere((acc) => acc.id == account.id);
+                if (account.isDefault && _withdrawalAccounts.isNotEmpty) {
+                  _withdrawalAccounts.first.isDefault = true;
+                }
+              });
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Account removed'), backgroundColor: AppTheme.error),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setDefaultAccount(WithdrawalAccount selectedAccount) {
+    setState(() {
+      for (var acc in _withdrawalAccounts) {
+        acc.isDefault = (acc.id == selectedAccount.id);
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Default withdrawal account updated to ${selectedAccount.method.toUpperCase()}'),
+        backgroundColor: AppTheme.success,
+      ),
+    );
+  }
+
+  void _showAccountDialog({WithdrawalAccount? account}) {
+    final isEditing = account != null;
+    final nameController = TextEditingController(text: account?.holderName ?? '');
+    final phoneController = TextEditingController(text: account?.accountNumber ?? '');
+    String selectedMethod = account?.method ?? 'airtel';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: Text(isEditing ? 'Edit Withdrawal Account' : 'Add Withdrawal Account'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Method Selection
+                Row(
+                  children: [
+                    _buildMethodOption(
+                      method: 'airtel',
+                      label: 'Airtel Money',
+                      icon: Icons.phone_android,
+                      selectedMethod: selectedMethod,
+                      onTap: () => setStateDialog(() => selectedMethod = 'airtel'),
+                    ),
+                    const SizedBox(width: 16),
+                    _buildMethodOption(
+                      method: 'tnm',
+                      label: 'TNM Mpamba',
+                      icon: Icons.phone_iphone,
+                      selectedMethod: selectedMethod,
+                      onTap: () => setStateDialog(() => selectedMethod = 'tnm'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: nameController,
+                  style: const TextStyle(color: AppTheme.primaryText),
+                  decoration: const InputDecoration(
+                    labelText: 'Account Holder Name',
+                    hintText: 'Full name on the account',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  style: const TextStyle(color: AppTheme.primaryText),
+                  decoration: const InputDecoration(
+                    labelText: 'Mobile Number',
+                    hintText: 'e.g., 0999 123 456',
+                    prefixIcon: Icon(Icons.phone_android),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () {
+                  if (nameController.text.isEmpty || phoneController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please fill all fields'), backgroundColor: AppTheme.error),
+                    );
+                    return;
+                  }
+                  setState(() {
+                    if (isEditing) {
+                      // Update existing account
+                      account!.holderName = nameController.text;
+                      account!.accountNumber = phoneController.text;
+                      account!.method = selectedMethod;
+                    } else {
+                      // Add new account
+                      _withdrawalAccounts.add(WithdrawalAccount(
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        method: selectedMethod,
+                        accountNumber: phoneController.text,
+                        holderName: nameController.text,
+                        isDefault: _withdrawalAccounts.isEmpty,
+                      ));
+                    }
+                  });
+                  Navigator.pop(context);
+                },
+                child: Text(isEditing ? 'Save Changes' : 'Add Account'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMethodOption({
+    required String method,
+    required String label,
+    required IconData icon,
+    required String selectedMethod,
+    required VoidCallback onTap,
+  }) {
+    final isSelected = selectedMethod == method;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryRed.withOpacity(0.2) : AppTheme.cardBackground,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryRed : AppTheme.mutedText.withOpacity(0.3),
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 32, color: isSelected ? AppTheme.primaryRed : AppTheme.mutedText),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected ? AppTheme.primaryText : AppTheme.secondaryText,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +272,9 @@ class DriverSettingsScreen extends StatelessWidget {
           children: [
             _buildProfileSection(context, driverName, driverEmail, driverStats),
             const SizedBox(height: 12),
-            _buildPreferencesSection(context),
+            _buildWithdrawalSection(context),
             const SizedBox(height: 12),
-            _buildAccountSection(context),
+            _buildPreferencesSection(context),
             const SizedBox(height: 12),
             _buildSupportSection(context),
             const SizedBox(height: 12),
@@ -106,64 +338,40 @@ class DriverSettingsScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.success.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star, size: 12, color: AppTheme.yellow),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${driverStats.rating} ★',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.success,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildBadge(Icons.star, '${driverStats.rating} ★', AppTheme.success),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryRed.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.delivery_dining, size: 12, color: AppTheme.primaryRed),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${driverStats.totalDeliveries} deliveries',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.primaryRed,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildBadge(Icons.delivery_dining, '${driverStats.totalDeliveries} deliveries', AppTheme.primaryRed),
                   ],
                 ),
               ],
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.secondaryBackground,
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.edit, size: 20, color: AppTheme.primaryText),
-              onPressed: () {
-                _showEditProfileDialog(context);
-              },
+          IconButton(
+            icon: const Icon(Icons.edit, color: AppTheme.primaryText),
+            onPressed: () => _showEditProfileDialog(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadge(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
             ),
           ),
         ],
@@ -171,9 +379,9 @@ class DriverSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPreferencesSection(BuildContext context) {
+  Widget _buildWithdrawalSection(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         gradient: AppTheme.cardGlowGradient,
         borderRadius: BorderRadius.circular(16),
@@ -181,6 +389,176 @@ class DriverSettingsScreen extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'WITHDRAWAL ACCOUNTS',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.mutedText,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: AppTheme.deepCrimson),
+          
+          if (_withdrawalAccounts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: Text(
+                  'No withdrawal accounts added. Tap + to add one.',
+                  style: TextStyle(color: AppTheme.secondaryText),
+                ),
+              ),
+            ),
+          
+          ..._withdrawalAccounts.map((account) => _buildAccountTile(account)),
+          
+          const Divider(height: 1, color: AppTheme.deepCrimson),
+          
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: ElevatedButton.icon(
+              onPressed: _addWithdrawalAccount,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Withdrawal Account'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.secondaryBackground,
+                foregroundColor: AppTheme.primaryRed,
+                elevation: 0,
+                minimumSize: const Size(double.infinity, 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountTile(WithdrawalAccount account) {
+    return Dismissible(
+      key: Key(account.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        color: AppTheme.error,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Remove Account'),
+            content: Text('Remove ${account.method.toUpperCase()} account ending with ${account.accountNumber.substring(account.accountNumber.length - 4)}?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Remove', style: TextStyle(color: AppTheme.error))),
+            ],
+          ),
+        );
+      },
+      onDismissed: (direction) => _deleteWithdrawalAccount(account),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Icon based on method
+            Container(
+              width: 45,
+              height: 45,
+              decoration: BoxDecoration(
+                color: AppTheme.secondaryBackground,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Icon(
+                  account.method == 'airtel' ? Icons.phone_android : Icons.phone_iphone,
+                  size: 28,
+                  color: AppTheme.primaryRed,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    account.method.toUpperCase(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    account.accountNumber,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    account.holderName,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.mutedText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (account.isDefault)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.success.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Default',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.success,
+                  ),
+                ),
+              ),
+            if (!account.isDefault)
+              TextButton(
+                onPressed: () => _setDefaultAccount(account),
+                child: const Text(
+                  'Set Default',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.edit, size: 18, color: AppTheme.primaryText),
+              onPressed: () => _editWithdrawalAccount(account),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreferencesSection(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: AppTheme.cardGlowGradient,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+      ),
+      child: Column(
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -194,80 +572,18 @@ class DriverSettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          const Divider(height: 1, color: AppTheme.deepCrimson, thickness: 0.5),
-          
+          const Divider(height: 1, color: AppTheme.deepCrimson),
           SettingsTile(
             icon: Icons.language,
             title: 'Language',
             subtitle: 'English',
-            onTap: () {
-              _showLanguageDialog(context);
-            },
+            onTap: () => _showLanguageDialog(context),
           ),
-          
           SettingsTile(
             icon: Icons.notifications,
             title: 'Notifications',
             subtitle: 'Push notifications, sounds, alerts',
-            onTap: () {
-              _showNotificationSettings(context);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAccountSection(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'ACCOUNT',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.mutedText,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          const Divider(height: 1, color: AppTheme.deepCrimson, thickness: 0.5),
-          
-          SettingsTile(
-            icon: Icons.payment,
-            title: 'Payment Methods',
-            subtitle: 'Add or remove payment methods',
-            onTap: () {
-              _showComingSoon(context, 'Payment Methods');
-            },
-          ),
-          
-          SettingsTile(
-            icon: Icons.attach_money,
-            title: 'Withdrawal Settings',
-            subtitle: 'Bank account, mobile money',
-            onTap: () {
-              _showComingSoon(context, 'Withdrawal Settings');
-            },
-          ),
-          
-          SettingsTile(
-            icon: Icons.directions_car,
-            title: 'Vehicle Information',
-            subtitle: 'Update your vehicle details',
-            onTap: () {
-              _showComingSoon(context, 'Vehicle Information');
-            },
+            onTap: () => _showNotificationSettings(context),
           ),
         ],
       ),
@@ -276,14 +592,13 @@ class DriverSettingsScreen extends StatelessWidget {
 
   Widget _buildSupportSection(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         gradient: AppTheme.cardGlowGradient,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -297,42 +612,30 @@ class DriverSettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          const Divider(height: 1, color: AppTheme.deepCrimson, thickness: 0.5),
-          
+          const Divider(height: 1, color: AppTheme.deepCrimson),
           SettingsTile(
             icon: Icons.help_outline,
             title: 'Help Center',
             subtitle: 'FAQs, guides, tutorials',
-            onTap: () {
-              _showComingSoon(context, 'Help Center');
-            },
+            onTap: () => _showComingSoon(context, 'Help Center'),
           ),
-          
           SettingsTile(
             icon: Icons.support_agent,
             title: 'Contact Support',
             subtitle: '24/7 driver support',
-            onTap: () {
-              _showContactSupport(context);
-            },
+            onTap: () => _showContactSupport(context),
           ),
-          
           SettingsTile(
             icon: Icons.report_problem,
             title: 'Report an Issue',
             subtitle: 'Technical support, delivery problems',
-            onTap: () {
-              _showReportIssue(context);
-            },
+            onTap: () => _showReportIssue(context),
           ),
-          
           SettingsTile(
             icon: Icons.rate_review,
             title: 'Rate the App',
             subtitle: 'Help us improve',
-            onTap: () {
-              _rateApp(context);
-            },
+            onTap: () => _rateApp(context),
           ),
         ],
       ),
@@ -341,14 +644,13 @@ class DriverSettingsScreen extends StatelessWidget {
 
   Widget _buildAboutSection(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         gradient: AppTheme.cardGlowGradient,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -362,42 +664,30 @@ class DriverSettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          const Divider(height: 1, color: AppTheme.deepCrimson, thickness: 0.5),
-          
+          const Divider(height: 1, color: AppTheme.deepCrimson),
           SettingsTile(
             icon: Icons.info_outline,
             title: 'App Version',
             subtitle: 'Version 1.0.0',
-            onTap: () {
-              _showVersionInfo(context);
-            },
+            onTap: () => _showVersionInfo(context),
           ),
-          
           SettingsTile(
             icon: Icons.security,
             title: 'Privacy Policy',
             subtitle: 'How we handle your data',
-            onTap: () {
-              _showComingSoon(context, 'Privacy Policy');
-            },
+            onTap: () => _showComingSoon(context, 'Privacy Policy'),
           ),
-          
           SettingsTile(
             icon: Icons.description,
             title: 'Terms of Service',
             subtitle: 'Driver agreement terms',
-            onTap: () {
-              _showComingSoon(context, 'Terms of Service');
-            },
+            onTap: () => _showComingSoon(context, 'Terms of Service'),
           ),
-          
           SettingsTile(
             icon: Icons.verified_user,
             title: 'License & Permissions',
             subtitle: 'View app permissions',
-            onTap: () {
-              _showComingSoon(context, 'License & Permissions');
-            },
+            onTap: () => _showComingSoon(context, 'License & Permissions'),
           ),
         ],
       ),
@@ -406,11 +696,9 @@ class DriverSettingsScreen extends StatelessWidget {
 
   Widget _buildLogoutButton(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
       child: ElevatedButton(
-        onPressed: () {
-          _showLogoutConfirmation(context);
-        },
+        onPressed: () => _showLogoutConfirmation(context),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           foregroundColor: AppTheme.error,
@@ -440,14 +728,14 @@ class DriverSettingsScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Full Name',
                 hintText: 'Enter your name',
               ),
             ),
             const SizedBox(height: 12),
             TextField(
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Phone Number',
                 hintText: 'Enter your phone number',
               ),
@@ -455,7 +743,7 @@ class DriverSettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             TextField(
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Email',
                 hintText: 'Enter your email',
               ),
@@ -491,11 +779,7 @@ class DriverSettingsScreen extends StatelessWidget {
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
-              title: const Text('Spanish'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              title: const Text('French'),
+              title: const Text('Chichewa'),
               onTap: () => Navigator.pop(context),
             ),
           ],
