@@ -5,6 +5,7 @@ import '../screens/customer/home_screen.dart';
 import '../screens/driver/driver_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
 import '../screens/driver/driver_settings_screen.dart';
+import '../screens/driver/driver_analytics_screen.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/login',
@@ -43,6 +44,11 @@ final GoRouter router = GoRouter(
       path: '/driver-settings',
       name: 'driver-settings',
       builder: (context, state) => const DriverSettingsScreen(),
+    ),
+    GoRoute(
+      path: '/driver-analytics',
+      name: 'driver-analytics',
+      builder: (context, state) => const DriverAnalyticsScreen(),
     ),
   ],
 );

@@ -34,6 +34,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     {'icon': Icons.delivery_dining, 'label': 'Available'},
     {'icon': Icons.history, 'label': 'History'},
     {'icon': Icons.attach_money, 'label': 'Earnings'},
+    {'icon': Icons.settings, 'label': 'Settings'},
   ];
 
   @override
@@ -140,7 +141,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     try {
       final driverProvider = Provider.of<DriverProvider>(context);
       final authProvider = Provider.of<AuthProvider>(context);
-      final driverName = authProvider.currentUser?.name ?? 'Driver';
+      final driverName = authProvider.currentUser?.name ?? 'John Driver';
       final stats = driverProvider.stats;
       final activeDelivery = driverProvider.activeDelivery;
 
@@ -171,6 +172,15 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             ],
           ),
           actions: [
+            // NEW: Analytics Button
+            IconButton(
+              icon: const Icon(Icons.analytics, color: AppTheme.primaryText),
+              onPressed: () {
+                context.push('/driver-analytics');
+              },
+              tooltip: 'Earnings Analytics',
+            ),
+            const SizedBox(width: 4),
             // Settings Icon Button
             IconButton(
               icon: const Icon(Icons.settings_outlined, color: AppTheme.primaryText),
@@ -638,6 +648,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         return const DeliveryHistoryScreen();
       case 3:
         return const DriverEarningsScreen();
+      case 4:
+        return const DriverSettingsScreen();
       default:
         return const SizedBox.shrink();
     }
