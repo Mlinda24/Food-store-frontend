@@ -502,32 +502,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
-      appBar: AppBar(
-        backgroundColor: AppTheme.getBackgroundColor(context),
-        elevation: 0,
-        title: Text(
-          'Menu Management',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.getPrimaryTextColor(context),
-          ),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: ElevatedButton(
-              onPressed: _showAddItemDialog,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryRed,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-              child: const Text('+ Add', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-            ),
-          ),
-        ],
-      ),
+      // No AppBar – using parent’s AppBar instead
       body: Column(
         children: [
           // Categories
@@ -589,6 +564,14 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
           ),
         ],
       ),
+      // FAB remains (only visible on this screen because the parent doesn't have one)
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddItemDialog,
+        backgroundColor: AppTheme.primaryRed,
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
+        tooltip: 'Add New Meal',
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 

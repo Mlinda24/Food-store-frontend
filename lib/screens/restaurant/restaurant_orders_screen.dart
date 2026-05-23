@@ -31,13 +31,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 888 123 456',
         customerAddress: '123 Main St, Area 3',
         items: [
-          OrderItemModel(
-              menuItemId: '1',
-              name: 'Margherita Pizza',
-              quantity: 2,
-              price: 4500),
-          OrderItemModel(
-              menuItemId: '2', name: 'Coke', quantity: 2, price: 800),
+          OrderItemModel(menuItemId: '1', name: 'Margherita Pizza', quantity: 2, price: 4500),
+          OrderItemModel(menuItemId: '2', name: 'Coke', quantity: 2, price: 800),
         ],
         status: OrderStatus.confirmed,
         total: 10600,
@@ -50,10 +45,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 999 789 012',
         customerAddress: '456 Oak Ave, Area 47',
         items: [
-          OrderItemModel(
-              menuItemId: '3', name: 'Cheeseburger', quantity: 1, price: 3800),
-          OrderItemModel(
-              menuItemId: '4', name: 'French Fries', quantity: 1, price: 1200),
+          OrderItemModel(menuItemId: '3', name: 'Cheeseburger', quantity: 1, price: 3800),
+          OrderItemModel(menuItemId: '4', name: 'French Fries', quantity: 1, price: 1200),
         ],
         status: OrderStatus.pending,
         total: 5000,
@@ -66,13 +59,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 888 555 777',
         customerAddress: '789 Pine St, Area 9',
         items: [
-          OrderItemModel(
-              menuItemId: '1',
-              name: 'Pepperoni Pizza',
-              quantity: 1,
-              price: 5500),
-          OrderItemModel(
-              menuItemId: '5', name: 'Chicken Wings', quantity: 2, price: 3900),
+          OrderItemModel(menuItemId: '1', name: 'Pepperoni Pizza', quantity: 1, price: 5500),
+          OrderItemModel(menuItemId: '5', name: 'Chicken Wings', quantity: 2, price: 3900),
         ],
         status: OrderStatus.preparing,
         total: 13300,
@@ -88,11 +76,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 777 456 789',
         customerAddress: '789 Pine St, Area 9',
         items: [
-          OrderItemModel(
-              menuItemId: '1',
-              name: 'Pepperoni Pizza',
-              quantity: 1,
-              price: 5500),
+          OrderItemModel(menuItemId: '1', name: 'Pepperoni Pizza', quantity: 1, price: 5500),
         ],
         status: OrderStatus.ready,
         total: 5500,
@@ -108,8 +92,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 666 321 654',
         customerAddress: '321 Elm St, Area 12',
         items: [
-          OrderItemModel(
-              menuItemId: '5', name: 'Chicken Wings', quantity: 1, price: 3900),
+          OrderItemModel(menuItemId: '5', name: 'Chicken Wings', quantity: 1, price: 3900),
         ],
         status: OrderStatus.delivered,
         total: 3900,
@@ -218,50 +201,45 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.mainBackground,
-      body: Column(
-        children: [
-          // Tabs
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: _tabs.map((tab) {
-                final isSelected = _selectedTab == tab;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedTab = tab),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient:
-                            isSelected ? AppTheme.primaryButton : null,
-                        color: isSelected ? null : AppTheme.secondaryBackground,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Text(
-                        tab,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : AppTheme.secondaryText,
-                          fontWeight: FontWeight.w500,
-                        ),
+    // Removed Scaffold – now returns a Column directly
+    return Column(
+      children: [
+        // Tabs
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: _tabs.map((tab) {
+              final isSelected = _selectedTab == tab;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedTab = tab),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: isSelected ? AppTheme.primaryButton : null,
+                      color: isSelected ? null : AppTheme.secondaryBackground,
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Text(
+                      tab,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : AppTheme.secondaryText,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                );
-              }).toList(),
-            ),
+                ),
+              );
+            }).toList(),
           ),
-          // Orders List
-          Expanded(
-            child: _getOrdersList(),
-          ),
-        ],
-      ),
+        ),
+        // Orders List
+        Expanded(
+          child: _getOrdersList(),
+        ),
+      ],
     );
   }
 
@@ -280,18 +258,11 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 64,
-              color: AppTheme.mutedText,
-            ),
+            Icon(Icons.inbox_outlined, size: 64, color: AppTheme.mutedText),
             const SizedBox(height: 16),
             Text(
               'No $_selectedTab orders',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppTheme.secondaryText,
-              ),
+              style: TextStyle(fontSize: 16, color: AppTheme.secondaryText),
             ),
           ],
         ),
@@ -326,8 +297,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               Row(
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getStatusColor(order.status).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -344,19 +314,13 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   const SizedBox(width: 12),
                   Text(
                     order.id,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.mutedText,
-                    ),
+                    style: TextStyle(fontSize: 12, color: AppTheme.mutedText),
                   ),
                 ],
               ),
               Text(
                 order.formattedTime,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.mutedText,
-                ),
+                style: TextStyle(fontSize: 11, color: AppTheme.mutedText),
               ),
             ],
           ),
@@ -370,8 +334,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   color: AppTheme.secondaryBackground,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.person,
-                    size: 16, color: AppTheme.mutedText),
+                child: const Icon(Icons.person, size: 16, color: AppTheme.mutedText),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -380,17 +343,11 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   children: [
                     Text(
                       order.customerName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryText),
                     ),
                     Text(
                       order.customerPhone,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.secondaryText,
-                      ),
+                      style: TextStyle(fontSize: 12, color: AppTheme.secondaryText),
                     ),
                   ],
                 ),
@@ -401,24 +358,17 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
           // Address
           Row(
             children: [
-              const Icon(Icons.location_on,
-                  size: 14, color: AppTheme.mutedText),
+              const Icon(Icons.location_on, size: 14, color: AppTheme.mutedText),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   order.customerAddress,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.secondaryText,
-                  ),
+                  style: TextStyle(fontSize: 12, color: AppTheme.secondaryText),
                 ),
               ),
             ],
           ),
-          const Divider(
-            height: 24,
-            color: AppTheme.deepCrimson,
-          ),
+          const Divider(height: 24, color: AppTheme.deepCrimson),
           // Items
           ...order.items.map((item) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
@@ -427,17 +377,11 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   children: [
                     Text(
                       '${item.quantity}x ${item.name}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.secondaryText,
-                      ),
+                      style: TextStyle(fontSize: 13, color: AppTheme.secondaryText),
                     ),
                     Text(
                       'MK${(item.price * item.quantity).toStringAsFixed(0)}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.primaryText,
-                      ),
+                      style: TextStyle(fontSize: 13, color: AppTheme.primaryText),
                     ),
                   ],
                 ),
@@ -449,28 +393,17 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
             children: [
               const Text(
                 'Total:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryText,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryText),
               ),
               Text(
                 'MK${order.total.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryRed,
-                ),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryRed),
               ),
             ],
           ),
 
-          // ========== ACTION BUTTONS - CENTERED WITH REDUCED SIZE ==========
-
-          // For Pending Orders - Accept/Decline buttons (centered, reduced size)
-          if (_selectedTab == 'Active' && order.status == OrderStatus.pending)
-            const SizedBox(height: 16),
+          // Action Buttons
+          if (_selectedTab == 'Active' && order.status == OrderStatus.pending) const SizedBox(height: 16),
           if (_selectedTab == 'Active' && order.status == OrderStatus.pending)
             Center(
               child: Row(
@@ -484,18 +417,10 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
-                          side: BorderSide(
-                              color: AppTheme.error.withOpacity(0.5)),
+                          side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
                         ),
                       ),
-                      child: const Text(
-                        'Decline',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          color: AppTheme.error,
-                        ),
-                      ),
+                      child: const Text('Decline', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppTheme.error)),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -506,28 +431,17 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.success,
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Accept',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: const Text('Accept', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.white)),
                     ),
                   ),
                 ],
               ),
             ),
 
-          // For Confirmed Orders - Start Preparing button (centered, reduced size)
-          if (_selectedTab == 'Active' && order.status == OrderStatus.confirmed)
-            const SizedBox(height: 16),
+          if (_selectedTab == 'Active' && order.status == OrderStatus.confirmed) const SizedBox(height: 16),
           if (_selectedTab == 'Active' && order.status == OrderStatus.confirmed)
             Center(
               child: SizedBox(
@@ -537,9 +451,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.warning,
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                     elevation: 0,
                   ),
                   child: const Row(
@@ -547,23 +459,14 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                     children: [
                       Icon(Icons.kitchen, size: 14),
                       SizedBox(width: 6),
-                      Text(
-                        'Start Preparing',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          color: Colors.white,
-                        ),
-                      ),
+                      Text('Start Preparing', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.white)),
                     ],
                   ),
                 ),
               ),
             ),
 
-          // For Preparing Orders - Ready button (centered, reduced size, GREEN)
-          if (_selectedTab == 'Active' && order.status == OrderStatus.preparing)
-            const SizedBox(height: 16),
+          if (_selectedTab == 'Active' && order.status == OrderStatus.preparing) const SizedBox(height: 16),
           if (_selectedTab == 'Active' && order.status == OrderStatus.preparing)
             Center(
               child: SizedBox(
@@ -571,11 +474,9 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 child: ElevatedButton(
                   onPressed: () => _markAsReady(order),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.success, // GREEN
+                    backgroundColor: AppTheme.success,
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                     elevation: 0,
                   ),
                   child: const Row(
@@ -583,21 +484,13 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                     children: [
                       Icon(Icons.done_all, size: 14),
                       SizedBox(width: 6),
-                      Text(
-                        'Ready',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          color: Colors.white,
-                        ),
-                      ),
+                      Text('Ready', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.white)),
                     ],
                   ),
                 ),
               ),
             ),
 
-          // For Ready Orders - Picked Up button (centered, reduced size)
           if (_selectedTab == 'Ready') const SizedBox(height: 16),
           if (_selectedTab == 'Ready')
             Center(
@@ -608,24 +501,14 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: AppTheme.teal, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.local_shipping,
-                          size: 14, color: AppTheme.teal),
+                      Icon(Icons.local_shipping, size: 14, color: AppTheme.teal),
                       SizedBox(width: 6),
-                      Text(
-                        'Picked Up',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          color: AppTheme.teal,
-                        ),
-                      ),
+                      Text('Picked Up', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppTheme.teal)),
                     ],
                   ),
                 ),
@@ -638,39 +521,25 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
 
   Color _getStatusColor(OrderStatus status) {
     switch (status) {
-      case OrderStatus.pending:
-        return AppTheme.warning;
-      case OrderStatus.confirmed:
-        return AppTheme.primaryRed;
-      case OrderStatus.preparing:
-        return AppTheme.warning;
-      case OrderStatus.ready:
-        return AppTheme.success; // GREEN
-      case OrderStatus.pickedUp:
-        return AppTheme.teal;
-      case OrderStatus.delivered:
-        return AppTheme.success;
-      default:
-        return AppTheme.mutedText;
+      case OrderStatus.pending: return AppTheme.warning;
+      case OrderStatus.confirmed: return AppTheme.primaryRed;
+      case OrderStatus.preparing: return AppTheme.warning;
+      case OrderStatus.ready: return AppTheme.success;
+      case OrderStatus.pickedUp: return AppTheme.teal;
+      case OrderStatus.delivered: return AppTheme.success;
+      default: return AppTheme.mutedText;
     }
   }
 
   String _getStatusText(OrderStatus status) {
     switch (status) {
-      case OrderStatus.pending:
-        return 'Pending';
-      case OrderStatus.confirmed:
-        return 'Confirmed';
-      case OrderStatus.preparing:
-        return 'Preparing';
-      case OrderStatus.ready:
-        return 'Ready for Pickup';
-      case OrderStatus.pickedUp:
-        return 'Picked Up';
-      case OrderStatus.delivered:
-        return 'Delivered';
-      default:
-        return 'Unknown';
+      case OrderStatus.pending: return 'Pending';
+      case OrderStatus.confirmed: return 'Confirmed';
+      case OrderStatus.preparing: return 'Preparing';
+      case OrderStatus.ready: return 'Ready for Pickup';
+      case OrderStatus.pickedUp: return 'Picked Up';
+      case OrderStatus.delivered: return 'Delivered';
+      default: return 'Unknown';
     }
   }
 }

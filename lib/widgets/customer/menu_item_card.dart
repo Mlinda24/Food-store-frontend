@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../utils/theme.dart';
+import '../../config/theme.dart';
 import '../../providers/cart_provider.dart';
 import '../../models/models.dart';
 
@@ -22,7 +22,7 @@ class MenuItemCard extends StatelessWidget {
       builder: (context, cartProvider, child) {
         final cartItem = cartProvider.items.firstWhere(
           (cartItem) => cartItem.menuItemId == item.id,
-          orElse: () => CartItemModel(
+          orElse: () => CartItem(
             menuItemId: '',
             name: '',
             quantity: 0,
@@ -35,32 +35,26 @@ class MenuItemCard extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppTheme.cardBackground,
+            color: AppTheme.getCardColor(context),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.deepCrimson.withOpacity(0.3),
-            ),
+            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
           ),
           child: Row(
             children: [
-              // Item Image
               Container(
-                width: 80,
-                height: 80,
+                width: 70,
+                height: 70,
                 decoration: BoxDecoration(
-                  color: AppTheme.elevatedPanel,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppTheme.getElevatedPanelColor(context),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Center(
-                  child: Icon(
-                    Icons.fastfood,
-                    size: 40,
-                    color: AppTheme.mutedText,
-                  ),
+                child: const Icon(
+                  Icons.fastfood,
+                  size: 35,
+                  color: AppTheme.mutedText,
                 ),
               ),
               const SizedBox(width: 12),
-              // Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +62,7 @@ class MenuItemCard extends StatelessWidget {
                     Text(
                       item.name,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryText,
                       ),
@@ -77,7 +71,7 @@ class MenuItemCard extends StatelessWidget {
                     Text(
                       item.description,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: AppTheme.secondaryText,
                       ),
                       maxLines: 2,
@@ -87,7 +81,7 @@ class MenuItemCard extends StatelessWidget {
                     Text(
                       'MK${item.price.toStringAsFixed(0)}',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryRed,
                       ),
@@ -95,17 +89,15 @@ class MenuItemCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Quantity Controls
               Container(
                 decoration: BoxDecoration(
                   color: AppTheme.secondaryBackground,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(25),
                 ),
                 child: Row(
                   children: [
                     if (quantity > 0)
                       IconButton(
-                        icon: const Icon(Icons.remove, size: 18, color: AppTheme.primaryRed),
                         onPressed: () {
                           cartProvider.updateQuantity(item.id, quantity - 1);
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -116,10 +108,13 @@ class MenuItemCard extends StatelessWidget {
                             ),
                           );
                         },
+                        icon: const Icon(Icons.remove, size: 16, color: AppTheme.primaryRed),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                     if (quantity > 0)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Text(
                           '$quantity',
                           style: const TextStyle(
@@ -130,11 +125,6 @@ class MenuItemCard extends StatelessWidget {
                         ),
                       ),
                     IconButton(
-                      icon: Icon(
-                        quantity == 0 ? Icons.add_shopping_cart : Icons.add,
-                        size: 18,
-                        color: AppTheme.primaryRed,
-                      ),
                       onPressed: () {
                         cartProvider.addItem(
                           item,
@@ -149,6 +139,13 @@ class MenuItemCard extends StatelessWidget {
                           ),
                         );
                       },
+                      icon: Icon(
+                        quantity == 0 ? Icons.add_shopping_cart : Icons.add,
+                        size: 16,
+                        color: AppTheme.primaryRed,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),

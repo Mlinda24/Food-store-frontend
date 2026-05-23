@@ -133,13 +133,15 @@ class MenuItem {
   }
 }
 
-// Cart Item Model
+// Cart Item Model - Updated with restaurant info
 class CartItem {
   final String menuItemId;
   final String name;
   int quantity;
   final double price;
   final String? image;
+  final String restaurantId;
+  final String restaurantName;
 
   CartItem({
     required this.menuItemId,
@@ -147,6 +149,8 @@ class CartItem {
     required this.quantity,
     required this.price,
     this.image,
+    required this.restaurantId,
+    required this.restaurantName,
   });
 
   double get total => price * quantity;

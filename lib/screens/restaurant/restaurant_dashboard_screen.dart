@@ -18,13 +18,6 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
   int _selectedIndex = 0;
   bool _isRestaurantOpen = true;
   late RestaurantStats _stats;
-  
-  final List<Widget> _screens = [
-    const _DashboardContent(),
-    const RestaurantOrdersScreen(),
-    const MenuManagementScreen(),
-    const _SettingsContent(),
-  ];
 
   @override
   void initState() {
@@ -61,18 +54,44 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
     });
   }
 
+  // Dynamic title based on selected tab
+  String _getAppBarTitle() {
+    switch (_selectedIndex) {
+      case 0: return 'Dashboard';
+      case 1: return 'Orders';
+      case 2: return 'Menu';
+      case 3: return 'Settings';
+      default: return 'Restaurant Dashboard';
+    }
+  }
+
+  // Dynamically build screens with current isOpen value
+  List<Widget> _getScreens() {
+    return [
+      const _DashboardContent(),
+      const RestaurantOrdersScreen(),
+      const MenuManagementScreen(),
+      _SettingsContent(
+        isOpen: _isRestaurantOpen,
+        onToggleOpen: (value) {
+          setState(() {
+            _isRestaurantOpen = value;
+          });
+          _showSnackBar(value ? 'Restaurant is now Open' : 'Restaurant is now Closed');
+        },
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final restaurantName = authProvider.currentUser?.name ?? 'My Restaurant';
-
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
       appBar: AppBar(
         backgroundColor: AppTheme.getBackgroundColor(context),
         elevation: 0,
         title: Text(
-          'Menu Management',
+          _getAppBarTitle(),
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -80,63 +99,9 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          // Shop Status Toggle
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _isRestaurantOpen ? AppTheme.success.withOpacity(0.15) : AppTheme.error.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _isRestaurantOpen ? AppTheme.success : AppTheme.error,
-                width: 0.8,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: _isRestaurantOpen ? AppTheme.success : AppTheme.error,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _isRestaurantOpen ? 'Open' : 'Closed',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: _isRestaurantOpen ? AppTheme.success : AppTheme.error,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Transform.scale(
-                  scale: 0.7,
-                  child: Switch(
-                    value: _isRestaurantOpen,
-                    onChanged: (value) {
-                      setState(() {
-                        _isRestaurantOpen = value;
-                      });
-                      _showSnackBar(
-                        _isRestaurantOpen ? 'Restaurant is now Open' : 'Restaurant is now Closed',
-                      );
-                    },
-                    activeColor: AppTheme.success,
-                    inactiveThumbColor: AppTheme.error,
-                    inactiveTrackColor: AppTheme.error.withOpacity(0.3),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        actions: const [],
       ),
-      body: _screens[_selectedIndex],
+      body: _getScreens()[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -172,7 +137,7 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
   }
 }
 
-// Dashboard Content
+// ==================== DASHBOARD CONTENT ====================
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();
 
@@ -405,10 +370,21 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
-// Settings Content with Profile
-class _SettingsContent extends StatelessWidget {
-  const _SettingsContent();
+// ==================== SETTINGS CONTENT ====================
+class _SettingsContent extends StatefulWidget {
+  final bool isOpen;
+  final ValueChanged<bool> onToggleOpen;
 
+  const _SettingsContent({
+    required this.isOpen,
+    required this.onToggleOpen,
+  });
+
+  @override
+  State<_SettingsContent> createState() => __SettingsContentState();
+}
+
+class __SettingsContentState extends State<_SettingsContent> {
   void _showLogoutDialog(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
@@ -686,8 +662,73 @@ class _SettingsContent extends StatelessWidget {
               ],
             ),
           ),
-          
           const SizedBox(height: 24),
+          
+          // ========== RESTAURANT STATUS ROW (below stats cards) ==========
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: widget.isOpen 
+                  ? AppTheme.success.withOpacity(0.1) 
+                  : AppTheme.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: widget.isOpen ? AppTheme.success : AppTheme.error,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Restaurant Status',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.getPrimaryTextColor(context),
+                  ),
+                ),
+                // Minimal toggle (exactly as before)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: widget.isOpen ? AppTheme.success.withOpacity(0.1) : AppTheme.error.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: widget.isOpen ? AppTheme.success : AppTheme.error,
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: widget.isOpen ? AppTheme.success : AppTheme.error,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Transform.scale(
+                        scale: 0.55,
+                        child: Switch(
+                          value: widget.isOpen,
+                          onChanged: widget.onToggleOpen,
+                          activeColor: AppTheme.success,
+                          inactiveThumbColor: AppTheme.error,
+                          inactiveTrackColor: AppTheme.error.withOpacity(0.3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           
           // Account Section
           Container(
@@ -869,7 +910,7 @@ class _SettingsContent extends StatelessWidget {
   }
 }
 
-// Restaurant Stats Model
+// ==================== RESTAURANT STATS MODEL ====================
 class RestaurantStats {
   final double todayEarnings;
   final int todayOrders;

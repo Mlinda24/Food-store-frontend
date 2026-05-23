@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/role_selection_screen.dart';
+import '../screens/location_gate_screen.dart'; // new import
 import '../screens/customer/home_screen.dart';
 import '../screens/customer/restaurant_details_screen.dart';
 import '../screens/customer/checkout_screen.dart';
+import '../screens/customer/shopping_cart_screen.dart';
 import '../screens/customer/my_orders_screen.dart';
 import '../screens/customer/order_tracking_screen.dart';
 import '../screens/customer/search_screen.dart';
 import '../screens/customer/customer_profile_screen.dart';
 import '../screens/customer/settings_screen.dart';
-import '../screens/customer/food_detail_screen.dart';  // IMPORTANT: Add this import
+import '../screens/customer/food_detail_screen.dart';
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_profile_screen.dart';
 import '../screens/driver/driver_dashboard_screen.dart';
@@ -18,8 +20,14 @@ import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
 
 final GoRouter router = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/location-gate', // changed from '/login'
   routes: [
+    // Location gate (first screen)
+    GoRoute(
+      path: '/location-gate',
+      name: 'location-gate',
+      builder: (context, state) => const LocationGateScreen(),
+    ),
     GoRoute(
       path: '/login',
       name: 'login',
@@ -49,7 +57,6 @@ final GoRouter router = GoRouter(
         return RestaurantDetailsScreen(restaurant: restaurant);
       },
     ),
-    // IMPORTANT: Add the food-detail route
     GoRoute(
       path: '/food-detail',
       name: 'food-detail',
@@ -57,6 +64,11 @@ final GoRouter router = GoRouter(
         final food = state.extra as Map<String, dynamic>;
         return FoodDetailScreen(food: food);
       },
+    ),
+    GoRoute(
+      path: '/cart',
+      name: 'cart',
+      builder: (context, state) => const ShoppingCartScreen(),
     ),
     GoRoute(
       path: '/checkout',

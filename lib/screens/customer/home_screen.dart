@@ -8,10 +8,8 @@ import '../../widgets/customer/category_chip.dart';
 import '../../widgets/customer/featured_meal_card.dart';
 import '../../widgets/customer/delivery_status_card.dart';
 import 'search_screen.dart';
-import 'checkout_screen.dart';
 import 'my_orders_screen.dart';
 import 'settings_screen.dart';
-import '../notifications/notifications_screen.dart';
 import 'food_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -35,12 +33,11 @@ class _HomeScreenState extends State<HomeScreen> {
     'Desserts'
   ];
 
-  // Updated featured meals with complete restaurant information
   final List<Map<String, dynamic>> _featuredMeals = [
     {
       'id': '1',
       'name': 'Salmon Poke Supreme',
-      'description': 'Fresh salmon poke with avocado, cucumber, and special sauce. A healthy and delicious bowl that will leave you wanting more.',
+      'description': 'Fresh salmon poke with avocado, cucumber, and special sauce',
       'price': 'MK4,000',
       'rating': 4.0,
       'reviews': 128,
@@ -55,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
     {
       'id': '2',
       'name': 'Classic Lugga Kaki',
-      'description': 'Traditional Malawian dish with tender beef, fresh vegetables, and served with nsima. A local favorite!',
+      'description': 'Traditional Malawian dish with tender beef and nsima',
       'price': 'MK8,000',
       'rating': 4.5,
       'reviews': 256,
@@ -70,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
     {
       'id': '3',
       'name': 'Spicy Chicken Burger',
-      'description': 'Grilled chicken breast with spicy sauce, fresh lettuce, melted cheese, and a soft brioche bun.',
+      'description': 'Grilled chicken breast with spicy sauce and cheese',
       'price': 'MK5,500',
       'rating': 4.3,
       'reviews': 89,
@@ -128,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
         context.push('/search');
         break;
       case 2:
-        context.push('/checkout');
+        context.push('/cart');
         break;
       case 3:
         context.push('/my-orders');
@@ -136,23 +133,23 @@ class _HomeScreenState extends State<HomeScreen> {
       case 4:
         context.push('/settings');
         break;
-      case 5:
-        context.push('/notifications');
-        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
       body: SafeArea(
         child: Column(
           children: [
-            // Header with Welcome Text
+            // Header with Welcome Text and Notification Icon
             Container(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,23 +172,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () {
+                  // Notification icon (replaces the bottom nav "Alerts")
+                  IconButton(
+                    icon: Icon(
+                      Icons.notifications_outlined,
+                      color: AppTheme.getPrimaryTextColor(context),
+                      size: 26,
+                    ),
+                    onPressed: () {
                       context.push('/notifications');
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.getSurfaceColor(context),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.notifications_outlined,
-                        size: 22,
-                        color: AppTheme.getSecondaryTextColor(context),
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -227,7 +217,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const DeliveryStatusCard(),
                     
-                    // Categories Section
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
                       child: Row(
@@ -255,7 +244,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     
-                    // Categories Horizontal List
                     SizedBox(
                       height: 38,
                       child: ListView.builder(
@@ -276,7 +264,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     
-                    // Featured Meals Section
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 20, 12, 8),
                       child: Row(
@@ -304,7 +291,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     
-                    // Featured Meals Horizontal Scroll - Clickable
                     SizedBox(
                       height: 280,
                       child: ListView.builder(
@@ -327,7 +313,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     
-                    // Top Rated Restaurants Section
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
                       child: Row(
@@ -355,7 +340,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     
-                    // Restaurants List
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -412,11 +396,6 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.settings_outlined),
             activeIcon: Icon(Icons.settings),
             label: 'Settings',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_outlined),
-            activeIcon: Icon(Icons.notifications),
-            label: 'Alerts',
           ),
         ],
       ),

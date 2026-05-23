@@ -26,6 +26,9 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Location permission description -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Foodie Express needs your location to check if we deliver to your area in Zomba district.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

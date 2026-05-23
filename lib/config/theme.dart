@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Main Brand Reds
@@ -89,10 +88,14 @@ class AppTheme {
     }
   }
   
+  // Local Poppins font family
+  static const String fontFamily = 'Poppins';
+  
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     primaryColor: primaryRed,
+    fontFamily: fontFamily,
     colorScheme: const ColorScheme.light(
       primary: primaryRed,
       secondary: brightAccentRed,
@@ -100,7 +103,6 @@ class AppTheme {
       background: lightBackground,
       error: error,
     ),
-    fontFamily: GoogleFonts.poppins().fontFamily,
     scaffoldBackgroundColor: lightBackground,
     appBarTheme: const AppBarTheme(
       elevation: 0,
@@ -151,16 +153,16 @@ class AppTheme {
       labelStyle: const TextStyle(color: lightSecondaryText),
     ),
     textTheme: const TextTheme(
-      headlineLarge: TextStyle(color: lightPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
-      headlineMedium: TextStyle(color: lightPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
-      headlineSmall: TextStyle(color: lightPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
-      titleLarge: TextStyle(color: lightPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
-      titleMedium: TextStyle(color: lightPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
-      titleSmall: TextStyle(color: lightPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
-      bodyLarge: TextStyle(color: lightSecondaryText, fontSize: 16),
-      bodyMedium: TextStyle(color: lightSecondaryText, fontSize: 14),
-      bodySmall: TextStyle(color: lightMutedText, fontSize: 12),
-      labelLarge: TextStyle(color: lightPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
+      headlineLarge: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
+      headlineMedium: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
+      headlineSmall: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
+      titleMedium: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
+      titleSmall: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
+      bodyLarge: TextStyle(fontFamily: fontFamily, color: lightSecondaryText, fontSize: 16),
+      bodyMedium: TextStyle(fontFamily: fontFamily, color: lightSecondaryText, fontSize: 14),
+      bodySmall: TextStyle(fontFamily: fontFamily, color: lightMutedText, fontSize: 12),
+      labelLarge: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
     ),
   );
   
@@ -168,6 +170,7 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.dark,
     primaryColor: primaryRed,
+    fontFamily: fontFamily,
     colorScheme: const ColorScheme.dark(
       primary: primaryRed,
       secondary: brightAccentRed,
@@ -175,7 +178,6 @@ class AppTheme {
       background: darkBackground,
       error: error,
     ),
-    fontFamily: GoogleFonts.poppins().fontFamily,
     scaffoldBackgroundColor: darkBackground,
     appBarTheme: const AppBarTheme(
       elevation: 0,
@@ -226,16 +228,16 @@ class AppTheme {
       labelStyle: const TextStyle(color: darkSecondaryText),
     ),
     textTheme: const TextTheme(
-      headlineLarge: TextStyle(color: darkPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
-      headlineMedium: TextStyle(color: darkPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
-      headlineSmall: TextStyle(color: darkPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
-      titleLarge: TextStyle(color: darkPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
-      titleMedium: TextStyle(color: darkPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
-      titleSmall: TextStyle(color: darkPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
-      bodyLarge: TextStyle(color: darkSecondaryText, fontSize: 16),
-      bodyMedium: TextStyle(color: darkSecondaryText, fontSize: 14),
-      bodySmall: TextStyle(color: darkMutedText, fontSize: 12),
-      labelLarge: TextStyle(color: darkPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
+      headlineLarge: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
+      headlineMedium: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
+      headlineSmall: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
+      titleMedium: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
+      titleSmall: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
+      bodyLarge: TextStyle(fontFamily: fontFamily, color: darkSecondaryText, fontSize: 16),
+      bodyMedium: TextStyle(fontFamily: fontFamily, color: darkSecondaryText, fontSize: 14),
+      bodySmall: TextStyle(fontFamily: fontFamily, color: darkMutedText, fontSize: 12),
+      labelLarge: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
     ),
   );
 }

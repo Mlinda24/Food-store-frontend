@@ -45,7 +45,11 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
 
   void _addToCart(MenuItem item) {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    cartProvider.addItem(item, restaurantId: widget.restaurant?.id ?? '1', restaurantName: widget.restaurant?.name ?? 'Restaurant');
+    cartProvider.addItem(
+      item,
+      restaurantId: widget.restaurant?.id ?? '1',
+      restaurantName: widget.restaurant?.name ?? 'Restaurant',
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${item.name} added to cart'), duration: const Duration(seconds: 1), backgroundColor: AppTheme.success),
     );
@@ -66,15 +70,30 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final cartItem = cartProvider.items.firstWhere(
       (i) => i.menuItemId == itemId,
-      orElse: () => CartItem(menuItemId: '', name: '', quantity: 0, price: 0),
+      orElse: () => CartItem(
+        menuItemId: '',
+        name: '',
+        quantity: 0,
+        price: 0,
+        restaurantId: '',
+        restaurantName: '',
+      ),
     );
     return cartItem.quantity;
   }
 
-  void _goToCheckout() {
+  void _goToCart() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     if (cartProvider.hasItems) {
-      context.go('/checkout');
+      context.go('/cart');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your cart is empty'),
+          duration: Duration(seconds: 1),
+          backgroundColor: AppTheme.warning,
+        ),
+      );
     }
   }
 
@@ -103,38 +122,10 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
             ),
             title: Text(restaurant.name, style: TextStyle(color: AppTheme.getPrimaryTextColor(context), fontSize: 18, fontWeight: FontWeight.bold)),
             centerTitle: true,
-            actions: [
-              GestureDetector(
-                onTap: _goToCheckout,
-                child: Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: hasItems ? AppTheme.primaryButtonGradient : AppTheme.cardGlowGradient(context),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: hasItems ? AppTheme.primaryRed : AppTheme.deepCrimson.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.shopping_cart, size: 18, color: hasItems ? Colors.white : AppTheme.getSecondaryTextColor(context)),
-                      if (itemCount > 0) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                          child: Text('$itemCount', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryRed)),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
           ),
           body: SingleChildScrollView(
             child: Column(
               children: [
-                // Restaurant Info Card
                 Container(
                   padding: const EdgeInsets.all(16),
                   color: AppTheme.getCardColor(context),
@@ -195,7 +186,6 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   ),
                 ),
                 
-                // Categories
                 SizedBox(
                   height: 50,
                   child: ListView.builder(
@@ -223,7 +213,6 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   ),
                 ),
                 
-                // Menu Items
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -294,34 +283,37 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
             ),
           ),
           bottomNavigationBar: hasItems
-              ? Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.getCardColor(context),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, -2))],
-                  ),
-                  child: SafeArea(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Text('${itemCount} item${itemCount > 1 ? 's' : ''}', style: TextStyle(fontSize: 11, color: AppTheme.getMutedTextColor(context))),
-                              const SizedBox(height: 2),
-                              Text('MK${total.toStringAsFixed(0)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
-                            ],
+              ? GestureDetector(
+                  onTap: _goToCart,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.getCardColor(context),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, -2))],
+                    ),
+                    child: SafeArea(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text('${itemCount} item${itemCount > 1 ? 's' : ''}', style: TextStyle(fontSize: 11, color: AppTheme.getMutedTextColor(context))),
+                                const SizedBox(height: 2),
+                                Text('MK${total.toStringAsFixed(0)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
+                              ],
+                            ),
                           ),
-                        ),
-                        Container(
-                          width: 100, height: 36,
-                          decoration: BoxDecoration(gradient: AppTheme.primaryButtonGradient, borderRadius: BorderRadius.circular(18)),
-                          child: ElevatedButton(
-                            onPressed: _goToCheckout,
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: EdgeInsets.zero),
-                            child: const Text('View Cart', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          Container(
+                            width: 100, height: 36,
+                            decoration: BoxDecoration(gradient: AppTheme.primaryButtonGradient, borderRadius: BorderRadius.circular(18)),
+                            child: ElevatedButton(
+                              onPressed: _goToCart,
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: EdgeInsets.zero),
+                              child: const Text('View Cart', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 )

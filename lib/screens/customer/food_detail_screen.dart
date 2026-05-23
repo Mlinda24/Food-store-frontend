@@ -10,31 +10,36 @@ class FoodDetailScreen extends StatelessWidget {
 
   const FoodDetailScreen({super.key, required this.food});
 
-  // Get related meals from the same restaurant
-  List<Map<String, dynamic>> _getRelatedMeals(BuildContext context) {
-    // Sample menu items from the same restaurant
-    final allMeals = [
-      // Sushi Master meals
-      {'id': '1', 'name': 'Salmon Poke Supreme', 'description': 'Fresh salmon poke with avocado', 'price': 'MK4,000', 'rating': 4.0, 'restaurant': 'Sushi Master', 'restaurantId': '1'},
-      {'id': '101', 'name': 'California Roll', 'description': 'Crab, avocado, cucumber', 'price': 'MK3,500', 'rating': 4.2, 'restaurant': 'Sushi Master', 'restaurantId': '1'},
-      {'id': '102', 'name': 'Spicy Tuna Roll', 'description': 'Tuna with spicy mayo', 'price': 'MK4,200', 'rating': 4.5, 'restaurant': 'Sushi Master', 'restaurantId': '1'},
-      {'id': '103', 'name': 'Dragon Roll', 'description': 'Eel, avocado, cucumber', 'price': 'MK5,500', 'rating': 4.7, 'restaurant': 'Sushi Master', 'restaurantId': '1'},
-      
-      // Luspernando Food Hub meals
-      {'id': '2', 'name': 'Classic Lugga Kaki', 'description': 'Traditional Malawian dish', 'price': 'MK8,000', 'rating': 4.5, 'restaurant': 'Luspernando Food Hub', 'restaurantId': '2'},
-      {'id': '201', 'name': 'Nsima with Beef', 'description': 'Traditional nsima with beef stew', 'price': 'MK5,000', 'rating': 4.3, 'restaurant': 'Luspernando Food Hub', 'restaurantId': '2'},
-      {'id': '202', 'name': 'Chambo Fish', 'description': 'Grilled chambo with vegetables', 'price': 'MK7,500', 'rating': 4.6, 'restaurant': 'Luspernando Food Hub', 'restaurantId': '2'},
-      
-      // BossMan meals
-      {'id': '3', 'name': 'Spicy Chicken Burger', 'description': 'Grilled chicken with spicy sauce', 'price': 'MK5,500', 'rating': 4.3, 'restaurant': 'BossMan', 'restaurantId': '3'},
-      {'id': '301', 'name': 'Double Cheeseburger', 'description': 'Two beef patties with cheese', 'price': 'MK6,500', 'rating': 4.4, 'restaurant': 'BossMan', 'restaurantId': '3'},
-      {'id': '302', 'name': 'BBQ Chicken Wings', 'description': 'Grilled wings with BBQ sauce', 'price': 'MK4,500', 'rating': 4.2, 'restaurant': 'BossMan', 'restaurantId': '3'},
-    ];
+  // Get popular meals from the same restaurant
+  List<Map<String, dynamic>> _getPopularMealsFromSameRestaurant() {
+    // All menu items organized by restaurant
+    final restaurantMenus = {
+      '1': [ // Sushi Master
+        {'id': '101', 'name': 'California Roll', 'description': 'Crab, avocado, cucumber', 'price': 'MK3,500', 'rating': 4.2, 'reviews': 89, 'restaurant': 'Sushi Master', 'restaurantId': '1', 'isPopular': true},
+        {'id': '102', 'name': 'Spicy Tuna Roll', 'description': 'Tuna with spicy mayo', 'price': 'MK4,200', 'rating': 4.5, 'reviews': 156, 'restaurant': 'Sushi Master', 'restaurantId': '1', 'isPopular': true},
+        {'id': '103', 'name': 'Dragon Roll', 'description': 'Eel, avocado, cucumber', 'price': 'MK5,500', 'rating': 4.7, 'reviews': 234, 'restaurant': 'Sushi Master', 'restaurantId': '1', 'isPopular': true},
+        {'id': '105', 'name': 'Tempura Roll', 'description': 'Shrimp tempura with avocado', 'price': 'MK4,800', 'rating': 4.6, 'reviews': 178, 'restaurant': 'Sushi Master', 'restaurantId': '1', 'isPopular': true},
+      ],
+      '2': [ // Luspernando Food Hub
+        {'id': '201', 'name': 'Nsima with Beef', 'description': 'Traditional nsima with beef stew', 'price': 'MK5,000', 'rating': 4.3, 'reviews': 67, 'restaurant': 'Luspernando Food Hub', 'restaurantId': '2', 'isPopular': true},
+        {'id': '202', 'name': 'Chambo Fish', 'description': 'Grilled chambo with vegetables', 'price': 'MK7,500', 'rating': 4.6, 'reviews': 123, 'restaurant': 'Luspernando Food Hub', 'restaurantId': '2', 'isPopular': true},
+        {'id': '204', 'name': 'Chicken Stew', 'description': 'Tender chicken in rich tomato sauce', 'price': 'MK4,500', 'rating': 4.4, 'reviews': 89, 'restaurant': 'Luspernando Food Hub', 'restaurantId': '2', 'isPopular': true},
+      ],
+      '3': [ // BossMan
+        {'id': '301', 'name': 'Double Cheeseburger', 'description': 'Two beef patties with cheese', 'price': 'MK6,500', 'rating': 4.4, 'reviews': 112, 'restaurant': 'BossMan', 'restaurantId': '3', 'isPopular': true},
+        {'id': '302', 'name': 'BBQ Chicken Wings', 'description': 'Grilled wings with BBQ sauce', 'price': 'MK4,500', 'rating': 4.2, 'reviews': 78, 'restaurant': 'BossMan', 'restaurantId': '3', 'isPopular': true},
+        {'id': '304', 'name': 'Milkshake', 'description': 'Creamy vanilla milkshake', 'price': 'MK2,500', 'rating': 4.5, 'reviews': 67, 'restaurant': 'BossMan', 'restaurantId': '3', 'isPopular': true},
+        {'id': '305', 'name': 'Chicken Burger', 'description': 'Grilled chicken with lettuce', 'price': 'MK4,500', 'rating': 4.3, 'reviews': 89, 'restaurant': 'BossMan', 'restaurantId': '3', 'isPopular': true},
+      ],
+    };
 
-    // Filter meals from the same restaurant, excluding the current meal
-    return allMeals.where((meal) => 
-      meal['restaurantId'] == food['restaurantId'] && 
-      meal['id'] != food['id']
+    final restaurantId = food['restaurantId'].toString();
+    final allItems = restaurantMenus[restaurantId] ?? [];
+    
+    // Filter popular items and exclude the current food item
+    return allItems.where((item) => 
+      item['isPopular'] == true && 
+      item['id'] != food['id']
     ).toList();
   }
 
@@ -67,17 +72,18 @@ class FoodDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    final relatedMeals = _getRelatedMeals(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final popularMeals = _getPopularMealsFromSameRestaurant();
     
     void addCurrentToCart() {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
       final menuItem = MenuItem(
         id: food['id'],
         restaurantId: food['restaurantId'],
         name: food['name'],
         description: food['description'],
         price: double.parse(food['price'].replaceAll('MK', '').replaceAll(',', '')),
-        image: food['image'] ?? '',
+        image: '',
         category: '',
         isAvailable: true,
       );
@@ -110,47 +116,6 @@ class FoodDetailScreen extends StatelessWidget {
           ),
         ),
         centerTitle: true,
-        actions: [
-          Consumer<CartProvider>(
-            builder: (context, cartProvider, child) {
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.shopping_cart_outlined),
-                    color: AppTheme.getSecondaryTextColor(context),
-                    onPressed: () {
-                      if (cartProvider.hasItems) {
-                        context.go('/checkout');
-                      }
-                    },
-                  ),
-                  if (cartProvider.itemCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryRed,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                        child: Text(
-                          '${cartProvider.itemCount}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -181,34 +146,35 @@ class FoodDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Food Name and Rating
+                  // Food Name and Rating Row - Fixed overflow
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
                           food['name'],
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.getPrimaryTextColor(context),
                           ),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppTheme.yellow.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.star, size: 16, color: AppTheme.yellow),
-                            const SizedBox(width: 4),
+                            const Icon(Icons.star, size: 14, color: AppTheme.yellow),
+                            const SizedBox(width: 2),
                             Text(
                               food['rating'].toString(),
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.getPrimaryTextColor(context),
                               ),
@@ -217,7 +183,7 @@ class FoodDetailScreen extends StatelessWidget {
                               Text(
                                 ' (${food['reviews']})',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   color: AppTheme.getSecondaryTextColor(context),
                                 ),
                               ),
@@ -226,9 +192,9 @@ class FoodDetailScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   
-                  // Restaurant Info - Clickable
+                  // Restaurant Info
                   GestureDetector(
                     onTap: () {
                       context.pop();
@@ -248,15 +214,16 @@ class FoodDetailScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          food['restaurant'],
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.primaryRed,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Text(
+                            food['restaurant'],
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppTheme.primaryRed,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 4),
                         Icon(
                           Icons.chevron_right,
                           size: 16,
@@ -338,33 +305,53 @@ class FoodDetailScreen extends StatelessWidget {
                   
                   const SizedBox(height: 24),
                   
-                  // You Might Also Like Section
-                  if (relatedMeals.isNotEmpty)
+                  // Popular Items Section
+                  if (popularMeals.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'You Might Also Like',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.getPrimaryTextColor(context),
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Popular from ${food['restaurant']}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.getPrimaryTextColor(context),
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                context.pop();
+                              },
+                              child: Text(
+                                'View All',
+                                style: TextStyle(
+                                  color: AppTheme.primaryRed,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         SizedBox(
                           height: 260,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
-                            itemCount: relatedMeals.length,
+                            itemCount: popularMeals.length,
                             itemBuilder: (context, index) {
-                              final item = relatedMeals[index];
+                              final item = popularMeals[index];
                               return GestureDetector(
                                 onTap: () {
                                   _navigateToFoodDetail(context, item);
                                 },
                                 child: Container(
-                                  width: 180,
+                                  width: 160,
                                   margin: const EdgeInsets.only(right: 12),
                                   decoration: BoxDecoration(
                                     gradient: AppTheme.cardGlowGradient(context),
@@ -378,7 +365,7 @@ class FoodDetailScreen extends StatelessWidget {
                                     children: [
                                       // Image Container
                                       Container(
-                                        height: 120,
+                                        height: 110,
                                         width: double.infinity,
                                         decoration: BoxDecoration(
                                           color: AppTheme.getSurfaceColor(context),
@@ -390,7 +377,7 @@ class FoodDetailScreen extends StatelessWidget {
                                         child: Center(
                                           child: Icon(
                                             Icons.fastfood,
-                                            size: 50,
+                                            size: 40,
                                             color: AppTheme.getMutedTextColor(context),
                                           ),
                                         ),
@@ -415,7 +402,7 @@ class FoodDetailScreen extends StatelessWidget {
                                             Text(
                                               item['name'],
                                               style: TextStyle(
-                                                fontSize: 13,
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.bold,
                                                 color: AppTheme.getPrimaryTextColor(context),
                                               ),
@@ -443,18 +430,18 @@ class FoodDetailScreen extends StatelessWidget {
                                                 Text(
                                                   item['price'],
                                                   style: TextStyle(
-                                                    fontSize: 11,
+                                                    fontSize: 10,
                                                     fontWeight: FontWeight.bold,
                                                     color: AppTheme.primaryRed,
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 8),
+                                            const SizedBox(height: 6),
                                             // Add to Cart Button
                                             Container(
                                               width: double.infinity,
-                                              height: 30,
+                                              height: 28,
                                               decoration: BoxDecoration(
                                                 color: AppTheme.getSurfaceColor(context),
                                                 borderRadius: BorderRadius.circular(20),
@@ -465,12 +452,12 @@ class FoodDetailScreen extends StatelessWidget {
                                                 },
                                                 style: TextButton.styleFrom(
                                                   padding: EdgeInsets.zero,
-                                                  minimumSize: const Size(0, 30),
+                                                  minimumSize: const Size(0, 28),
                                                 ),
                                                 child: Text(
                                                   'Add to Cart',
                                                   style: TextStyle(
-                                                    fontSize: 11,
+                                                    fontSize: 10,
                                                     fontWeight: FontWeight.w500,
                                                     color: AppTheme.primaryRed,
                                                   ),
