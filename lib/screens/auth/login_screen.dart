@@ -42,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       final user = authProvider.currentUser;
       if (user != null) {
+        // Navigate based on role
         if (user.role == UserRole.admin) {
           context.go('/admin');
         } else if (user.role == UserRole.driver) {
@@ -62,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.mainBackground, // #0F0A0A
+      backgroundColor: AppTheme.mainBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -70,12 +71,11 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 60),
-              // Logo Container
               Container(
                 height: 100,
                 width: 100,
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryButtonGradient, // #FF2E2E → #B11226
+                  gradient: AppTheme.primaryButtonGradient,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -96,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 'Welcome Back!',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryText, // #FFFFFF
+                  color: AppTheme.primaryText,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -104,50 +104,44 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(
                 'Sign in to continue to Foodie Express',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.secondaryText, // #C9C9C9
+                  color: AppTheme.secondaryText,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
-              // Email Field
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(color: AppTheme.primaryText), // #FFFFFF
+                style: const TextStyle(color: AppTheme.primaryText),
                 decoration: InputDecoration(
                   labelText: 'Email',
-                  labelStyle: const TextStyle(color: AppTheme.secondaryText), // #C9C9C9
-                  prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.mutedText), // #8A8A8A
+                  labelStyle: const TextStyle(color: AppTheme.secondaryText),
+                  prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.mutedText),
                   filled: true,
-                  fillColor: AppTheme.secondaryBackground, // #1A0D0D
+                  fillColor: AppTheme.secondaryBackground,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2), // #FF2E2E
+                    borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              // Password Field
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
-                style: const TextStyle(color: AppTheme.primaryText), // #FFFFFF
+                style: const TextStyle(color: AppTheme.primaryText),
                 decoration: InputDecoration(
                   labelText: 'Password',
-                  labelStyle: const TextStyle(color: AppTheme.secondaryText), // #C9C9C9
-                  prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.mutedText), // #8A8A8A
+                  labelStyle: const TextStyle(color: AppTheme.secondaryText),
+                  prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.mutedText),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: AppTheme.mutedText, // #8A8A8A
+                      color: AppTheme.mutedText,
                     ),
                     onPressed: () {
                       setState(() {
@@ -156,23 +150,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   filled: true,
-                  fillColor: AppTheme.secondaryBackground, // #1A0D0D
+                  fillColor: AppTheme.secondaryBackground,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2), // #FF2E2E
+                    borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2),
                   ),
                 ),
               ),
               const SizedBox(height: 24),
-              // Forgot Password
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -180,16 +169,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Text(
                     'Forgot Password?',
                     style: TextStyle(
-                      color: AppTheme.primaryRed, // #FF2E2E
+                      color: AppTheme.primaryRed,
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 24),
-              // Login Button
               Container(
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryButtonGradient, // #FF2E2E → #B11226
+                  gradient: AppTheme.primaryButtonGradient,
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: ElevatedButton(
@@ -224,14 +212,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Demo Credentials Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: AppTheme.cardGlowGradient, // #2A0F0F → #7A0C18
+                  gradient: AppTheme.cardGlowGradient,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppTheme.deepCrimson.withOpacity(0.3), // #B11226
+                    color: AppTheme.deepCrimson.withOpacity(0.3),
                   ),
                 ),
                 child: Column(
@@ -240,42 +227,42 @@ class _LoginScreenState extends State<LoginScreen> {
                       'Demo Credentials:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText, // #FFFFFF
+                        color: AppTheme.primaryText,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Customer: customer@example.com',
                       style: TextStyle(
-                        color: AppTheme.secondaryText, // #C9C9C9
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      'Admin: admin@example.com',
-                      style: TextStyle(
-                        color: AppTheme.secondaryText, // #C9C9C9
+                        color: AppTheme.secondaryText,
                         fontSize: 12,
                       ),
                     ),
                     Text(
                       'Restaurant: restaurant@example.com',
                       style: TextStyle(
-                        color: AppTheme.secondaryText, // #C9C9C9
+                        color: AppTheme.secondaryText,
                         fontSize: 12,
                       ),
                     ),
                     Text(
                       'Driver: driver@example.com',
                       style: TextStyle(
-                        color: AppTheme.secondaryText, // #C9C9C9
+                        color: AppTheme.secondaryText,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Text(
+                      'Admin: admin@example.com',
+                      style: TextStyle(
+                        color: AppTheme.secondaryText,
                         fontSize: 12,
                       ),
                     ),
                     const Text(
                       'Password: any',
                       style: TextStyle(
-                        color: AppTheme.yellow, // #FACC15
+                        color: AppTheme.yellow,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -284,14 +271,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Sign Up Link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     "Don't have an account? ",
                     style: TextStyle(
-                      color: AppTheme.secondaryText, // #C9C9C9
+                      color: AppTheme.secondaryText,
                     ),
                   ),
                   TextButton(
@@ -301,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       'Sign Up',
                       style: TextStyle(
-                        color: AppTheme.primaryRed, // #FF2E2E
+                        color: AppTheme.primaryRed,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

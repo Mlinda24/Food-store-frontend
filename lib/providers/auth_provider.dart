@@ -17,10 +17,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Mock login logic
       await Future.delayed(const Duration(seconds: 1));
       
-      // Mock user based on email domain for testing
+      // Determine role based on email
       UserRole role;
       if (email.contains('admin')) {
         role = UserRole.admin;
@@ -56,23 +55,6 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     _currentUser = null;
     notifyListeners();
-  }
-
-  Future<void> register(User user, String password) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      await Future.delayed(const Duration(seconds: 1));
-      _currentUser = user;
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _error = 'Registration failed: ${e.toString()}';
-      _isLoading = false;
-      notifyListeners();
-    }
   }
 
   void clearError() {
