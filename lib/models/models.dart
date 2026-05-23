@@ -24,8 +24,13 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    String _toString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
     return User(
-      id: json['id'].toString(),
+      id: _toString(json['id']),
       name: json['username'] ?? json['name'] ?? '',
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
@@ -69,7 +74,12 @@ class Restaurant {
   });
 
   factory Restaurant.fromJson(Map<String, dynamic> json) {
-    double parseDouble(dynamic value) {
+    String _toString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
+    double _toDouble(dynamic value) {
       if (value == null) return 0.0;
       if (value is double) return value;
       if (value is int) return value.toDouble();
@@ -77,7 +87,7 @@ class Restaurant {
       return 0.0;
     }
 
-    int parseInt(dynamic value) {
+    int _toInt(dynamic value) {
       if (value == null) return 0;
       if (value is int) return value;
       if (value is double) return value.toInt();
@@ -85,28 +95,29 @@ class Restaurant {
       return 0;
     }
 
-    String getImageUrl(dynamic image) {
+    String _getImageUrl(dynamic image) {
       if (image == null) return '';
       String imageStr = image.toString();
       if (imageStr.isEmpty) return '';
       if (imageStr.startsWith('http')) return imageStr;
+      if (imageStr.startsWith('/media/')) return 'http://127.0.0.1:8000$imageStr';
       return 'http://127.0.0.1:8000/media/$imageStr';
     }
 
     return Restaurant(
-      id: json['id'].toString(),
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      image: getImageUrl(json['image']),
-      address: json['address'] ?? '',
-      phone: json['phone'] ?? '',
-      rating: parseDouble(json['rating']),
-      deliveryTime: parseInt(json['delivery_time'] ?? json['deliveryTime']),
-      deliveryFee: parseDouble(json['delivery_fee'] ?? json['deliveryFee']),
-      minOrderAmount: parseDouble(json['min_order_amount'] ?? json['minOrderAmount']),
+      id: _toString(json['id']),
+      name: _toString(json['name']),
+      description: _toString(json['description']),
+      image: _getImageUrl(json['image']),
+      address: _toString(json['address']),
+      phone: _toString(json['phone']),
+      rating: _toDouble(json['rating']),
+      deliveryTime: _toInt(json['delivery_time'] ?? json['deliveryTime']),
+      deliveryFee: _toDouble(json['delivery_fee'] ?? json['deliveryFee']),
+      minOrderAmount: _toDouble(json['min_order_amount'] ?? json['minOrderAmount']),
       categories: json['categories'] != null ? List<String>.from(json['categories']) : [],
       isOpen: json['is_open'] ?? true,
-      owner: json['owner']?.toString(),
+      owner: _toString(json['owner']),
     );
   }
 }
@@ -135,33 +146,76 @@ class MenuItem {
   });
 
   factory MenuItem.fromJson(Map<String, dynamic> json) {
-    double parseDouble(dynamic value) {
+    String _toString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
+    double _toDouble(dynamic value) {
       if (value == null) return 0.0;
       if (value is double) return value;
       if (value is int) return value.toDouble();
-      if (value is String) return double.tryParse(value) ?? 0.0;
+      if (value is String) {
+        final parsed = double.tryParse(value);
+        return parsed ?? 0.0;
+      }
       return 0.0;
     }
 
-    String getImageUrl(dynamic image) {
+    String _getImageUrl(dynamic image) {
       if (image == null) return '';
       String imageStr = image.toString();
       if (imageStr.isEmpty) return '';
       if (imageStr.startsWith('http')) return imageStr;
+      if (imageStr.startsWith('/media/')) return 'http://127.0.0.1:8000$imageStr';
       return 'http://127.0.0.1:8000/media/$imageStr';
     }
 
+    // Debug: Print the raw JSON to see what's coming from API
+    print('🔍 Parsing MenuItem from JSON:');
+    print('   id: ${json['id']}');
+    print('   restaurant: ${json['restaurant']}');
+    print('   name: ${json['name']}');
+    print('   description: ${json['description']}');
+    print('   price: ${json['price']}');
+    print('   image: ${json['image']}');
+    print('   category: ${json['category']}');
+    print('   category_name: ${json['category_name']}');
+    print('   is_available: ${json['is_available']}');
+
+    // Safe category extraction - handle both 'category' and 'category_name' fields
+    String categoryValue = 'General';
+    if (json['category'] != null && json['category'].toString().isNotEmpty) {
+      categoryValue = json['category'].toString();
+    } else if (json['category_name'] != null && json['category_name'].toString().isNotEmpty) {
+      categoryValue = json['category_name'].toString();
+    }
+
     return MenuItem(
-      id: json['id'].toString(),
-      restaurantId: json['restaurant'].toString(),
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      price: parseDouble(json['price']),
-      image: getImageUrl(json['image']),
-      category: json['category']?.toString() ?? 'General',
+      id: _toString(json['id']),
+      restaurantId: _toString(json['restaurant']),
+      name: _toString(json['name']),
+      description: _toString(json['description']),
+      price: _toDouble(json['price']),
+      image: _getImageUrl(json['image']),
+      category: categoryValue,
       isAvailable: json['is_available'] ?? true,
       options: json['options'] != null ? List<String>.from(json['options']) : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'restaurant': restaurantId,
+      'name': name,
+      'description': description,
+      'price': price,
+      'image': image,
+      'category': category,
+      'is_available': isAvailable,
+      'options': options,
+    };
   }
 }
 
@@ -185,6 +239,31 @@ class CartItem {
   });
 
   double get total => price * quantity;
+
+  factory CartItem.fromJson(Map<String, dynamic> json) {
+    double _toDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    String _toString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
+    return CartItem(
+      menuItemId: _toString(json['menu_item']),
+      name: _toString(json['menu_item_name']),
+      quantity: json['quantity'] ?? 1,
+      price: _toDouble(json['menu_item_price']),
+      image: _toString(json['menu_item_image']),
+      restaurantId: _toString(json['restaurant']),
+      restaurantName: '',
+    );
+  }
 }
 
 enum OrderStatus {
@@ -242,6 +321,31 @@ class OrderItemModel {
   });
 
   double get total => quantity * price;
+
+  factory OrderItemModel.fromJson(Map<String, dynamic> json) {
+    double _toDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    String _toString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
+    return OrderItemModel(
+      menuItemId: _toString(json['menu_item']),
+      name: _toString(json['menu_item_name']),
+      quantity: json['quantity'] ?? 1,
+      price: _toDouble(json['price']),
+      selectedOptions: json['selected_options'] != null 
+          ? List<String>.from(json['selected_options']) 
+          : null,
+    );
+  }
 }
 
 class Order {
@@ -278,7 +382,7 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
-    double parseDouble(dynamic value) {
+    double _toDouble(dynamic value) {
       if (value == null) return 0.0;
       if (value is double) return value;
       if (value is int) return value.toDouble();
@@ -286,26 +390,26 @@ class Order {
       return 0.0;
     }
 
+    String _toString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
     return Order(
-      id: json['id'].toString(),
-      userId: json['customer']?.toString() ?? json['user']?.toString() ?? '',
-      restaurantId: json['restaurant'].toString(),
-      driverId: json['driver']?.toString(),
-      items: (json['items'] as List? ?? []).map((item) => OrderItemModel(
-        menuItemId: item['menu_item'].toString(),
-        name: item['menu_item_name'] ?? '',
-        quantity: item['quantity'] ?? 1,
-        price: parseDouble(item['price']),
-      )).toList(),
-      status: OrderStatusExtension.fromString(json['status'] ?? 'pending'),
-      subtotal: parseDouble(json['total_price']),
-      deliveryFee: parseDouble(json['delivery_fee'] ?? 2.99),
-      tax: parseDouble(json['tax'] ?? 0),
-      total: parseDouble(json['total_price']),
-      deliveryAddress: json['delivery_address'] ?? '',
-      specialInstructions: json['note'],
-      createdAt: DateTime.tryParse(json['created'] ?? '') ?? DateTime.now(),
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at']) : null,
+      id: _toString(json['id']),
+      userId: _toString(json['customer'] ?? json['user']),
+      restaurantId: _toString(json['restaurant']),
+      driverId: _toString(json['driver']),
+      items: (json['items'] as List? ?? []).map((item) => OrderItemModel.fromJson(item)).toList(),
+      status: OrderStatusExtension.fromString(_toString(json['status'])),
+      subtotal: _toDouble(json['total_price']),
+      deliveryFee: _toDouble(json['delivery_fee'] ?? 2.99),
+      tax: _toDouble(json['tax'] ?? 0),
+      total: _toDouble(json['total_price']),
+      deliveryAddress: _toString(json['delivery_address']),
+      specialInstructions: _toString(json['note']),
+      createdAt: DateTime.tryParse(_toString(json['created'])) ?? DateTime.now(),
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(_toString(json['updated_at'])) : null,
     );
   }
 }
@@ -334,6 +438,34 @@ class RestaurantOrder {
     this.specialInstructions,
     required this.estimatedPrepTime,
   });
+
+  factory RestaurantOrder.fromJson(Map<String, dynamic> json) {
+    double _toDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    String _toString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
+    return RestaurantOrder(
+      id: _toString(json['id']),
+      customerName: _toString(json['customer_name'] ?? json['customer']?['username']),
+      customerPhone: _toString(json['customer_phone'] ?? json['customer']?['phone']),
+      customerAddress: _toString(json['customer_address'] ?? json['delivery_address']),
+      items: (json['items'] as List? ?? []).map((item) => OrderItemModel.fromJson(item)).toList(),
+      status: OrderStatusExtension.fromString(_toString(json['status'])),
+      total: _toDouble(json['total_price']),
+      orderTime: DateTime.tryParse(_toString(json['created'])) ?? DateTime.now(),
+      specialInstructions: _toString(json['note']),
+      estimatedPrepTime: json['estimated_prep_time'] ?? 15,
+    );
+  }
 }
 
 class RestaurantStats {
@@ -369,6 +501,35 @@ class RestaurantStats {
       monthlyOrders: 0,
     );
   }
+
+  factory RestaurantStats.fromJson(Map<String, dynamic> json) {
+    double _toDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    int _toInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is double) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    return RestaurantStats(
+      todayEarnings: _toDouble(json['todayEarnings']),
+      todayOrders: _toInt(json['todayOrders']),
+      totalEarnings: _toDouble(json['totalEarnings']),
+      totalOrders: _toInt(json['totalOrders']),
+      averageRating: _toDouble(json['averageRating']),
+      activeOrders: _toInt(json['activeOrders']),
+      monthlyEarnings: _toDouble(json['monthlyEarnings']),
+      monthlyOrders: _toInt(json['monthlyOrders']),
+    );
+  }
 }
 
 class MenuCategory {
@@ -383,6 +544,20 @@ class MenuCategory {
     this.icon,
     required this.itemCount,
   });
+
+  factory MenuCategory.fromJson(Map<String, dynamic> json) {
+    String _toString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
+    return MenuCategory(
+      id: _toString(json['id']),
+      name: _toString(json['name']),
+      icon: _toString(json['icon']),
+      itemCount: json['item_count'] ?? 0,
+    );
+  }
 }
 
 class RestaurantSettings {
@@ -408,6 +583,38 @@ class RestaurantSettings {
       estimatedPrepTime: 20,
       minimumOrderAmount: 10.0,
       deliveryFee: 2.99,
+    );
+  }
+
+  factory RestaurantSettings.fromJson(Map<String, dynamic> json) {
+    double _toDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    int _toInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is double) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    String _toString(dynamic value) {
+      if (value == null) return '';
+      return value.toString();
+    }
+
+    return RestaurantSettings(
+      isOpen: json['is_open'] ?? true,
+      estimatedPrepTime: _toInt(json['estimated_prep_time']),
+      minimumOrderAmount: _toDouble(json['min_order_amount']),
+      deliveryFee: _toDouble(json['delivery_fee']),
+      bannerImage: _toString(json['banner_image']),
+      logoImage: _toString(json['logo_image']),
     );
   }
 }

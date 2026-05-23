@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import '../../config/theme.dart';
 import '../../providers/cart_provider.dart';
 import '../../models/models.dart';
 
@@ -17,233 +15,142 @@ class MenuItemCard extends StatelessWidget {
     required this.restaurantName,
   });
 
+  String _getImageUrl() {
+    if (item.image.isEmpty) return '';
+    String imageStr = item.image;
+    if (imageStr.startsWith('http')) return imageStr;
+    if (imageStr.startsWith('/media/')) return 'http://127.0.0.1:8000$imageStr';
+    return 'http://127.0.0.1:8000/media/$imageStr';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final imageUrl = item.image.isNotEmpty ? item.image : '';
-    final isAvailable = item.isAvailable;
+    final imageUrl = _getImageUrl();
+    
+    print('🎨 Building MenuItemCard for: ${item.name}');
+    print('   Image URL: $imageUrl');
+    print('   Price: ${item.price}');
+    print('   Available: ${item.isAvailable}');
 
-    return Consumer<CartProvider>(
-      builder: (context, cartProvider, child) {
-        // Find the cart item safely
-        CartItem? cartItem;
-        try {
-          cartItem = cartProvider.items.firstWhere(
-            (cartItem) => cartItem.menuItemId == item.id,
-          );
-        } catch (e) {
-          cartItem = null;
-        }
-        
-        final quantity = cartItem?.quantity ?? 0;
-
-        return Opacity(
-          opacity: isAvailable ? 1.0 : 0.6,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: AppTheme.cardGlowGradient(context),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isAvailable 
-                    ? AppTheme.deepCrimson.withOpacity(0.3)
-                    : AppTheme.error.withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                // Item Image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: imageUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          width: 70,
-                          height: 70,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            width: 70,
-                            height: 70,
-                            color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                            child: const Center(
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        print('❌ Image load error: $error');
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.broken_image, size: 40),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           ),
-                          errorWidget: (context, url, error) => Container(
-                            width: 70,
-                            height: 70,
-                            color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                            child: Icon(
-                              Icons.fastfood,
-                              size: 30,
-                              color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText,
-                            ),
-                          ),
-                        )
-                      : Container(
-                          width: 70,
-                          height: 70,
-                          color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                          child: Icon(
-                            Icons.fastfood,
-                            size: 30,
-                            color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText,
-                          ),
-                        ),
-                ),
-                const SizedBox(width: 12),
-                // Item Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                        );
+                      },
+                    )
+                  : Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.fastfood, size: 40),
+                    ),
+            ),
+            const SizedBox(width: 12),
+            // Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.description,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.name,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
-                              ),
-                            ),
-                          ),
-                          if (!isAvailable)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppTheme.error.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Unavailable',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: AppTheme.error,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.description,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
                       Text(
                         'MK${item.price.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 14,
+                        style: const TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryRed,
+                          color: Colors.red,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                // Quantity Controls
-                if (isAvailable)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: Row(
-                      children: [
-                        if (quantity > 0)
-                          IconButton(
-                            onPressed: () async {
-                              await cartProvider.updateQuantity(item.id, quantity - 1);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('${item.name} removed from cart'),
-                                  duration: const Duration(seconds: 1),
-                                  backgroundColor: AppTheme.warning,
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.remove, size: 16, color: AppTheme.primaryRed),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                        if (quantity > 0)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              '$quantity',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
-                              ),
-                            ),
-                          ),
-                        IconButton(
-                          onPressed: () async {
-                            if (isAvailable) {
-                              final success = await cartProvider.addItem(
-                                item,
-                                restaurantId: restaurantId,
-                                restaurantName: restaurantName,
-                              );
-                              if (success) {
+                      if (item.isAvailable)
+                        Consumer<CartProvider>(
+                          builder: (context, cartProvider, child) {
+                            return IconButton(
+                              onPressed: () async {
+                                print('🛒 Adding to cart: ${item.name}');
+                                await cartProvider.addItem(
+                                  item,
+                                  restaurantId: restaurantId,
+                                  restaurantName: restaurantName,
+                                );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('${item.name} added to cart'),
+                                    content: Text('Added ${item.name} to cart'),
                                     duration: const Duration(seconds: 1),
-                                    backgroundColor: AppTheme.success,
+                                    backgroundColor: Colors.green,
                                   ),
                                 );
-                              }
-                            }
+                              },
+                              icon: const Icon(Icons.add_shopping_cart),
+                              color: Colors.red,
+                            );
                           },
-                          icon: Icon(
-                            quantity == 0 ? Icons.add_shopping_cart : Icons.add,
-                            size: 16,
-                            color: isAvailable ? AppTheme.primaryRed : AppTheme.mutedText,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
                         ),
-                      ],
-                    ),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.error.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.cancel, size: 16, color: AppTheme.error),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Not Available',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.error,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }

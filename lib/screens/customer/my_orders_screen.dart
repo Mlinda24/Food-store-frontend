@@ -66,6 +66,33 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
+  double _calculateSubtotal(Order order) {
+    // Calculate total from all items (meals only)
+    return order.items.fold<double>(0, (sum, item) => sum + (item.price * item.quantity));
+  }
+
+  double _getDeliveryFee(Order order) {
+    // Get delivery fee from order, default to 2000 if not present
+    return order.deliveryFee ?? 2000.00;
+  }
+
+  double _calculateTotal(Order order) {
+    // Total = subtotal (meals) + delivery fee
+    return _calculateSubtotal(order) + _getDeliveryFee(order);
+  }
+
+  String _getRestaurantName(Order order) {
+    // Try to get restaurant name from order, or use a default
+    // You can also fetch from a restaurant provider if needed
+    try {
+      // If order has a restaurantId, you could map it to a name
+      // For now, return a default name
+      return 'Foodie Express';
+    } catch (e) {
+      return 'Foodie Express';
+    }
+  }
+
   Widget _buildItemRow(OrderItemModel item, bool isDark) {
     final itemTotal = item.price * item.quantity;
     return Padding(
@@ -200,6 +227,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                   itemCount: orderProvider.orders.length,
                   itemBuilder: (context, index) {
                     final order = orderProvider.orders[index];
+                    final subtotal = _calculateSubtotal(order);
+                    final deliveryFee = _getDeliveryFee(order);
+                    final total = _calculateTotal(order);
+                    final restaurantName = _getRestaurantName(order);
                     
                     return Container(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -286,7 +317,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        'Foodie Express',
+                                        restaurantName,
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
@@ -322,14 +353,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            'Subtotal',
+                                            'Subtotal (Meals)',
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
                                             ),
                                           ),
                                           Text(
-                                            'MK${order.items.fold<double>(0, (sum, item) => sum + (item.price * item.quantity)).toStringAsFixed(0)}',
+                                            'MK${subtotal.toStringAsFixed(0)}',
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
@@ -349,7 +380,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                             ),
                                           ),
                                           Text(
-                                            'MK2000.99',
+                                            'MK${deliveryFee.toStringAsFixed(0)}',
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
@@ -357,7 +388,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 8),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 8),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
@@ -370,7 +403,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                             ),
                                           ),
                                           Text(
-                                            'MK${order.total.toStringAsFixed(0)}',
+                                            'MK${total.toStringAsFixed(0)}',
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,

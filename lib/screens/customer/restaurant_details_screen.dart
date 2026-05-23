@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../providers/cart_provider.dart';
+import '../../services/api_service.dart';
 import '../../widgets/customer/menu_item_card.dart';
+import '../customer/food_detail_screen.dart'; // Import the FoodDetailScreen
 
 class RestaurantDetailsScreen extends StatefulWidget {
   final Map<String, dynamic>? restaurantData;
@@ -16,11 +18,13 @@ class RestaurantDetailsScreen extends StatefulWidget {
 }
 
 class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
+  final ApiService _apiService = ApiService();
   Restaurant? restaurant;
   List<MenuItem> _menuItems = [];
   bool _isLoading = true;
   String _selectedCategory = 'All';
   List<String> _categories = ['All'];
+  String? _error;
 
   @override
   void initState() {
@@ -28,42 +32,148 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     _loadData();
   }
 
-  void _loadData() {
-    if (widget.restaurantData != null) {
-      final data = widget.restaurantData!;
-      restaurant = Restaurant(
-        id: data['id'].toString(),
-        name: data['name'] ?? '',
-        description: data['description'] ?? '',
-        image: data['image'] ?? '',
-        address: data['address'] ?? '',
-        phone: data['phone'] ?? '',
-        rating: (data['rating'] ?? 0).toDouble(),
-        deliveryTime: data['deliveryTime'] ?? 30,
-        deliveryFee: (data['deliveryFee'] ?? 2.99).toDouble(),
-        minOrderAmount: (data['minOrderAmount'] ?? 10).toDouble(),
-        categories: data['categories'] != null ? List<String>.from(data['categories']) : [],
-        isOpen: data['is_open'] ?? true,
-      );
-      _loadMenuItems();
-    } else {
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      if (widget.restaurantData != null) {
+        final data = widget.restaurantData!;
+        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        print('🏪 Restaurant Details Screen');
+        print('   Restaurant ID: ${data['id']}');
+        print('   Restaurant Name: ${data['name']}');
+        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        restaurant = Restaurant(
+          id: data['id'].toString(),
+          name: data['name'] ?? '',
+          description: data['description'] ?? '',
+          image: data['image'] ?? '',
+          address: data['address'] ?? '',
+          phone: data['phone'] ?? '',
+          rating: (data['rating'] ?? 4.5).toDouble(),
+          deliveryTime: data['delivery_time'] ?? data['deliveryTime'] ?? 30,
+          deliveryFee: (data['delivery_fee'] ?? data['deliveryFee'] ?? 2.99).toDouble(),
+          minOrderAmount: (data['min_order_amount'] ?? data['minOrderAmount'] ?? 10.0).toDouble(),
+          categories: data['categories'] != null 
+              ? List<String>.from(data['categories']) 
+              : [],
+          isOpen: data['is_open'] ?? data['isOpen'] ?? true,
+        );
+        
+        await _loadMenuItems();
+      } else {
+        setState(() {
+          _isLoading = false;
+          _error = 'No restaurant data provided';
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading data: $e');
       setState(() {
+        _error = e.toString();
         _isLoading = false;
       });
     }
   }
 
   Future<void> _loadMenuItems() async {
-    // Here you would fetch menu items from API
-    setState(() {
-      _menuItems = [];
-      _isLoading = false;
-    });
+    try {
+      final restaurantId = restaurant!.id;
+      print('📦 Loading menu items for restaurant ID: $restaurantId');
+      
+      final allItems = await _apiService.getMenuItems();
+      print('   Raw items from API: ${allItems.length}');
+      
+      final allMenuItems = <MenuItem>[];
+      
+      for (int i = 0; i < allItems.length; i++) {
+        final item = allItems[i];
+        print('   --- Item ${i + 1} ---');
+        try {
+          final menuItem = MenuItem.fromJson(item);
+          allMenuItems.add(menuItem);
+          print('   ✅ Successfully parsed: ${menuItem.name}');
+        } catch (e, stackTrace) {
+          print('   ❌ Error parsing item: $e');
+          print('   Item data: $item');
+        }
+      }
+      
+      _menuItems = allMenuItems.where((item) => 
+        item.restaurantId == restaurantId
+      ).toList();
+      
+      print('   Filtered menu items for this restaurant: ${_menuItems.length}');
+      
+      if (_menuItems.isNotEmpty) {
+        print('   Menu items found:');
+        for (var item in _menuItems) {
+          print('     - ${item.name} (ID: ${item.id})');
+        }
+      }
+      
+      final Set<String> categorySet = {'All'};
+      for (var item in _menuItems) {
+        if (item.category.isNotEmpty && item.category != 'General') {
+          categorySet.add(item.category);
+        }
+      }
+      _categories = categorySet.toList();
+      
+      setState(() {
+        _isLoading = false;
+      });
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    } catch (e) {
+      print('❌ Error loading menu items: $e');
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<MenuItem> get _filteredItems {
+    if (_selectedCategory == 'All') {
+      return _menuItems;
+    }
+    return _menuItems.where((item) => item.category == _selectedCategory).toList();
+  }
+
+  /// Navigates to the FoodDetailScreen when a meal is clicked.
+  /// This links the meal card to the restaurant details page,
+  /// passing all relevant meal and restaurant information.
+  void _navigateToFoodDetail(MenuItem item) {
+    // Format the price with MK prefix
+    final formattedPrice = 'MK${item.price.toStringAsFixed(0)}';
+    
+    final foodData = {
+      'id': item.id,
+      'name': item.name,
+      'description': item.description,
+      'price': formattedPrice,
+      'image': item.image,
+      'category': item.category,
+      'restaurantId': item.restaurantId,
+      'restaurant': restaurant?.name ?? '',
+      'restaurant_address': restaurant?.address ?? '',
+      'rating': restaurant?.rating ?? 0.0,
+      'delivery_fee': restaurant?.deliveryFee ?? 0.0,
+      'delivery_time': restaurant?.deliveryTime ?? 0,
+      'is_available': item.isAvailable,
+    };
+    
+    // Navigate to the FoodDetailScreen
+    context.push('/food-detail', extra: foodData);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (restaurant == null) {
+    if (restaurant == null && _isLoading) {
       return Scaffold(
         backgroundColor: AppTheme.getBackgroundColor(context),
         appBar: AppBar(
@@ -77,6 +187,40 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         body: const Center(child: CircularProgressIndicator()),
       );
     }
+
+    if (_error != null && restaurant == null) {
+      return Scaffold(
+        backgroundColor: AppTheme.getBackgroundColor(context),
+        appBar: AppBar(
+          backgroundColor: AppTheme.getBackgroundColor(context),
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: AppTheme.getPrimaryTextColor(context)),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: AppTheme.error),
+              const SizedBox(height: 16),
+              Text('Error loading restaurant', style: TextStyle(color: AppTheme.error)),
+              const SizedBox(height: 8),
+              Text(_error!, style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadData,
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final filteredItems = _filteredItems;
 
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
@@ -95,45 +239,61 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: AppTheme.getPrimaryTextColor(context)),
+            onPressed: _loadData,
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildRestaurantHeader(),
-                const SizedBox(height: 16),
-                _buildCategoryFilter(),
-                Expanded(
-                  child: _menuItems.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.restaurant_menu, size: 64, color: AppTheme.getMutedTextColor(context)),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No menu items available',
-                                style: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                              ),
-                            ],
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  _buildRestaurantHeader(),
+                  const SizedBox(height: 16),
+                  if (_categories.isNotEmpty) _buildCategoryFilter(),
+                  Expanded(
+                    child: filteredItems.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.restaurant_menu, size: 64, color: AppTheme.getMutedTextColor(context)),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No menu items available',
+                                  style: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Check back later for updates',
+                                  style: TextStyle(color: AppTheme.getMutedTextColor(context)),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filteredItems.length,
+                            itemBuilder: (context, index) {
+                              final item = filteredItems[index];
+                              return GestureDetector(
+                                onTap: () => _navigateToFoodDetail(item),
+                                child: MenuItemCard(
+                                  item: item,
+                                  restaurantId: restaurant!.id,
+                                  restaurantName: restaurant!.name,
+                                ),
+                              );
+                            },
                           ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _menuItems.length,
-                          itemBuilder: (context, index) {
-                            final item = _menuItems[index];
-                            // FIXED: Use 'item' not 'menuItem'
-                            return MenuItemCard(
-                              item: item,
-                              restaurantId: restaurant!.id,
-                              restaurantName: restaurant!.name,
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -187,7 +347,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                         Icon(Icons.star, size: 16, color: AppTheme.yellow),
                         const SizedBox(width: 4),
                         Text(
-                          restaurant!.rating.toString(),
+                          restaurant!.rating.toStringAsFixed(1),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -224,20 +384,22 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.phone, size: 12, color: AppTheme.getSecondaryTextColor(context)),
-                        const SizedBox(width: 4),
-                        Text(
-                          restaurant!.phone,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.getSecondaryTextColor(context),
+                    if (restaurant!.phone.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.phone, size: 12, color: AppTheme.getSecondaryTextColor(context)),
+                          const SizedBox(width: 4),
+                          Text(
+                            restaurant!.phone,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.getSecondaryTextColor(context),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

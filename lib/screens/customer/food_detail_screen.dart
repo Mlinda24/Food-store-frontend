@@ -28,13 +28,7 @@ class FoodDetailScreen extends StatelessWidget {
       restaurantName: food['restaurant']
     );
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${food['name']} added to cart'),
-        duration: const Duration(seconds: 1),
-        backgroundColor: AppTheme.success,
-      ),
-    );
+    // Removed the snackbar notification
   }
 
   void _goToCart(BuildContext context) {
