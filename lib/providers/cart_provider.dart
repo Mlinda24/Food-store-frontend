@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../services/api_service.dart';
 
 class CartProvider extends ChangeNotifier {
   List<CartItem> _items = [];
   String? _restaurantId;
   String? _restaurantName;
+  final ApiService _apiService = ApiService();
 
   List<CartItem> get items => _items;
   String? get restaurantId => _restaurantId;
@@ -24,14 +26,32 @@ class CartProvider extends ChangeNotifier {
   
   bool get hasItems => _items.isNotEmpty;
 
-  void addItem(MenuItem menuItem, {String? restaurantId, String? restaurantName}) {
+  // Load cart from API
+  Future<void> loadCart() async {
+    try {
+      final response = await _apiService.getCart();
+      if (response['items'] != null) {
+        _items = (response['items'] as List).map((item) => CartItem(
+          menuItemId: item['menu_item_id'].toString(),
+          name: item['name'],
+          quantity: item['quantity'],
+          price: (item['price'] as num).toDouble(),
+        )).toList();
+        _restaurantId = response['restaurant_id']?.toString();
+        _restaurantName = response['restaurant_name'];
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading cart: $e');
+    }
+  }
+
+  void addItem(MenuItem menuItem, {String? restaurantId, String? restaurantName}) async {
     // Check if adding from a different restaurant
     if (_restaurantId != null && _restaurantId != restaurantId && _items.isNotEmpty) {
-      // Clear cart if different restaurant
       _items.clear();
     }
     
-    // Set restaurant info if not set
     if (_restaurantId == null) {
       _restaurantId = restaurantId;
       _restaurantName = restaurantName;
@@ -42,51 +62,55 @@ class CartProvider extends ChangeNotifier {
     );
     
     if (existingIndex != -1) {
-      // Update existing item quantity
-      final updatedItem = CartItem(
-        menuItemId: _items[existingIndex].menuItemId,
-        name: _items[existingIndex].name,
-        quantity: _items[existingIndex].quantity + 1,
-        price: _items[existingIndex].price,
-        image: _items[existingIndex].image,
-      );
-      _items[existingIndex] = updatedItem;
+      _items[existingIndex].quantity += 1;
     } else {
-      // Add new item
       _items.add(CartItem(
         menuItemId: menuItem.id,
         name: menuItem.name,
         quantity: 1,
         price: menuItem.price,
-        image: menuItem.image,
       ));
+    }
+    
+    // Sync with API
+    try {
+      await _apiService.addToCart(
+        menuItemId: menuItem.id,
+        quantity: 1,
+      );
+    } catch (e) {
+      print('Error adding to cart: $e');
     }
     
     notifyListeners();
   }
 
-  void removeItem(String menuItemId) {
+  void removeItem(String menuItemId) async {
     _items.removeWhere((item) => item.menuItemId == menuItemId);
     if (_items.isEmpty) {
       _clearRestaurantInfo();
     }
+    
+    // Sync with API (set quantity to 0)
+    try {
+      await _apiService.addToCart(
+        menuItemId: menuItemId,
+        quantity: 0,
+      );
+    } catch (e) {
+      print('Error removing from cart: $e');
+    }
+    
     notifyListeners();
   }
 
-  void updateQuantity(String menuItemId, int quantity) {
+  void updateQuantity(String menuItemId, int quantity) async {
     final index = _items.indexWhere((item) => item.menuItemId == menuItemId);
     if (index != -1) {
       if (quantity <= 0) {
         _items.removeAt(index);
       } else {
-        final updatedItem = CartItem(
-          menuItemId: _items[index].menuItemId,
-          name: _items[index].name,
-          quantity: quantity,
-          price: _items[index].price,
-          image: _items[index].image,
-        );
-        _items[index] = updatedItem;
+        _items[index].quantity = quantity;
       }
       notifyListeners();
     }
@@ -94,9 +118,31 @@ class CartProvider extends ChangeNotifier {
     if (_items.isEmpty) {
       _clearRestaurantInfo();
     }
+    
+    // Sync with API
+    try {
+      await _apiService.addToCart(
+        menuItemId: menuItemId,
+        quantity: quantity,
+      );
+    } catch (e) {
+      print('Error updating cart: $e');
+    }
   }
 
-  void clearCart() {
+  void clearCart() async {
+    // Clear all items by setting quantity to 0
+    for (var item in _items) {
+      try {
+        await _apiService.addToCart(
+          menuItemId: item.menuItemId,
+          quantity: 0,
+        );
+      } catch (e) {
+        print('Error clearing cart: $e');
+      }
+    }
+    
     _items.clear();
     _clearRestaurantInfo();
     notifyListeners();
@@ -107,7 +153,6 @@ class CartProvider extends ChangeNotifier {
     _restaurantName = null;
   }
   
-  // Create order from cart
   Order createOrder(String userId, String deliveryAddress, String? instructions) {
     final orderItems = _items.map((item) => OrderItemModel(
       menuItemId: item.menuItemId,

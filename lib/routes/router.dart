@@ -28,6 +28,7 @@ final GoRouter router = GoRouter(
       name: 'role-selection',
       builder: (context, state) => const RoleSelectionScreen(),
     ),
+    // Customer Routes
     GoRoute(
       path: '/home',
       name: 'home',
@@ -42,7 +43,7 @@ final GoRouter router = GoRouter(
       path: '/restaurant-details',
       name: 'restaurant-details',
       builder: (context, state) {
-        final restaurant = state.extra as Restaurant;
+        final restaurant = state.extra as Restaurant?;
         return RestaurantDetailsScreen(restaurant: restaurant);
       },
     ),
@@ -60,7 +61,7 @@ final GoRouter router = GoRouter(
       path: '/order-tracking',
       name: 'order-tracking',
       builder: (context, state) {
-        final order = state.extra as Order;
+        final order = state.extra as Order?;
         return OrderTrackingScreen(order: order);
       },
     ),
@@ -74,16 +75,19 @@ final GoRouter router = GoRouter(
       name: 'notifications',
       builder: (context, state) => const NotificationsScreen(),
     ),
+    // Admin Route
     GoRoute(
       path: '/admin',
       name: 'admin',
       builder: (context, state) => const AdminDashboardScreen(),
     ),
+    // Driver Route
     GoRoute(
       path: '/driver',
       name: 'driver',
       builder: (context, state) => const DriverDashboardScreen(),
     ),
+    // Restaurant Route
     GoRoute(
       path: '/restaurant',
       name: 'restaurant',

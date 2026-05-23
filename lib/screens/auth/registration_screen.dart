@@ -55,7 +55,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   void _handleRegister() {
-    // Registration logic here
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _phoneController.text.isEmpty ||
@@ -68,8 +67,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       );
       return;
     }
-    
-    // Navigate to appropriate dashboard based on role
     if (_selectedRole == 'Customer') {
       context.go('/home');
     } else if (_selectedRole == 'Restaurant Owner') {
@@ -91,7 +88,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back Button
               IconButton(
                 onPressed: () => context.pop(),
                 icon: const Icon(Icons.arrow_back, color: AppTheme.primaryText),
@@ -99,8 +95,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 constraints: const BoxConstraints(),
               ),
               const SizedBox(height: 20),
-              
-              // Header
               const Text(
                 'Join Us',
                 style: TextStyle(
@@ -118,8 +112,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              
-              // Role Selection Header
               const Text(
                 'SELECT YOUR ROLE',
                 style: TextStyle(
@@ -130,8 +122,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
-              // Role Selection Cards
               ..._roles.map((role) => _buildRoleCard(
                 title: role['title'],
                 description: role['description'],
@@ -145,8 +135,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               )),
               
               const SizedBox(height: 32),
-              
-              // Form Fields
               _buildTextField(
                 controller: _nameController,
                 label: 'Full Name',
@@ -193,8 +181,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ),
               
               const SizedBox(height: 32),
-              
-              // Create Account Button
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(

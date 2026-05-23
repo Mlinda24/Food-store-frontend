@@ -42,7 +42,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       final user = authProvider.currentUser;
       if (user != null) {
-        // Navigate based on role
         if (user.role == UserRole.admin) {
           context.go('/admin');
         } else if (user.role == UserRole.driver) {
@@ -165,7 +164,9 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    // Forgot password functionality
+                  },
                   child: Text(
                     'Forgot Password?',
                     style: TextStyle(
@@ -209,65 +210,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
                     },
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.cardGlowGradient,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppTheme.deepCrimson.withOpacity(0.3),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Demo Credentials:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Customer: customer@example.com',
-                      style: TextStyle(
-                        color: AppTheme.secondaryText,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      'Restaurant: restaurant@example.com',
-                      style: TextStyle(
-                        color: AppTheme.secondaryText,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      'Driver: driver@example.com',
-                      style: TextStyle(
-                        color: AppTheme.secondaryText,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      'Admin: admin@example.com',
-                      style: TextStyle(
-                        color: AppTheme.secondaryText,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const Text(
-                      'Password: any',
-                      style: TextStyle(
-                        color: AppTheme.yellow,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
                 ),
               ),
               const SizedBox(height: 24),
