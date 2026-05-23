@@ -1,74 +1,150 @@
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
+import '../../config/theme.dart';
 
-class OrderTrackingScreen extends StatefulWidget {
-  final Order order;
-  
-  const OrderTrackingScreen({
-    super.key,
-    required this.order,
-  });
+class OrderTrackingScreen extends StatelessWidget {
+  final Order? order;
 
-  @override
-  State<OrderTrackingScreen> createState() => _OrderTrackingScreenState();
-}
-
-class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
-  final List<OrderStatus> _statusFlow = [
-    OrderStatus.pending,
-    OrderStatus.confirmed,
-    OrderStatus.preparing,
-    OrderStatus.ready,
-    OrderStatus.pickedUp,
-    OrderStatus.onTheWay,
-    OrderStatus.delivered,
-  ];
-
-  int _getCurrentStep() {
-    return _statusFlow.indexOf(widget.order.status);
-  }
+  const OrderTrackingScreen({super.key, this.order});
 
   @override
   Widget build(BuildContext context) {
+    // Create a default order if none is provided
+    final Order displayOrder = order ?? Order(
+      id: 'ORD-001',
+      userId: 'user1',
+      restaurantId: 'rest1',
+      items: [],
+      status: OrderStatus.pending,
+      subtotal: 0,
+      deliveryFee: 0,
+      tax: 0,
+      total: 0,
+      deliveryAddress: '',
+      createdAt: DateTime.now(),
+    );
+
+    final List<OrderStatus> statusFlow = [
+      OrderStatus.pending,
+      OrderStatus.confirmed,
+      OrderStatus.preparing,
+      OrderStatus.ready,
+      OrderStatus.pickedUp,
+      OrderStatus.onTheWay,
+      OrderStatus.delivered,
+    ];
+
+    int getCurrentStep() {
+      final index = statusFlow.indexOf(displayOrder.status);
+      return index >= 0 ? index : 0;
+    }
+
+    String getStatusText(OrderStatus status) {
+      switch (status) {
+        case OrderStatus.pending:
+          return 'Order Placed';
+        case OrderStatus.confirmed:
+          return 'Confirmed';
+        case OrderStatus.preparing:
+          return 'Preparing';
+        case OrderStatus.ready:
+          return 'Ready for Pickup';
+        case OrderStatus.pickedUp:
+          return 'Picked Up';
+        case OrderStatus.onTheWay:
+          return 'On The Way';
+        case OrderStatus.delivered:
+          return 'Delivered';
+        default:
+          return 'Pending';
+      }
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Track Order')),
+      backgroundColor: AppTheme.mainBackground,
+      appBar: AppBar(
+        title: const Text('Track Order'),
+        backgroundColor: AppTheme.mainBackground,
+        foregroundColor: AppTheme.primaryText,
+        elevation: 0,
+      ),
       body: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.grey[100],
+            color: AppTheme.cardBackground,
             child: Column(
               children: [
                 Text(
-                  'Order #${widget.order.id}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  'Order #${displayOrder.id}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryText,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '\$${widget.order.total.toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  'MK${displayOrder.total.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryRed,
+                  ),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: Stepper(
-              currentStep: _getCurrentStep(),
-              controlsBuilder: (context, details) {
-                return const SizedBox.shrink();
-              },
-              steps: _statusFlow.map((status) {
-                return Step(
-                  title: Text(_getStatusText(status)),
-                  content: const SizedBox.shrink(),
-                  isActive: _statusFlow.indexOf(status) <= _getCurrentStep(),
-                  state: _statusFlow.indexOf(status) < _getCurrentStep()
-                      ? StepState.complete
-                      : _statusFlow.indexOf(status) == _getCurrentStep()
-                          ? StepState.editing
-                          : StepState.indexed,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: statusFlow.length,
+              itemBuilder: (context, index) {
+                final status = statusFlow[index];
+                final isCompleted = statusFlow.indexOf(status) <= getCurrentStep();
+                final isCurrent = statusFlow.indexOf(status) == getCurrentStep();
+                
+                return ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isCompleted
+                          ? AppTheme.success
+                          : AppTheme.secondaryBackground,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _getStatusIcon(status),
+                      color: isCompleted ? Colors.white : AppTheme.mutedText,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    getStatusText(status),
+                    style: TextStyle(
+                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                      color: isCompleted ? AppTheme.primaryText : AppTheme.secondaryText,
+                    ),
+                  ),
+                  trailing: isCurrent
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryRed,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Current',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : null,
                 );
-              }).toList(),
+              },
             ),
           ),
         ],
@@ -76,24 +152,24 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     );
   }
 
-  String _getStatusText(OrderStatus status) {
+  IconData _getStatusIcon(OrderStatus status) {
     switch (status) {
       case OrderStatus.pending:
-        return 'Order Placed';
+        return Icons.pending_actions;
       case OrderStatus.confirmed:
-        return 'Confirmed';
+        return Icons.check_circle;
       case OrderStatus.preparing:
-        return 'Preparing';
+        return Icons.kitchen;
       case OrderStatus.ready:
-        return 'Ready for Pickup';
+        return Icons.done_all;
       case OrderStatus.pickedUp:
-        return 'Picked Up';
+        return Icons.local_shipping;
       case OrderStatus.onTheWay:
-        return 'On The Way';
+        return Icons.delivery_dining;
       case OrderStatus.delivered:
-        return 'Delivered';
-      case OrderStatus.cancelled:
-        return 'Cancelled';
+        return Icons.home;
+      default:
+        return Icons.pending;
     }
   }
 }
