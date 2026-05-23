@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../config/theme.dart';
+import '../../utils/theme.dart';
 import '../../providers/cart_provider.dart';
 import '../../models/models.dart';
 

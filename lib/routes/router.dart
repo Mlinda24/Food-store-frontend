@@ -9,9 +9,10 @@ import '../screens/customer/my_orders_screen.dart';
 import '../screens/customer/order_tracking_screen.dart';
 import '../screens/customer/search_screen.dart';
 import '../screens/customer/customer_profile_screen.dart';
-import '../screens/admin/admin_dashboard_screen.dart';
-import '../screens/driver/driver_dashboard_screen.dart';
+import '../screens/customer/settings_screen.dart';
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
+import '../screens/restaurant/restaurant_profile_screen.dart';  // Add this import
+import '../screens/driver/driver_dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
 
@@ -71,27 +72,31 @@ final GoRouter router = GoRouter(
       builder: (context, state) => const CustomerProfileScreen(),
     ),
     GoRoute(
+      path: '/settings',
+      name: 'settings',
+      builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
       path: '/notifications',
       name: 'notifications',
       builder: (context, state) => const NotificationsScreen(),
     ),
-    // Admin Route
+    // Restaurant Routes
     GoRoute(
-      path: '/admin',
-      name: 'admin',
-      builder: (context, state) => const AdminDashboardScreen(),
+      path: '/restaurant',
+      name: 'restaurant',
+      builder: (context, state) => const RestaurantDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/restaurant-profile',  // Add this route
+      name: 'restaurant-profile',
+      builder: (context, state) => const RestaurantProfileScreen(),
     ),
     // Driver Route
     GoRoute(
       path: '/driver',
       name: 'driver',
       builder: (context, state) => const DriverDashboardScreen(),
-    ),
-    // Restaurant Route
-    GoRoute(
-      path: '/restaurant',
-      name: 'restaurant',
-      builder: (context, state) => const RestaurantDashboardScreen(),
     ),
   ],
 );

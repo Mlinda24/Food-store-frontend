@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../config/theme.dart';
+import '../../utils/theme.dart';
 
 class FeaturedMealCard extends StatelessWidget {
   final Map<String, dynamic> meal;
@@ -13,77 +13,85 @@ class FeaturedMealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 140, // Reduced from 150
-        margin: const EdgeInsets.symmetric(horizontal: 6),
+        width: 180,
+        margin: const EdgeInsets.only(right: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Container - Reduced height
+            // Image Container
             Container(
-              height: 100, // Reduced from 110
+              height: 140,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppTheme.elevatedPanel,
-                borderRadius: BorderRadius.circular(12),
+                gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.deepCrimson.withOpacity(0.3),
+                ),
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(
                   Icons.fastfood,
-                  size: 35, // Reduced from 45
-                  color: Color(0xFF8A8A8A),
+                  size: 50,
+                  color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText,
                 ),
               ),
             ),
-            const SizedBox(height: 6), // Reduced from 8
-            // Rating Row
-            Row(
-              children: [
-                const Icon(Icons.star, size: 10, color: Color(0xFFFACC15)), // Reduced from 12
-                const SizedBox(width: 2),
-                Text(
-                  meal['rating'].toString(),
-                  style: const TextStyle(
-                    fontSize: 10, // Reduced from 11
-                    color: Color(0xFFC9C9C9),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3), // Reduced from 4
-            // Name
+            const SizedBox(height: 8),
+            // Restaurant Name
             Text(
-              meal['name'],
-              style: const TextStyle(
-                fontSize: 12, // Reduced from 13
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFFFFFFF),
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            // Description
-            Text(
-              meal['description'],
-              style: const TextStyle(
-                fontSize: 9, // Reduced from 10
-                color: Color(0xFF8A8A8A),
+              meal['restaurant'],
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
-            // Price
+            const SizedBox(height: 2),
+            // Food Name
             Text(
-              meal['price'],
-              style: const TextStyle(
-                fontSize: 12, // Reduced from 13
+              meal['name'],
+              style: TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFFF2E2E),
+                color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            // Rating and Price Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.star, size: 12, color: AppTheme.yellow),
+                    const SizedBox(width: 2),
+                    Text(
+                      meal['rating'].toString(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  meal['price'],
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryRed,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

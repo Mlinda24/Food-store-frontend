@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../config/theme.dart';
+import '../../utils/theme.dart';
 
 class DeliveryStatusCard extends StatelessWidget {
   const DeliveryStatusCard({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
+        gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -30,16 +32,15 @@ class DeliveryStatusCard extends StatelessWidget {
               children: [
                 const Text(
                   'Your order is nearby!',
-                  style: TextStyle(
-                    color: Color(0xFFFFFFFF),
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   "Chef Luigi's Kitchen is a few blocks away.",
-                  style: const TextStyle(color: Color(0xFFC9C9C9), fontSize: 11),
+                  style: TextStyle(
+                    color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),

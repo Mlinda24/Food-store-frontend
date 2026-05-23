@@ -14,7 +14,6 @@ class MenuManagementScreen extends StatefulWidget {
 class _MenuManagementScreenState extends State<MenuManagementScreen> {
   List<MenuItem> _menuItems = [];
   String _selectedCategory = 'All';
-  bool _isLoading = false;
 
   final List<String> _categories = ['All', 'Pizza', 'Burgers', 'Sushi', 'Desserts', 'Drinks'];
 
@@ -83,37 +82,19 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBackground,
+        backgroundColor: AppTheme.getCardColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
         title: Row(
           children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              color: AppTheme.warning,
-              size: 28,
-            ),
+            Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 28),
             const SizedBox(width: 12),
-            const Text(
-              'Delete Item',
-              style: TextStyle(
-                color: AppTheme.primaryText,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text('Delete Item', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Text(
-          'Are you sure you want to delete "${item.name}"?\n\nThis action cannot be undone.',
-          style: const TextStyle(
-            color: AppTheme.secondaryText,
-            fontSize: 14,
-            height: 1.4,
-          ),
-        ),
+        content: Text('Are you sure you want to delete "${item.name}"?\n\nThis action cannot be undone.'),
         actions: [
           Row(
             children: [
@@ -121,587 +102,429 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
-                      side: BorderSide(color: AppTheme.mutedText.withOpacity(0.5)),
+                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
                     ),
                   ),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.secondaryText,
-                    ),
-                  ),
+                  child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    setState(() {
-                      _menuItems.removeWhere((i) => i.id == item.id);
-                    });
+                    setState(() => _menuItems.removeWhere((i) => i.id == item.id));
                     Navigator.pop(context);
                     _showSnackBar('${item.name} deleted');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.error,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
-                  child: const Text(
-                    'Delete',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],
           ),
         ],
-        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
       ),
     );
   }
 
   Future<String?> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      return pickedFile.path;
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        return pickedFile.path;
+      }
+      return null;
+    } catch (e) {
+      _showSnackBar('Error picking image: $e', isError: true);
+      return null;
     }
-    return null;
   }
 
   Widget _buildImageWidget(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) {
-      return Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.mutedText);
+      return Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context));
     }
-    
-    // For web, we need to handle differently
-    if (imagePath.startsWith('http')) {
-      return Image.network(
-        imagePath,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        errorBuilder: (context, error, stackTrace) {
-          return Icon(Icons.broken_image, size: 40, color: AppTheme.mutedText);
-        },
-      );
-    } else {
-      // For desktop/mobile, we can use FileImage
-      return Image.file(
-        File(imagePath),
-        fit: BoxFit.cover,
-        width: double.infinity,
-        errorBuilder: (context, error, stackTrace) {
-          return Icon(Icons.broken_image, size: 40, color: AppTheme.mutedText);
-        },
-      );
-    }
+    return Image.network(
+      imagePath,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 40, color: AppTheme.getMutedTextColor(context)),
+    );
   }
 
   void _showAddItemDialog() {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-    final priceController = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
     String selectedCategory = 'Pizza';
     String? imagePath;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppTheme.cardBackground,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AppTheme.getCardColor(context),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+            ),
+            title: const Text('Add Menu Item', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: Column(
+                children: [
+                  GestureDetector(
+                    onTap: () async {
+                      final path = await _pickImage();
+                      if (path != null) setDialogState(() => imagePath = path);
+                    },
+                    child: Container(
+                      height: 120,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: AppTheme.getSurfaceColor(context),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+                      ),
+                      child: imagePath != null
+                          ? ClipRRect(borderRadius: BorderRadius.circular(12), child: _buildImageWidget(imagePath))
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context)),
+                                const SizedBox(height: 8),
+                                Text('Tap to add image', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameCtrl,
+                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Item Name *',
+                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                      filled: true,
+                      fillColor: AppTheme.getSurfaceColor(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descCtrl,
+                    maxLines: 2,
+                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                      filled: true,
+                      fillColor: AppTheme.getSurfaceColor(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: priceCtrl,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Price (MK) *',
+                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                      prefixText: 'MK ',
+                      prefixStyle: const TextStyle(color: AppTheme.primaryRed),
+                      filled: true,
+                      fillColor: AppTheme.getSurfaceColor(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    dropdownColor: AppTheme.getCardColor(context),
+                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Category',
+                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                      filled: true,
+                      fillColor: AppTheme.getSurfaceColor(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                    items: _categories.where((c) => c != 'All').map((category) => DropdownMenuItem(
+                      value: category,
+                      child: Text(category, style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
+                    )).toList(),
+                    onChanged: (value) => setDialogState(() => selectedCategory = value!),
+                  ),
+                ],
               ),
-              title: const Text(
-                'Add Menu Item',
-                style: TextStyle(
-                  color: AppTheme.primaryText,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Image Picker
-                    GestureDetector(
-                      onTap: () async {
-                        final path = await _pickImage();
-                        if (path != null) {
-                          setDialogState(() {
-                            imagePath = path;
-                          });
+            ),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
+                        ),
+                      ),
+                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (nameCtrl.text.isEmpty) {
+                          _showSnackBar('Please enter item name', isError: true);
+                          return;
                         }
-                      },
-                      child: Container(
-                        height: 120,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: AppTheme.secondaryBackground,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-                        ),
-                        child: imagePath != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: _buildImageWidget(imagePath),
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.add_photo_alternate,
-                                    size: 40,
-                                    color: AppTheme.mutedText,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Tap to add image',
-                                    style: TextStyle(
-                                      color: AppTheme.mutedText,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: nameController,
-                      style: const TextStyle(color: AppTheme.primaryText),
-                      decoration: InputDecoration(
-                        labelText: 'Item Name *',
-                        labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                        filled: true,
-                        fillColor: AppTheme.secondaryBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descriptionController,
-                      style: const TextStyle(color: AppTheme.primaryText),
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'Description',
-                        labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                        filled: true,
-                        fillColor: AppTheme.secondaryBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: priceController,
-                      style: const TextStyle(color: AppTheme.primaryText),
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Price (MK) *',
-                        labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                        prefixText: 'MK ',
-                        prefixStyle: const TextStyle(color: AppTheme.primaryRed),
-                        filled: true,
-                        fillColor: AppTheme.secondaryBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: selectedCategory,
-                      dropdownColor: AppTheme.cardBackground,
-                      style: const TextStyle(color: AppTheme.primaryText),
-                      decoration: InputDecoration(
-                        labelText: 'Category',
-                        labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                        filled: true,
-                        fillColor: AppTheme.secondaryBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      items: _categories.where((c) => c != 'All').map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category, style: const TextStyle(color: AppTheme.primaryText)),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          selectedCategory = value!;
+                        if (priceCtrl.text.isEmpty) {
+                          _showSnackBar('Please enter price', isError: true);
+                          return;
+                        }
+                        setState(() {
+                          _menuItems.add(MenuItem(
+                            id: DateTime.now().millisecondsSinceEpoch.toString(),
+                            restaurantId: '1',
+                            name: nameCtrl.text,
+                            description: descCtrl.text,
+                            price: double.parse(priceCtrl.text),
+                            image: imagePath ?? '',
+                            category: selectedCategory,
+                            isAvailable: true,
+                          ));
                         });
+                        Navigator.pop(context);
+                        _showSnackBar('${nameCtrl.text} added to menu');
                       },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryRed,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                      child: const Text('Add Item', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              actions: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            side: BorderSide(color: AppTheme.mutedText.withOpacity(0.5)),
-                          ),
-                        ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.secondaryText,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (nameController.text.isEmpty) {
-                            _showSnackBar('Please enter item name', isError: true);
-                            return;
-                          }
-                          if (priceController.text.isEmpty) {
-                            _showSnackBar('Please enter price', isError: true);
-                            return;
-                          }
-                          
-                          setState(() {
-                            _menuItems.add(MenuItem(
-                              id: DateTime.now().millisecondsSinceEpoch.toString(),
-                              restaurantId: '1',
-                              name: nameController.text,
-                              description: descriptionController.text,
-                              price: double.parse(priceController.text),
-                              image: imagePath ?? '',
-                              category: selectedCategory,
-                              isAvailable: true,
-                            ));
-                          });
-                          Navigator.pop(context);
-                          _showSnackBar('${nameController.text} added to menu');
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryRed,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Add Item',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-            );
-          },
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 
   void _showEditItemDialog(MenuItem item) {
-    final nameController = TextEditingController(text: item.name);
-    final descriptionController = TextEditingController(text: item.description);
-    final priceController = TextEditingController(text: item.price.toString());
+    final nameCtrl = TextEditingController(text: item.name);
+    final descCtrl = TextEditingController(text: item.description);
+    final priceCtrl = TextEditingController(text: item.price.toString());
     String selectedCategory = item.category;
     String? imagePath = item.image;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppTheme.cardBackground,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AppTheme.getCardColor(context),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+            ),
+            title: const Text('Edit Menu Item', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: Column(
+                children: [
+                  GestureDetector(
+                    onTap: () async {
+                      final path = await _pickImage();
+                      if (path != null) setDialogState(() => imagePath = path);
+                    },
+                    child: Container(
+                      height: 120,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: AppTheme.getSurfaceColor(context),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+                      ),
+                      child: imagePath != null && imagePath!.isNotEmpty
+                          ? ClipRRect(borderRadius: BorderRadius.circular(12), child: _buildImageWidget(imagePath))
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context)),
+                                const SizedBox(height: 8),
+                                Text('Tap to change image', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameCtrl,
+                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Item Name *',
+                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                      filled: true,
+                      fillColor: AppTheme.getSurfaceColor(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descCtrl,
+                    maxLines: 2,
+                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                      filled: true,
+                      fillColor: AppTheme.getSurfaceColor(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: priceCtrl,
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Price (MK) *',
+                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                      prefixText: 'MK ',
+                      prefixStyle: const TextStyle(color: AppTheme.primaryRed),
+                      filled: true,
+                      fillColor: AppTheme.getSurfaceColor(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    dropdownColor: AppTheme.getCardColor(context),
+                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Category',
+                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                      filled: true,
+                      fillColor: AppTheme.getSurfaceColor(context),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                    items: _categories.where((c) => c != 'All').map((category) => DropdownMenuItem(
+                      value: category,
+                      child: Text(category, style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
+                    )).toList(),
+                    onChanged: (value) => setDialogState(() => selectedCategory = value!),
+                  ),
+                ],
               ),
-              title: const Text(
-                'Edit Menu Item',
-                style: TextStyle(
-                  color: AppTheme.primaryText,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Image Picker
-                    GestureDetector(
-                      onTap: () async {
-                        final path = await _pickImage();
-                        if (path != null) {
-                          setDialogState(() {
-                            imagePath = path;
-                          });
+            ),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
+                        ),
+                      ),
+                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (nameCtrl.text.isEmpty) {
+                          _showSnackBar('Please enter item name', isError: true);
+                          return;
                         }
-                      },
-                      child: Container(
-                        height: 120,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: AppTheme.secondaryBackground,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-                        ),
-                        child: imagePath != null && imagePath!.isNotEmpty
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: _buildImageWidget(imagePath),
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.add_photo_alternate,
-                                    size: 40,
-                                    color: AppTheme.mutedText,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Tap to change image',
-                                    style: TextStyle(
-                                      color: AppTheme.mutedText,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: nameController,
-                      style: const TextStyle(color: AppTheme.primaryText),
-                      decoration: InputDecoration(
-                        labelText: 'Item Name *',
-                        labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                        filled: true,
-                        fillColor: AppTheme.secondaryBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descriptionController,
-                      style: const TextStyle(color: AppTheme.primaryText),
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'Description',
-                        labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                        filled: true,
-                        fillColor: AppTheme.secondaryBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: priceController,
-                      style: const TextStyle(color: AppTheme.primaryText),
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Price (MK) *',
-                        labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                        prefixText: 'MK ',
-                        prefixStyle: const TextStyle(color: AppTheme.primaryRed),
-                        filled: true,
-                        fillColor: AppTheme.secondaryBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: selectedCategory,
-                      dropdownColor: AppTheme.cardBackground,
-                      style: const TextStyle(color: AppTheme.primaryText),
-                      decoration: InputDecoration(
-                        labelText: 'Category',
-                        labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                        filled: true,
-                        fillColor: AppTheme.secondaryBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      items: _categories.where((c) => c != 'All').map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category, style: const TextStyle(color: AppTheme.primaryText)),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          selectedCategory = value!;
+                        if (priceCtrl.text.isEmpty) {
+                          _showSnackBar('Please enter price', isError: true);
+                          return;
+                        }
+                        setState(() {
+                          final index = _menuItems.indexOf(item);
+                          _menuItems[index] = MenuItem(
+                            id: item.id,
+                            restaurantId: item.restaurantId,
+                            name: nameCtrl.text,
+                            description: descCtrl.text,
+                            price: double.parse(priceCtrl.text),
+                            image: imagePath ?? '',
+                            category: selectedCategory,
+                            isAvailable: item.isAvailable,
+                            options: item.options,
+                          );
                         });
+                        Navigator.pop(context);
+                        _showSnackBar('${nameCtrl.text} updated');
                       },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryRed,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                      child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              actions: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            side: BorderSide(color: AppTheme.mutedText.withOpacity(0.5)),
-                          ),
-                        ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.secondaryText,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (nameController.text.isEmpty) {
-                            _showSnackBar('Please enter item name', isError: true);
-                            return;
-                          }
-                          if (priceController.text.isEmpty) {
-                            _showSnackBar('Please enter price', isError: true);
-                            return;
-                          }
-                          
-                          setState(() {
-                            final index = _menuItems.indexOf(item);
-                            _menuItems[index] = MenuItem(
-                              id: item.id,
-                              restaurantId: item.restaurantId,
-                              name: nameController.text,
-                              description: descriptionController.text,
-                              price: double.parse(priceController.text),
-                              image: imagePath ?? '',
-                              category: selectedCategory,
-                              isAvailable: item.isAvailable,
-                              options: item.options,
-                            );
-                          });
-                          Navigator.pop(context);
-                          _showSnackBar('${nameController.text} updated');
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryRed,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Save Changes',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-            );
-          },
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 
   List<MenuItem> get _filteredItems {
-    if (_selectedCategory == 'All') {
-      return _menuItems;
-    }
-    return _menuItems.where((item) => item.category == _selectedCategory).toList();
+    return _selectedCategory == 'All' 
+        ? _menuItems 
+        : _menuItems.where((item) => item.category == _selectedCategory).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.mainBackground,
+      backgroundColor: AppTheme.getBackgroundColor(context),
       appBar: AppBar(
-        backgroundColor: AppTheme.mainBackground,
+        backgroundColor: AppTheme.getBackgroundColor(context),
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Menu Management',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppTheme.primaryText,
+            color: AppTheme.getPrimaryTextColor(context),
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: AppTheme.primaryRed),
-            onPressed: _showAddItemDialog,
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            child: ElevatedButton(
+              onPressed: _showAddItemDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryRed,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              child: const Text('+ Add', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
           ),
         ],
       ),
@@ -716,26 +539,23 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
               itemCount: _categories.length,
               itemBuilder: (context, index) {
                 final category = _categories[index];
+                final isSelected = _selectedCategory == category;
                 return GestureDetector(
                   onTap: () => setState(() => _selectedCategory = category),
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     decoration: BoxDecoration(
-                      gradient: _selectedCategory == category
-                          ? AppTheme.primaryButtonGradient
-                          : null,
-                      color: _selectedCategory == category ? null : AppTheme.secondaryBackground,
+                      gradient: isSelected ? AppTheme.primaryButtonGradient : null,
+                      color: isSelected ? null : AppTheme.getSurfaceColor(context),
                       borderRadius: BorderRadius.circular(30),
-                      border: _selectedCategory == category
-                          ? null
-                          : Border.all(color: AppTheme.mutedText.withOpacity(0.3)),
+                      border: isSelected ? null : Border.all(color: AppTheme.getMutedTextColor(context).withOpacity(0.3)),
                     ),
                     child: Text(
                       category,
                       style: TextStyle(
-                        color: _selectedCategory == category ? Colors.white : AppTheme.secondaryText,
-                        fontWeight: _selectedCategory == category ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected ? Colors.white : AppTheme.getSecondaryTextColor(context),
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -750,27 +570,11 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.restaurant_menu,
-                          size: 64,
-                          color: AppTheme.mutedText,
-                        ),
+                        Icon(Icons.restaurant_menu, size: 64, color: AppTheme.getMutedTextColor(context)),
                         const SizedBox(height: 16),
-                        Text(
-                          'No items in this category',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppTheme.secondaryText,
-                          ),
-                        ),
+                        Text('No items in this category', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
                         const SizedBox(height: 8),
-                        Text(
-                          'Tap + to add new items',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.mutedText,
-                          ),
-                        ),
+                        Text('Tap + Add to add new items', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
                       ],
                     ),
                   )
@@ -793,7 +597,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
+        gradient: AppTheme.cardGlowGradient(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
@@ -804,15 +608,12 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
             width: 70,
             height: 70,
             decoration: BoxDecoration(
-              color: AppTheme.elevatedPanel,
+              color: AppTheme.getSurfaceColor(context),
               borderRadius: BorderRadius.circular(10),
             ),
             child: item.image.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: _buildImageWidget(item.image),
-                  )
-                : const Icon(Icons.fastfood, size: 30, color: AppTheme.mutedText),
+                ? ClipRRect(borderRadius: BorderRadius.circular(10), child: _buildImageWidget(item.image))
+                : Icon(Icons.fastfood, size: 30, color: AppTheme.getMutedTextColor(context)),
           ),
           const SizedBox(width: 12),
           // Details
@@ -825,10 +626,10 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                     Expanded(
                       child: Text(
                         item.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryText,
+                          color: AppTheme.getPrimaryTextColor(context),
                         ),
                       ),
                     ),
@@ -854,7 +655,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                   item.description,
                   style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.secondaryText,
+                    color: AppTheme.getSecondaryTextColor(context),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -865,7 +666,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                   children: [
                     Text(
                       'MK${item.price.toStringAsFixed(0)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryRed,
@@ -888,7 +689,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                           icon: Icon(
                             item.isAvailable ? Icons.visibility_off : Icons.visibility,
                             size: 18,
-                            color: item.isAvailable ? AppTheme.mutedText : AppTheme.success,
+                            color: item.isAvailable ? AppTheme.getMutedTextColor(context) : AppTheme.success,
                           ),
                           onPressed: () {
                             setState(() {
@@ -905,9 +706,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                                 options: item.options,
                               );
                             });
-                            _showSnackBar(
-                              '${item.name} is now ${!item.isAvailable ? 'available' : 'out of stock'}',
-                            );
+                            _showSnackBar('${item.name} is now ${!item.isAvailable ? 'available' : 'out of stock'}');
                           },
                         ),
                       ],

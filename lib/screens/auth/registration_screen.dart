@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../config/theme.dart';
+import '../../utils/theme.dart';
 
 class RegistrationScreen extends StatefulWidget {
   final String? selectedRole;
@@ -184,7 +184,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryButtonGradient,
+                  gradient: AppTheme.primaryButton,
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: ElevatedButton(
@@ -256,7 +256,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: isSelected ? AppTheme.primaryButtonGradient : AppTheme.cardGlowGradient,
+          gradient: isSelected ? AppTheme.primaryButton : const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected 

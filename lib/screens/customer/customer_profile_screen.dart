@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../config/theme.dart';
+import '../../utils/theme.dart';
 
 class CustomerProfileScreen extends StatelessWidget {
   const CustomerProfileScreen({super.key});
@@ -8,14 +8,18 @@ class CustomerProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.mainBackground, // #0F0A0A
+      backgroundColor: AppTheme.mainBackground,
       appBar: AppBar(
-        backgroundColor: AppTheme.mainBackground, // #0F0A0A
+        backgroundColor: AppTheme.mainBackground,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppTheme.primaryText),
+          onPressed: () => context.pop(),
+        ),
         title: const Text(
           'Profile',
           style: TextStyle(
-            color: AppTheme.primaryText, // #FFFFFF
+            color: AppTheme.primaryText,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -33,17 +37,17 @@ class CustomerProfileScreen extends StatelessWidget {
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.cardGlowGradient, // #2A0F0F → #7A0C18
+                      gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppTheme.primaryRed.withOpacity(0.5), // #FF2E2E
+                        color: AppTheme.primaryRed.withOpacity(0.5),
                         width: 2,
                       ),
                     ),
                     child: const Icon(
                       Icons.person,
                       size: 50,
-                      color: AppTheme.primaryText, // #FFFFFF
+                      color: AppTheme.primaryText,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -52,27 +56,43 @@ class CustomerProfileScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryText, // #FFFFFF
+                      color: AppTheme.primaryText,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'precious@example.com',
                     style: TextStyle(
-                      color: AppTheme.secondaryText, // #C9C9C9
+                      color: AppTheme.secondaryText,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '+265 888 123 456',
                     style: TextStyle(
-                      color: AppTheme.secondaryText, // #C9C9C9
+                      color: AppTheme.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: 200,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        // Edit profile
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: AppTheme.primaryRed),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: const Text('Edit Profile'),
                     ),
                   ),
                 ],
               ),
             ),
-            
+
             // Stats Cards
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -80,6 +100,7 @@ class CustomerProfileScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _buildStatCard(
+                      context,
                       icon: Icons.shopping_bag_outlined,
                       label: 'Total Orders',
                       value: '12',
@@ -88,6 +109,7 @@ class CustomerProfileScreen extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildStatCard(
+                      context,
                       icon: Icons.star_outline,
                       label: 'Ratings',
                       value: '4.8',
@@ -96,6 +118,7 @@ class CustomerProfileScreen extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildStatCard(
+                      context,
                       icon: Icons.local_offer_outlined,
                       label: 'Saved',
                       value: '3',
@@ -104,51 +127,16 @@ class CustomerProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
-            // Menu Items
+
+            // Menu Items (only order history remains, others moved to settings)
             _buildMenuItem(
+              context,
               icon: Icons.history,
               title: 'Order History',
               onTap: () {
                 context.go('/my-orders');
-              },
-            ),
-            _buildMenuItem(
-              icon: Icons.location_on_outlined,
-              title: 'Saved Addresses',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.payment_outlined,
-              title: 'Payment Methods',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.notifications_outlined,
-              title: 'Notifications',
-              onTap: () {
-                context.go('/notifications');
-              },
-            ),
-            _buildMenuItem(
-              icon: Icons.language_outlined,
-              title: 'Language',
-              subtitle: 'English / Chichewa',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.help_outline,
-              title: 'Help & Support',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.logout,
-              title: 'Logout',
-              textColor: AppTheme.error, // #EF4444
-              onTap: () {
-                context.go('/login');
               },
             ),
           ],
@@ -157,7 +145,8 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatCard(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
@@ -165,29 +154,29 @@ class CustomerProfileScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient, // #2A0F0F → #7A0C18
+        gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.deepCrimson.withOpacity(0.3), // #B11226
+          color: AppTheme.deepCrimson.withOpacity(0.3),
         ),
       ),
       child: Column(
         children: [
-          Icon(icon, color: AppTheme.primaryRed, size: 24), // #FF2E2E
+          Icon(icon, color: AppTheme.primaryRed, size: 24),
           const SizedBox(height: 8),
           Text(
             value,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppTheme.primaryText, // #FFFFFF
+              color: AppTheme.primaryText,
             ),
           ),
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
-              color: AppTheme.secondaryText, // #C9C9C9
+              color: AppTheme.secondaryText,
             ),
           ),
         ],
@@ -195,43 +184,33 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem({
+  Widget _buildMenuItem(
+    BuildContext context, {
     required IconData icon,
     required String title,
-    String? subtitle,
-    Color? textColor,
     required VoidCallback onTap,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient, // #2A0F0F → #7A0C18
+        gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.deepCrimson.withOpacity(0.3), // #B11226
+          color: AppTheme.deepCrimson.withOpacity(0.3),
         ),
       ),
       child: ListTile(
-        leading: Icon(icon, color: AppTheme.primaryRed, size: 24), // #FF2E2E
+        leading: Icon(icon, color: AppTheme.primaryRed, size: 24),
         title: Text(
           title,
-          style: TextStyle(
-            color: textColor ?? AppTheme.primaryText, // #FFFFFF
+          style: const TextStyle(
+            color: AppTheme.primaryText,
             fontWeight: FontWeight.w500,
           ),
         ),
-        subtitle: subtitle != null 
-            ? Text(
-                subtitle,
-                style: TextStyle(
-                  color: AppTheme.secondaryText, // #C9C9C9
-                  fontSize: 12,
-                ),
-              )
-            : null,
         trailing: Icon(
           Icons.chevron_right,
-          color: AppTheme.mutedText, // #8A8A8A
+          color: AppTheme.mutedText,
         ),
         onTap: onTap,
       ),

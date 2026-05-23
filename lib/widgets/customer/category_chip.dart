@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../config/theme.dart';
+import '../../utils/theme.dart';
 
 class CategoryChip extends StatelessWidget {
   final String label;
@@ -15,23 +15,31 @@ class CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          gradient: isSelected ? AppTheme.primaryButtonGradient : null,
-          color: isSelected ? null : AppTheme.secondaryBackground,
+          gradient: isSelected
+              ? AppTheme.primaryButton
+              : null,
+          color: isSelected ? null : (isDark ? AppTheme.darkSurface : AppTheme.lightBackground),
           borderRadius: BorderRadius.circular(30),
-          border: isSelected ? null : Border.all(color: AppTheme.mutedText.withOpacity(0.3)),
+          border: isSelected
+              ? null
+              : Border.all(color: (isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText).withOpacity(0.3)),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.secondaryText,
+            color: isSelected 
+                ? Colors.white 
+                : (isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText),
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 13,
+            fontSize: 12,
           ),
         ),
       ),

@@ -15,43 +15,75 @@ class RestaurantDetailsScreen extends StatefulWidget {
 }
 
 class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
-  // Sample menu items
-  final List<Map<String, dynamic>> _menuItems = [
-    {'id': '1', 'name': 'Margherita Pizza', 'desc': 'Fresh mozzarella, tomato sauce, basil', 'price': 4500},
-    {'id': '2', 'name': 'Pepperoni Pizza', 'desc': 'Classic pepperoni with mozzarella', 'price': 5500},
-    {'id': '3', 'name': 'Cheeseburger', 'desc': 'Beef patty with cheese, lettuce, tomato', 'price': 3800},
-  ];
+  String _selectedCategory = 'Popular';
+  List<MenuItem> _menuItems = [];
+  bool _isLoading = true;
 
-  void _goToCheckout(BuildContext context) {
+  final List<String> _categories = ['Popular', 'Pizza', 'Burgers', 'Sushi', 'Desserts'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMenuItems();
+  }
+
+  Future<void> _loadMenuItems() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) {
+      setState(() {
+        _menuItems = [
+          MenuItem(id: '1', restaurantId: '1', name: 'Margherita Pizza', description: 'Fresh mozzarella, tomato sauce, basil', price: 4500, image: '', category: 'Pizza', isAvailable: true),
+          MenuItem(id: '2', restaurantId: '1', name: 'Pepperoni Pizza', description: 'Classic pepperoni with mozzarella', price: 5500, image: '', category: 'Pizza', isAvailable: true),
+          MenuItem(id: '3', restaurantId: '1', name: 'Cheeseburger', description: 'Beef patty with cheese, lettuce, tomato', price: 3800, image: '', category: 'Burgers', isAvailable: true),
+          MenuItem(id: '4', restaurantId: '1', name: 'Veggie Burger', description: 'Plant-based patty with fresh veggies', price: 4200, image: '', category: 'Burgers', isAvailable: true),
+          MenuItem(id: '5', restaurantId: '1', name: 'Chicken Wings', description: 'Spicy buffalo wings with dip', price: 3900, image: '', category: 'Popular', isAvailable: true),
+        ];
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _addToCart(MenuItem item) {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    cartProvider.addItem(item, restaurantId: widget.restaurant?.id ?? '1', restaurantName: widget.restaurant?.name ?? 'Restaurant');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${item.name} added to cart'), duration: const Duration(seconds: 1), backgroundColor: AppTheme.success),
+    );
+    setState(() {});
+  }
+
+  void _updateQuantity(MenuItem item, int newQuantity) {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    if (newQuantity <= 0) {
+      cartProvider.removeItem(item.id);
+    } else {
+      cartProvider.updateQuantity(item.id, newQuantity);
+    }
+    setState(() {});
+  }
+
+  int _getQuantity(String itemId) {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final cartItem = cartProvider.items.firstWhere(
+      (i) => i.menuItemId == itemId,
+      orElse: () => CartItem(menuItemId: '', name: '', quantity: 0, price: 0),
+    );
+    return cartItem.quantity;
+  }
+
+  void _goToCheckout() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     if (cartProvider.hasItems) {
       context.go('/checkout');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Your cart is empty'),
-          duration: Duration(seconds: 1),
-          backgroundColor: AppTheme.warning,
-        ),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Create a default restaurant if none is provided
-    final Restaurant rest = widget.restaurant ?? Restaurant(
-      id: '1',
-      name: 'Chef Luigi\'s Kitchen',
-      description: 'Authentic Italian cuisine',
-      image: '',
-      address: '123 Main Street, Downtown',
-      rating: 4.8,
-      deliveryTime: 25,
-      deliveryFee: 2.99,
-      minOrderAmount: 10.0,
-      categories: ['Italian', 'Pizza'],
-      isOpen: true,
+    final restaurant = widget.restaurant ?? Restaurant(
+      id: '1', name: 'Chef Luigi\'s Kitchen', description: 'Authentic Italian cuisine', image: '',
+      address: '123 Main Street, Downtown', rating: 4.8, deliveryTime: 25, deliveryFee: 2.99,
+      minOrderAmount: 10.0, categories: ['Italian', 'Pizza'], isOpen: true,
     );
 
     return Consumer<CartProvider>(
@@ -61,60 +93,36 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         final total = cartProvider.total;
 
         return Scaffold(
-          backgroundColor: AppTheme.mainBackground,
+          backgroundColor: AppTheme.getBackgroundColor(context),
           appBar: AppBar(
-            backgroundColor: AppTheme.mainBackground,
+            backgroundColor: AppTheme.getBackgroundColor(context),
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppTheme.primaryText),
+              icon: Icon(Icons.arrow_back, color: AppTheme.getPrimaryTextColor(context)),
               onPressed: () => context.pop(),
             ),
-            title: Text(
-              rest.name,
-              style: const TextStyle(
-                color: AppTheme.primaryText,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            title: Text(restaurant.name, style: TextStyle(color: AppTheme.getPrimaryTextColor(context), fontSize: 18, fontWeight: FontWeight.bold)),
             centerTitle: true,
             actions: [
-              
               GestureDetector(
-                onTap: () => _goToCheckout(context),
+                onTap: _goToCheckout,
                 child: Container(
                   margin: const EdgeInsets.only(right: 12),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    gradient: hasItems ? AppTheme.primaryButtonGradient : AppTheme.cardGlowGradient,
+                    gradient: hasItems ? AppTheme.primaryButtonGradient : AppTheme.cardGlowGradient(context),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: hasItems ? AppTheme.primaryRed : AppTheme.deepCrimson.withOpacity(0.3),
-                    ),
+                    border: Border.all(color: hasItems ? AppTheme.primaryRed : AppTheme.deepCrimson.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.shopping_cart,
-                        size: 18,
-                        color: hasItems ? Colors.white : AppTheme.secondaryText,
-                      ),
+                      Icon(Icons.shopping_cart, size: 18, color: hasItems ? Colors.white : AppTheme.getSecondaryTextColor(context)),
                       if (itemCount > 0) ...[
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$itemCount',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryRed,
-                            ),
-                          ),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                          child: Text('$itemCount', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryRed)),
                         ),
                       ],
                     ],
@@ -125,46 +133,40 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           ),
           body: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                
+                // Restaurant Info Card
                 Container(
                   padding: const EdgeInsets.all(16),
-                  color: AppTheme.cardBackground,
+                  color: AppTheme.getCardColor(context),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
                           Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: AppTheme.elevatedPanel,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.restaurant, size: 30, color: AppTheme.mutedText),
+                            width: 60, height: 60,
+                            decoration: BoxDecoration(color: AppTheme.getSurfaceColor(context), borderRadius: BorderRadius.circular(12)),
+                            child: Icon(Icons.restaurant, size: 30, color: AppTheme.getMutedTextColor(context)),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(rest.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryText)),
+                                Text(restaurant.name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
                                     const Icon(Icons.star, size: 14, color: AppTheme.yellow),
                                     const SizedBox(width: 4),
-                                    Text(rest.rating.toString(), style: const TextStyle(color: AppTheme.secondaryText)),
+                                    Text(restaurant.rating.toString(), style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
                                     const SizedBox(width: 12),
-                                    const Icon(Icons.access_time, size: 14, color: AppTheme.mutedText),
+                                    Icon(Icons.access_time, size: 14, color: AppTheme.getMutedTextColor(context)),
                                     const SizedBox(width: 4),
-                                    Text('${rest.deliveryTime} min', style: const TextStyle(color: AppTheme.secondaryText)),
+                                    Text('${restaurant.deliveryTime} min', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
                                     const SizedBox(width: 12),
-                                    Container(width: 8, height: 8, decoration: BoxDecoration(color: rest.isOpen ? AppTheme.success : AppTheme.error, shape: BoxShape.circle)),
+                                    Container(width: 8, height: 8, decoration: BoxDecoration(color: restaurant.isOpen ? AppTheme.success : AppTheme.error, shape: BoxShape.circle)),
                                     const SizedBox(width: 4),
-                                    Text(rest.isOpen ? 'Open' : 'Closed', style: TextStyle(color: rest.isOpen ? AppTheme.success : AppTheme.error)),
+                                    Text(restaurant.isOpen ? 'Open' : 'Closed', style: TextStyle(color: restaurant.isOpen ? AppTheme.success : AppTheme.error)),
                                   ],
                                 ),
                               ],
@@ -175,21 +177,49 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          const Icon(Icons.location_on, size: 14, color: AppTheme.mutedText),
+                          Icon(Icons.location_on, size: 14, color: AppTheme.getMutedTextColor(context)),
                           const SizedBox(width: 4),
-                          Expanded(child: Text(rest.address, style: const TextStyle(color: AppTheme.secondaryText, fontSize: 12))),
+                          Expanded(child: Text(restaurant.address, style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)))),
                         ],
                       ),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
-                        children: rest.categories.map((cat) => Container(
+                        children: restaurant.categories.map((cat) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(color: AppTheme.secondaryBackground, borderRadius: BorderRadius.circular(20)),
-                          child: Text(cat, style: const TextStyle(fontSize: 12, color: AppTheme.secondaryText)),
+                          decoration: BoxDecoration(color: AppTheme.getSurfaceColor(context), borderRadius: BorderRadius.circular(20)),
+                          child: Text(cat, style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context))),
                         )).toList(),
                       ),
                     ],
+                  ),
+                ),
+                
+                // Categories
+                SizedBox(
+                  height: 50,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) {
+                      final category = _categories[index];
+                      final isSelected = _selectedCategory == category;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedCategory = category),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: isSelected ? AppTheme.primaryButtonGradient : null,
+                            color: isSelected ? null : AppTheme.getSurfaceColor(context),
+                            borderRadius: BorderRadius.circular(30),
+                            border: isSelected ? null : Border.all(color: AppTheme.getMutedTextColor(context).withOpacity(0.3)),
+                          ),
+                          child: Text(category, style: TextStyle(color: isSelected ? Colors.white : AppTheme.getSecondaryTextColor(context))),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 
@@ -197,16 +227,69 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Menu', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryText)),
+                      Text('Menu', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
                       const SizedBox(height: 16),
-                      ..._menuItems.map((item) => _buildMenuItem(context, item, rest.id, rest.name)),
+                      ..._menuItems.map((item) {
+                        final quantity = _getQuantity(item.id);
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.getCardColor(context),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 70, height: 70,
+                                decoration: BoxDecoration(color: AppTheme.getElevatedPanelColor(context), borderRadius: BorderRadius.circular(10)),
+                                child: Icon(Icons.fastfood, size: 35, color: AppTheme.getMutedTextColor(context)),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
+                                    const SizedBox(height: 4),
+                                    Text(item.description, style: TextStyle(fontSize: 11, color: AppTheme.getSecondaryTextColor(context)), maxLines: 2),
+                                    const SizedBox(height: 8),
+                                    Text('MK${item.price.toStringAsFixed(0)}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryRed)),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(color: AppTheme.getSurfaceColor(context), borderRadius: BorderRadius.circular(25)),
+                                child: Row(
+                                  children: [
+                                    if (quantity > 0)
+                                      IconButton(
+                                        onPressed: () => _updateQuantity(item, quantity - 1),
+                                        icon: const Icon(Icons.remove, size: 16, color: AppTheme.primaryRed),
+                                        padding: EdgeInsets.zero, constraints: const BoxConstraints(),
+                                      ),
+                                    if (quantity > 0)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        child: Text('$quantity', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
+                                      ),
+                                    IconButton(
+                                      onPressed: () => _addToCart(item),
+                                      icon: Icon(quantity == 0 ? Icons.add_shopping_cart : Icons.add, size: 16, color: AppTheme.primaryRed),
+                                      padding: EdgeInsets.zero, constraints: const BoxConstraints(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                     ],
                   ),
                 ),
-                
-                const SizedBox(height: 80),
               ],
             ),
           ),
@@ -214,68 +297,28 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
               ? Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.cardBackground,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, -2),
-                      ),
-                    ],
+                    color: AppTheme.getCardColor(context),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, -2))],
                   ),
                   child: SafeArea(
                     child: Row(
                       children: [
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                '${itemCount} item${itemCount > 1 ? 's' : ''} in cart',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppTheme.mutedText,
-                                ),
-                              ),
+                              Text('${itemCount} item${itemCount > 1 ? 's' : ''}', style: TextStyle(fontSize: 11, color: AppTheme.getMutedTextColor(context))),
                               const SizedBox(height: 2),
-                              Text(
-                                'MK${total.toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryText,
-                                ),
-                              ),
+                              Text('MK${total.toStringAsFixed(0)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
                             ],
                           ),
                         ),
-                        
                         Container(
-                          width: 100,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            gradient: AppTheme.primaryButtonGradient,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
+                          width: 100, height: 36,
+                          decoration: BoxDecoration(gradient: AppTheme.primaryButtonGradient, borderRadius: BorderRadius.circular(18)),
                           child: ElevatedButton(
-                            onPressed: () => _goToCheckout(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              shadowColor: Colors.transparent,
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                            ),
-                            child: const Text(
-                              'View Cart',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            onPressed: _goToCheckout,
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: EdgeInsets.zero),
+                            child: const Text('View Cart', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -283,95 +326,6 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   ),
                 )
               : null,
-        );
-      },
-    );
-  }
-
-  Widget _buildMenuItem(BuildContext context, Map<String, dynamic> item, String restaurantId, String restaurantName) {
-    return Consumer<CartProvider>(
-      builder: (context, cartProvider, child) {
-        final cartItem = cartProvider.items.firstWhere(
-          (i) => i.menuItemId == item['id'],
-          orElse: () => CartItem(menuItemId: '', name: '', quantity: 0, price: 0),
-        );
-        final qty = cartItem.quantity;
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppTheme.cardBackground,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(color: AppTheme.elevatedPanel, borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.fastfood, size: 35, color: AppTheme.mutedText),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item['name'], style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.primaryText)),
-                    const SizedBox(height: 4),
-                    Text(item['desc'], style: TextStyle(fontSize: 11, color: AppTheme.secondaryText), maxLines: 2),
-                    const SizedBox(height: 8),
-                    Text('MK${item['price']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryRed)),
-                  ],
-                ),
-              ),
-              Container(
-                decoration: BoxDecoration(color: AppTheme.secondaryBackground, borderRadius: BorderRadius.circular(25)),
-                child: Row(
-                  children: [
-                    if (qty > 0)
-                      IconButton(
-                        onPressed: () {
-                          cartProvider.updateQuantity(item['id'], qty - 1);
-                        },
-                        icon: const Icon(Icons.remove, size: 16, color: AppTheme.primaryRed),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    if (qty > 0)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('$qty', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryText)),
-                      ),
-                    IconButton(
-                      onPressed: () {
-                        final menuItem = MenuItem(
-                          id: item['id'],
-                          restaurantId: restaurantId,
-                          name: item['name'],
-                          description: item['desc'],
-                          price: (item['price'] as num).toDouble(),
-                          image: '',
-                          category: '',
-                          isAvailable: true,
-                        );
-                        cartProvider.addItem(menuItem, restaurantId: restaurantId, restaurantName: restaurantName);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('${item['name']} added to cart'),
-                          duration: const Duration(seconds: 1),
-                          backgroundColor: AppTheme.success,
-                        ));
-                      },
-                      icon: Icon(qty == 0 ? Icons.add_shopping_cart : Icons.add, size: 16, color: AppTheme.primaryRed),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         );
       },
     );

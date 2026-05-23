@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../config/theme.dart';
+import '../utils/theme.dart';
 
 class SidebarMenu extends StatefulWidget {
   final Widget child;
@@ -22,7 +22,8 @@ class SidebarMenu extends StatefulWidget {
   State<SidebarMenu> createState() => _SidebarMenuState();
 }
 
-class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStateMixin {
+class _SidebarMenuState extends State<SidebarMenu>
+    with SingleTickerProviderStateMixin {
   bool _isMenuOpen = false;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -81,7 +82,7 @@ class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStat
         children: [
           // Main Content
           widget.child,
-          
+
           // 3-Dot Menu Button - TOP LEFT
           Positioned(
             top: 16,
@@ -91,7 +92,7 @@ class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStat
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  gradient: AppTheme.cardGlowGradient,
+                  gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
                     color: AppTheme.deepCrimson.withOpacity(0.3),
@@ -113,7 +114,7 @@ class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStat
               ),
             ),
           ),
-          
+
           // Overlay Background
           if (_isMenuOpen)
             Positioned.fill(
@@ -127,7 +128,7 @@ class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStat
                 ),
               ),
             ),
-          
+
           // Menu Panel - TOP LEFT ALIGNED
           if (_isMenuOpen)
             Positioned(
@@ -142,7 +143,7 @@ class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStat
                     child: Container(
                       width: 220,
                       decoration: BoxDecoration(
-                        gradient: AppTheme.cardGlowGradient,
+                        gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: AppTheme.deepCrimson.withOpacity(0.3),
@@ -174,7 +175,7 @@ class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStat
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    gradient: AppTheme.primaryButtonGradient,
+                                    gradient: AppTheme.primaryButton,
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Center(
@@ -188,7 +189,8 @@ class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStat
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Foodie Express',
@@ -219,7 +221,8 @@ class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStat
                           ...widget.items.asMap().entries.map((entry) {
                             final index = entry.key;
                             final item = entry.value;
-                            final isSelected = widget.currentRoute == item.route;
+                            final isSelected =
+                                widget.currentRoute == item.route;
                             return InkWell(
                               onTap: () => _onMenuItemTap(index),
                               child: Container(

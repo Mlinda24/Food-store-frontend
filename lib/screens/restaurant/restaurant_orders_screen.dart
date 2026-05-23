@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../config/theme.dart';
+import '../../utils/theme.dart';
 import '../../models/models.dart';
 
 class RestaurantOrdersScreen extends StatefulWidget {
@@ -31,8 +31,13 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 888 123 456',
         customerAddress: '123 Main St, Area 3',
         items: [
-          OrderItemModel(menuItemId: '1', name: 'Margherita Pizza', quantity: 2, price: 4500),
-          OrderItemModel(menuItemId: '2', name: 'Coke', quantity: 2, price: 800),
+          OrderItemModel(
+              menuItemId: '1',
+              name: 'Margherita Pizza',
+              quantity: 2,
+              price: 4500),
+          OrderItemModel(
+              menuItemId: '2', name: 'Coke', quantity: 2, price: 800),
         ],
         status: OrderStatus.confirmed,
         total: 10600,
@@ -45,8 +50,10 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 999 789 012',
         customerAddress: '456 Oak Ave, Area 47',
         items: [
-          OrderItemModel(menuItemId: '3', name: 'Cheeseburger', quantity: 1, price: 3800),
-          OrderItemModel(menuItemId: '4', name: 'French Fries', quantity: 1, price: 1200),
+          OrderItemModel(
+              menuItemId: '3', name: 'Cheeseburger', quantity: 1, price: 3800),
+          OrderItemModel(
+              menuItemId: '4', name: 'French Fries', quantity: 1, price: 1200),
         ],
         status: OrderStatus.pending,
         total: 5000,
@@ -59,8 +66,13 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 888 555 777',
         customerAddress: '789 Pine St, Area 9',
         items: [
-          OrderItemModel(menuItemId: '1', name: 'Pepperoni Pizza', quantity: 1, price: 5500),
-          OrderItemModel(menuItemId: '5', name: 'Chicken Wings', quantity: 2, price: 3900),
+          OrderItemModel(
+              menuItemId: '1',
+              name: 'Pepperoni Pizza',
+              quantity: 1,
+              price: 5500),
+          OrderItemModel(
+              menuItemId: '5', name: 'Chicken Wings', quantity: 2, price: 3900),
         ],
         status: OrderStatus.preparing,
         total: 13300,
@@ -76,7 +88,11 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 777 456 789',
         customerAddress: '789 Pine St, Area 9',
         items: [
-          OrderItemModel(menuItemId: '1', name: 'Pepperoni Pizza', quantity: 1, price: 5500),
+          OrderItemModel(
+              menuItemId: '1',
+              name: 'Pepperoni Pizza',
+              quantity: 1,
+              price: 5500),
         ],
         status: OrderStatus.ready,
         total: 5500,
@@ -92,7 +108,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerPhone: '+265 666 321 654',
         customerAddress: '321 Elm St, Area 12',
         items: [
-          OrderItemModel(menuItemId: '5', name: 'Chicken Wings', quantity: 1, price: 3900),
+          OrderItemModel(
+              menuItemId: '5', name: 'Chicken Wings', quantity: 1, price: 3900),
         ],
         status: OrderStatus.delivered,
         total: 3900,
@@ -218,7 +235,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        gradient: isSelected ? AppTheme.primaryButtonGradient : null,
+                        gradient:
+                            isSelected ? AppTheme.primaryButton : null,
                         color: isSelected ? null : AppTheme.secondaryBackground,
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -226,7 +244,9 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                         tab,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : AppTheme.secondaryText,
+                          color: isSelected
+                              ? Colors.white
+                              : AppTheme.secondaryText,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -282,17 +302,17 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
       padding: const EdgeInsets.all(16),
       itemCount: orders.length,
       itemBuilder: (context, index) {
-        return _buildOrderCard(orders[index]);
+        return _buildOrderCard(context, orders[index]);
       },
     );
   }
 
-  Widget _buildOrderCard(RestaurantOrder order) {
+  Widget _buildOrderCard(BuildContext context, RestaurantOrder order) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
+        gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
@@ -306,7 +326,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getStatusColor(order.status).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -349,7 +370,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   color: AppTheme.secondaryBackground,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.person, size: 16, color: AppTheme.mutedText),
+                child: const Icon(Icons.person,
+                    size: 16, color: AppTheme.mutedText),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -379,7 +401,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
           // Address
           Row(
             children: [
-              const Icon(Icons.location_on, size: 14, color: AppTheme.mutedText),
+              const Icon(Icons.location_on,
+                  size: 14, color: AppTheme.mutedText),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -398,27 +421,27 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
           ),
           // Items
           ...order.items.map((item) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${item.quantity}x ${item.name}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.secondaryText,
-                  ),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${item.quantity}x ${item.name}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.secondaryText,
+                      ),
+                    ),
+                    Text(
+                      'MK${(item.price * item.quantity).toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.primaryText,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  'MK${(item.price * item.quantity).toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.primaryText,
-                  ),
-                ),
-              ],
-            ),
-          )),
+              )),
           const Divider(height: 16),
           // Total
           Row(
@@ -442,9 +465,9 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               ),
             ],
           ),
-          
+
           // ========== ACTION BUTTONS - CENTERED WITH REDUCED SIZE ==========
-          
+
           // For Pending Orders - Accept/Decline buttons (centered, reduced size)
           if (_selectedTab == 'Active' && order.status == OrderStatus.pending)
             const SizedBox(height: 16),
@@ -461,7 +484,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
-                          side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
+                          side: BorderSide(
+                              color: AppTheme.error.withOpacity(0.5)),
                         ),
                       ),
                       child: const Text(
@@ -500,7 +524,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 ],
               ),
             ),
-          
+
           // For Confirmed Orders - Start Preparing button (centered, reduced size)
           if (_selectedTab == 'Active' && order.status == OrderStatus.confirmed)
             const SizedBox(height: 16),
@@ -536,7 +560,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 ),
               ),
             ),
-          
+
           // For Preparing Orders - Ready button (centered, reduced size, GREEN)
           if (_selectedTab == 'Active' && order.status == OrderStatus.preparing)
             const SizedBox(height: 16),
@@ -572,10 +596,9 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 ),
               ),
             ),
-          
+
           // For Ready Orders - Picked Up button (centered, reduced size)
-          if (_selectedTab == 'Ready')
-            const SizedBox(height: 16),
+          if (_selectedTab == 'Ready') const SizedBox(height: 16),
           if (_selectedTab == 'Ready')
             Center(
               child: SizedBox(
@@ -592,7 +615,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.local_shipping, size: 14, color: AppTheme.teal),
+                      Icon(Icons.local_shipping,
+                          size: 14, color: AppTheme.teal),
                       SizedBox(width: 6),
                       Text(
                         'Picked Up',

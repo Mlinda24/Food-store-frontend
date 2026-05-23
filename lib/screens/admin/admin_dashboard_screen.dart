@@ -89,19 +89,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       items: _menuItems,
       onLogout: _handleLogout,
       child: Scaffold(
-        backgroundColor: AppTheme.mainBackground,
+        backgroundColor: AppTheme.getBackgroundColor(context),
         appBar: AppBar(
-          backgroundColor: AppTheme.mainBackground,
+          backgroundColor: AppTheme.getBackgroundColor(context),
           elevation: 0,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 adminName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryText,
+                  color: AppTheme.getPrimaryTextColor(context),
                 ),
               ),
               const SizedBox(height: 2),
@@ -109,7 +109,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 'Admin Dashboard',
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppTheme.mutedText,
+                  color: AppTheme.getMutedTextColor(context),
                 ),
               ),
             ],
@@ -131,11 +131,11 @@ class _AdminDashboardContent extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Stats Cards Row 1
           Row(
             children: [
               Expanded(
                 child: _buildStatCard(
+                  context,
                   title: 'Total Users',
                   value: '1,245',
                   icon: Icons.people,
@@ -146,6 +146,7 @@ class _AdminDashboardContent extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
+                  context,
                   title: 'Restaurants',
                   value: '87',
                   icon: Icons.restaurant,
@@ -160,6 +161,7 @@ class _AdminDashboardContent extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildStatCard(
+                  context,
                   title: 'Active Drivers',
                   value: '32',
                   icon: Icons.delivery_dining,
@@ -170,6 +172,7 @@ class _AdminDashboardContent extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
+                  context,
                   title: 'Total Orders',
                   value: '3,420',
                   icon: Icons.receipt,
@@ -184,6 +187,7 @@ class _AdminDashboardContent extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildStatCard(
+                  context,
                   title: 'Total Revenue',
                   value: 'MK1.24M',
                   icon: Icons.attach_money,
@@ -194,6 +198,7 @@ class _AdminDashboardContent extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
+                  context,
                   title: 'Active Orders',
                   value: '28',
                   icon: Icons.shopping_bag,
@@ -205,27 +210,27 @@ class _AdminDashboardContent extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           
-          // Pending Approvals Section
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: AppTheme.cardGlowGradient,
+              gradient: AppTheme.cardGlowGradient(context),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Pending Approvals',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryText,
+                    color: AppTheme.getPrimaryTextColor(context),
                   ),
                 ),
                 const SizedBox(height: 16),
                 _buildPendingItem(
+                  context,
                   title: 'Restaurant Approvals',
                   count: 5,
                   icon: Icons.restaurant,
@@ -233,6 +238,7 @@ class _AdminDashboardContent extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _buildPendingItem(
+                  context,
                   title: 'Driver Applications',
                   count: 3,
                   icon: Icons.delivery_dining,
@@ -240,6 +246,7 @@ class _AdminDashboardContent extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _buildPendingItem(
+                  context,
                   title: 'Customer Complaints',
                   count: 2,
                   icon: Icons.report_problem,
@@ -250,13 +257,12 @@ class _AdminDashboardContent extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           
-          // Recent Activity
-          const Text(
+          Text(
             'Recent Activity',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppTheme.primaryText,
+              color: AppTheme.getPrimaryTextColor(context),
             ),
           ),
           const SizedBox(height: 12),
@@ -265,7 +271,7 @@ class _AdminDashboardContent extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: 3,
             itemBuilder: (context, index) {
-              return _buildActivityItem(index);
+              return _buildActivityItem(context, index);
             },
           ),
         ],
@@ -273,7 +279,8 @@ class _AdminDashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatCard(
+    BuildContext context, {
     required String title,
     required String value,
     required IconData icon,
@@ -283,7 +290,7 @@ class _AdminDashboardContent extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
+        gradient: AppTheme.cardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
@@ -314,10 +321,10 @@ class _AdminDashboardContent extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: AppTheme.primaryText,
+              color: AppTheme.getPrimaryTextColor(context),
             ),
           ),
           const SizedBox(height: 4),
@@ -325,7 +332,7 @@ class _AdminDashboardContent extends StatelessWidget {
             title,
             style: TextStyle(
               fontSize: 12,
-              color: AppTheme.secondaryText,
+              color: AppTheme.getSecondaryTextColor(context),
             ),
           ),
         ],
@@ -333,7 +340,8 @@ class _AdminDashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildPendingItem({
+  Widget _buildPendingItem(
+    BuildContext context, {
     required String title,
     required int count,
     required IconData icon,
@@ -342,7 +350,7 @@ class _AdminDashboardContent extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.secondaryBackground,
+        color: AppTheme.getSurfaceColor(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -359,10 +367,10 @@ class _AdminDashboardContent extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: AppTheme.primaryText,
+                color: AppTheme.getPrimaryTextColor(context),
               ),
             ),
           ),
@@ -392,7 +400,7 @@ class _AdminDashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildActivityItem(int index) {
+  Widget _buildActivityItem(BuildContext context, int index) {
     final List<Map<String, String>> activities = [
       {'action': 'New restaurant registered', 'user': 'Luigi\'s Pizza', 'time': '5 min ago'},
       {'action': 'Driver application submitted', 'user': 'John Doe', 'time': '15 min ago'},
@@ -404,7 +412,7 @@ class _AdminDashboardContent extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.cardBackground,
+        color: AppTheme.getCardColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
@@ -414,10 +422,10 @@ class _AdminDashboardContent extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.secondaryBackground,
+              color: AppTheme.getSurfaceColor(context),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.notifications, size: 20, color: AppTheme.mutedText),
+            child: Icon(Icons.notifications, size: 20, color: AppTheme.getMutedTextColor(context)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -426,9 +434,9 @@ class _AdminDashboardContent extends StatelessWidget {
               children: [
                 Text(
                   activity['action']!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w500,
-                    color: AppTheme.primaryText,
+                    color: AppTheme.getPrimaryTextColor(context),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -436,7 +444,7 @@ class _AdminDashboardContent extends StatelessWidget {
                   activity['user']!,
                   style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.secondaryText,
+                    color: AppTheme.getSecondaryTextColor(context),
                   ),
                 ),
               ],
@@ -446,7 +454,7 @@ class _AdminDashboardContent extends StatelessWidget {
             activity['time']!,
             style: TextStyle(
               fontSize: 11,
-              color: AppTheme.mutedText,
+              color: AppTheme.getMutedTextColor(context),
             ),
           ),
         ],
@@ -458,6 +466,19 @@ class _AdminDashboardContent extends StatelessWidget {
 // User Management Content
 class _UserManagementContent extends StatelessWidget {
   const _UserManagementContent();
+
+  Color _getRoleColor(String role) {
+    switch (role) {
+      case 'Customer':
+        return AppTheme.primaryRed;
+      case 'Restaurant':
+        return AppTheme.warning;
+      case 'Driver':
+        return AppTheme.teal;
+      default:
+        return const Color(0xFF8A8A8A);  // AppTheme.mutedText color value
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -474,12 +495,11 @@ class _UserManagementContent extends StatelessWidget {
       itemCount: users.length,
       itemBuilder: (context, index) {
         final user = users[index];
-
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            gradient: AppTheme.cardGlowGradient,
+            gradient: AppTheme.cardGlowGradient(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
           ),
@@ -489,10 +509,10 @@ class _UserManagementContent extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: AppTheme.secondaryBackground,
+                  color: AppTheme.getSurfaceColor(context),
                   borderRadius: BorderRadius.circular(25),
                 ),
-                child: const Icon(Icons.person, size: 25, color: AppTheme.mutedText),
+                child: Icon(Icons.person, size: 25, color: AppTheme.getMutedTextColor(context)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -501,16 +521,16 @@ class _UserManagementContent extends StatelessWidget {
                   children: [
                     Text(
                       user['name']!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText,
+                        color: AppTheme.getPrimaryTextColor(context),
                       ),
                     ),
                     Text(
                       user['email']!,
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.secondaryText,
+                        color: AppTheme.getSecondaryTextColor(context),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -543,9 +563,7 @@ class _UserManagementContent extends StatelessWidget {
                             user['status']!,
                             style: TextStyle(
                               fontSize: 10,
-                              color: user['status'] == 'Active'
-                                  ? AppTheme.success
-                                  : AppTheme.error,
+                              color: user['status'] == 'Active' ? AppTheme.success : AppTheme.error,
                             ),
                           ),
                         ),
@@ -555,7 +573,7 @@ class _UserManagementContent extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.more_vert, color: AppTheme.mutedText),
+                icon: Icon(Icons.more_vert, color: AppTheme.getMutedTextColor(context)),
                 onPressed: () {},
               ),
             ],
@@ -563,19 +581,6 @@ class _UserManagementContent extends StatelessWidget {
         );
       },
     );
-  }
-
-  Color _getRoleColor(String role) {
-    switch (role) {
-      case 'Customer':
-        return AppTheme.primaryRed;
-      case 'Restaurant':
-        return AppTheme.warning;
-      case 'Driver':
-        return AppTheme.teal;
-      default:
-        return AppTheme.mutedText;
-    }
   }
 }
 
@@ -585,124 +590,12 @@ class _RestaurantManagementContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> restaurants = [
-      {'name': 'Luigi\'s Pizza', 'owner': 'Luigi', 'status': 'Active', 'orders': 145, 'rating': 4.8},
-      {'name': 'Burger King', 'owner': 'BK Corp', 'status': 'Pending', 'orders': 0, 'rating': 0},
-      {'name': 'Sushi Master', 'owner': 'Tanaka', 'status': 'Active', 'orders': 89, 'rating': 4.5},
-      {'name': 'Tasty Bites', 'owner': 'Smith', 'status': 'Active', 'orders': 234, 'rating': 4.7},
-      {'name': 'Flame Grill', 'owner': 'Johnson', 'status': 'Suspended', 'orders': 45, 'rating': 3.9},
-    ];
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: restaurants.length,
-      itemBuilder: (context, index) {
-        final restaurant = restaurants[index];
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: AppTheme.cardGlowGradient,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppTheme.secondaryBackground,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.restaurant, size: 25, color: AppTheme.mutedText),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      restaurant['name'] as String,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText,
-                      ),
-                    ),
-                    Text(
-                      'Owner: ${restaurant['owner']}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.secondaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        if ((restaurant['rating'] as double) > 0)
-                          Row(
-                            children: [
-                              const Icon(Icons.star, size: 12, color: AppTheme.yellow),
-                              const SizedBox(width: 2),
-                              Text(
-                                restaurant['rating'].toString(),
-                                style: TextStyle(fontSize: 11, color: AppTheme.secondaryText),
-                              ),
-                              const SizedBox(width: 12),
-                            ],
-                          ),
-                        Text(
-                          '${restaurant['orders']} orders',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.mutedText,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(restaurant['status'] as String),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          restaurant['status'] as String,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _getStatusColor(restaurant['status'] as String),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.more_vert, color: AppTheme.mutedText),
-                onPressed: () {},
-              ),
-            ],
-          ),
-        );
-      },
+    return Center(
+      child: Text(
+        'Restaurant Management',
+        style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+      ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Active':
-        return AppTheme.success;
-      case 'Pending':
-        return AppTheme.warning;
-      case 'Suspended':
-        return AppTheme.error;
-      default:
-        return AppTheme.mutedText;
-    }
   }
 }
 
@@ -712,124 +605,12 @@ class _DriverManagementContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> drivers = [
-      {'name': 'Mike Johnson', 'phone': '+265 888 123 456', 'status': 'Active', 'deliveries': 342, 'rating': 4.9},
-      {'name': 'David Brown', 'phone': '+265 999 789 012', 'status': 'Pending', 'deliveries': 0, 'rating': 0},
-      {'name': 'Chris Wilson', 'phone': '+265 777 456 789', 'status': 'Active', 'deliveries': 156, 'rating': 4.7},
-      {'name': 'Alex Turner', 'phone': '+265 666 321 654', 'status': 'Inactive', 'deliveries': 89, 'rating': 4.5},
-      {'name': 'Sam Lee', 'phone': '+265 555 987 321', 'status': 'Active', 'deliveries': 278, 'rating': 4.8},
-    ];
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: drivers.length,
-      itemBuilder: (context, index) {
-        final driver = drivers[index];
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: AppTheme.cardGlowGradient,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppTheme.secondaryBackground,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: const Icon(Icons.delivery_dining, size: 25, color: AppTheme.mutedText),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      driver['name'] as String,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText,
-                      ),
-                    ),
-                    Text(
-                      driver['phone'] as String,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.secondaryText,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        if ((driver['rating'] as double) > 0)
-                          Row(
-                            children: [
-                              const Icon(Icons.star, size: 12, color: AppTheme.yellow),
-                              const SizedBox(width: 2),
-                              Text(
-                                driver['rating'].toString(),
-                                style: TextStyle(fontSize: 11, color: AppTheme.secondaryText),
-                              ),
-                              const SizedBox(width: 12),
-                            ],
-                          ),
-                        Text(
-                          '${driver['deliveries']} deliveries',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.mutedText,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(driver['status'] as String),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          driver['status'] as String,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _getStatusColor(driver['status'] as String),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.more_vert, color: AppTheme.mutedText),
-                onPressed: () {},
-              ),
-            ],
-          ),
-        );
-      },
+    return Center(
+      child: Text(
+        'Driver Management',
+        style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+      ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Active':
-        return AppTheme.success;
-      case 'Pending':
-        return AppTheme.warning;
-      case 'Inactive':
-        return AppTheme.error;
-      default:
-        return AppTheme.mutedText;
-    }
   }
 }
 
@@ -839,104 +620,10 @@ class _ReportsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Revenue Chart Placeholder
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: AppTheme.cardGlowGradient,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Revenue Overview',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryText,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  height: 200,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppTheme.secondaryBackground,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'Revenue Chart',
-                      style: TextStyle(color: AppTheme.mutedText),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Order Stats
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: AppTheme.cardGlowGradient,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Order Statistics',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryText,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildReportRow('Total Orders', '3,420'),
-                _buildReportRow('Completed Orders', '3,124'),
-                _buildReportRow('Active Orders', '28'),
-                _buildReportRow('Cancelled Orders', '268'),
-                _buildReportRow('Average Order Value', 'MK3,640'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReportRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.secondaryText,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryText,
-            ),
-          ),
-        ],
+    return Center(
+      child: Text(
+        'Reports',
+        style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
       ),
     );
   }

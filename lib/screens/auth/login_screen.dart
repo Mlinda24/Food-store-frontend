@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
-import '../../config/theme.dart';
+import '../../utils/theme.dart';
 import '../../models/models.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -77,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 70,
                     width: 70,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryButtonGradient,
+                      gradient: AppTheme.primaryButton,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -195,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     height: 44,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryButtonGradient,
+                      gradient: AppTheme.primaryButton,
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: ElevatedButton(

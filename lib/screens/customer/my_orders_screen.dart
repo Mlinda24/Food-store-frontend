@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';  // Add this import
+import 'package:go_router/go_router.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../utils/theme.dart';
 import '../../models/models.dart';
 
 class MyOrdersScreen extends StatefulWidget {
@@ -72,17 +73,37 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     final orderProvider = Provider.of<OrderProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Orders')),
+      backgroundColor: AppTheme.mainBackground,
+      appBar: AppBar(
+        title: const Text('My Orders'),
+        backgroundColor: AppTheme.mainBackground,
+        foregroundColor: AppTheme.primaryText,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppTheme.primaryText),
+          onPressed: () => context.pop(), // Navigate back to previous page
+        ),
+      ),
       body: orderProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : orderProvider.orders.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.receipt, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text('No orders yet'),
+                      Icon(
+                        Icons.receipt,
+                        size: 64,
+                        color: AppTheme.mutedText,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No orders yet',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppTheme.secondaryText,
+                        ),
+                      ),
                     ],
                   ),
                 )
@@ -93,6 +114,11 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     final order = orderProvider.orders[index];
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16),
+                      color: AppTheme.cardBackground,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+                      ),
                       child: InkWell(
                         onTap: () {
                           context.go('/order-tracking', extra: order);
@@ -110,6 +136,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                     'Order #${order.id}',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      color: AppTheme.primaryText,
                                     ),
                                   ),
                                   Container(
@@ -135,14 +162,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                               const SizedBox(height: 8),
                               Text(
                                 '${order.items.length} items',
-                                style: const TextStyle(fontSize: 14),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppTheme.secondaryText,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '\$${order.total.toStringAsFixed(2)}',
+                                'MK${order.total.toStringAsFixed(0)}',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryRed,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -150,7 +181,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                 '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: AppTheme.mutedText,
                                 ),
                               ),
                             ],
