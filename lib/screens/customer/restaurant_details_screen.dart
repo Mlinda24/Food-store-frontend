@@ -152,39 +152,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       restaurantId: restaurant.id,
       restaurantName: restaurant.name,
     );
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text('${item.name} added to cart'),
-          duration: const Duration(seconds: 1),
-          backgroundColor: AppTheme.success),
-    );
+    // No snackbar – silent addition
     setState(() {});
-  }
-
-  void _updateQuantity(MenuItem item, int newQuantity) {
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    if (newQuantity <= 0) {
-      cartProvider.removeItem(item.id);
-    } else {
-      cartProvider.updateQuantity(item.id, newQuantity);
-    }
-    setState(() {});
-  }
-
-  int _getQuantity(String itemId) {
-    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    final cartItem = cartProvider.items.firstWhere(
-      (i) => i.menuItemId == itemId,
-      orElse: () => CartItem(
-        menuItemId: '',
-        name: '',
-        quantity: 0,
-        price: 0,
-        restaurantId: '',
-        restaurantName: '',
-      ),
-    );
-    return cartItem.quantity;
   }
 
   void _goToCart() {
@@ -212,19 +181,53 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         ),
         centerTitle: true,
         actions: [
-          TextButton(
-            onPressed: _goToCart,
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primaryRed,
-              textStyle: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            child: const Text('View Cart'),
+          // Cart icon with badge (no text button)
+          Consumer<CartProvider>(
+            builder: (context, cartProvider, child) {
+              final itemCount = cartProvider.itemCount;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.shopping_cart_outlined,
+                        color: AppTheme.getPrimaryTextColor(context)),
+                    onPressed: _goToCart,
+                    tooltip: 'View Cart', // shows on long press / hover
+                  ),
+                  if (itemCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryRed,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$itemCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Restaurant info card
             Container(
               padding: const EdgeInsets.all(16),
               color: AppTheme.getCardColor(context),
@@ -343,6 +346,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 ],
               ),
             ),
+            // Categories filter
             SizedBox(
               height: 50,
               child: ListView.builder(
@@ -387,6 +391,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 },
               ),
             ),
+            // Menu list – each item has a cart icon, no quantity
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -400,7 +405,6 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
                   ..._menuItems.map((item) {
-                    final quantity = _getQuantity(item.id);
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
@@ -456,48 +460,12 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                               ],
                             ),
                           ),
-                          Container(
-                            decoration: BoxDecoration(
-                                color: AppTheme.getSurfaceColor(context),
-                                borderRadius: BorderRadius.circular(25)),
-                            child: Row(
-                              children: [
-                                if (quantity > 0)
-                                  IconButton(
-                                    onPressed: () =>
-                                        _updateQuantity(item, quantity - 1),
-                                    icon: const Icon(Icons.remove,
-                                        size: 16,
-                                        color: AppTheme.primaryRed),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                if (quantity > 0)
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(horizontal: 8),
-                                    child: Text(
-                                      '$quantity',
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppTheme
-                                              .getPrimaryTextColor(context)),
-                                    ),
-                                  ),
-                                IconButton(
-                                  onPressed: () => _addToCart(item),
-                                  icon: Icon(
-                                      quantity == 0
-                                          ? Icons.add_shopping_cart
-                                          : Icons.add,
-                                      size: 16,
-                                      color: AppTheme.primaryRed),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ],
-                            ),
+                          // Cart icon to add item
+                          IconButton(
+                            onPressed: () => _addToCart(item),
+                            icon: Icon(Icons.shopping_cart_outlined,
+                                size: 24, color: AppTheme.primaryRed),
+                            tooltip: 'Add to cart',
                           ),
                         ],
                       ),

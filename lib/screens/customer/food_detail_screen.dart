@@ -57,17 +57,15 @@ class FoodDetailScreen extends StatelessWidget {
     );
     cartProvider.addItem(menuItem, restaurantId: item['restaurantId'], restaurantName: item['restaurant']);
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${item['name']} added to cart'),
-        duration: const Duration(seconds: 1),
-        backgroundColor: AppTheme.success,
-      ),
-    );
+    // ❌ Snackbar removed – no message
   }
 
   void _navigateToFoodDetail(BuildContext context, Map<String, dynamic> item) {
     context.push('/food-detail', extra: item);
+  }
+
+  void _goToCart(BuildContext context) {
+    context.push('/cart');
   }
 
   @override
@@ -89,13 +87,7 @@ class FoodDetailScreen extends StatelessWidget {
       );
       cartProvider.addItem(menuItem, restaurantId: food['restaurantId'], restaurantName: food['restaurant']);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${food['name']} added to cart'),
-          duration: const Duration(seconds: 1),
-          backgroundColor: AppTheme.success,
-        ),
-      );
+      // ❌ Snackbar removed – no message
     }
 
     return Scaffold(
@@ -116,6 +108,49 @@ class FoodDetailScreen extends StatelessWidget {
           ),
         ),
         centerTitle: true,
+        // ✅ Cart icon with badge
+        actions: [
+          Consumer<CartProvider>(
+            builder: (context, cartProvider, child) {
+              final itemCount = cartProvider.itemCount;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.shopping_cart_outlined,
+                        color: AppTheme.getPrimaryTextColor(context)),
+                    onPressed: () => _goToCart(context),
+                    tooltip: 'View Cart',
+                  ),
+                  if (itemCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryRed,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$itemCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -146,7 +181,7 @@ class FoodDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Food Name and Rating Row - Fixed overflow
+                  // Food Name and Rating Row
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -305,7 +340,7 @@ class FoodDetailScreen extends StatelessWidget {
                   
                   const SizedBox(height: 24),
                   
-                  // Popular Items Section
+                  // Popular Items Section - with reduced card sizes
                   if (popularMeals.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,7 +375,7 @@ class FoodDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         SizedBox(
-                          height: 260,
+                          height: 210, // reduced from 260
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             itemCount: popularMeals.length,
@@ -351,7 +386,7 @@ class FoodDetailScreen extends StatelessWidget {
                                   _navigateToFoodDetail(context, item);
                                 },
                                 child: Container(
-                                  width: 160,
+                                  width: 140, // reduced from 160
                                   margin: const EdgeInsets.only(right: 12),
                                   decoration: BoxDecoration(
                                     gradient: AppTheme.cardGlowGradient(context),
@@ -363,9 +398,9 @@ class FoodDetailScreen extends StatelessWidget {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // Image Container
+                                      // Image Container - smaller
                                       Container(
-                                        height: 110,
+                                        height: 90, // reduced from 110
                                         width: double.infinity,
                                         decoration: BoxDecoration(
                                           color: AppTheme.getSurfaceColor(context),
@@ -377,13 +412,13 @@ class FoodDetailScreen extends StatelessWidget {
                                         child: Center(
                                           child: Icon(
                                             Icons.fastfood,
-                                            size: 40,
+                                            size: 35, // reduced from 40
                                             color: AppTheme.getMutedTextColor(context),
                                           ),
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.all(10),
+                                        padding: const EdgeInsets.all(8), // reduced from 10
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
@@ -391,7 +426,7 @@ class FoodDetailScreen extends StatelessWidget {
                                             Text(
                                               item['restaurant'],
                                               style: TextStyle(
-                                                fontSize: 10,
+                                                fontSize: 9, // reduced from 10
                                                 color: AppTheme.getSecondaryTextColor(context),
                                               ),
                                               maxLines: 1,
@@ -402,7 +437,7 @@ class FoodDetailScreen extends StatelessWidget {
                                             Text(
                                               item['name'],
                                               style: TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 11, // reduced from 12
                                                 fontWeight: FontWeight.bold,
                                                 color: AppTheme.getPrimaryTextColor(context),
                                               ),
@@ -416,12 +451,12 @@ class FoodDetailScreen extends StatelessWidget {
                                               children: [
                                                 Row(
                                                   children: [
-                                                    const Icon(Icons.star, size: 10, color: AppTheme.yellow),
+                                                    const Icon(Icons.star, size: 9, color: AppTheme.yellow), // reduced from 10
                                                     const SizedBox(width: 2),
                                                     Text(
                                                       item['rating'].toString(),
                                                       style: TextStyle(
-                                                        fontSize: 10,
+                                                        fontSize: 9, // reduced from 10
                                                         color: AppTheme.getSecondaryTextColor(context),
                                                       ),
                                                     ),
@@ -430,18 +465,18 @@ class FoodDetailScreen extends StatelessWidget {
                                                 Text(
                                                   item['price'],
                                                   style: TextStyle(
-                                                    fontSize: 10,
+                                                    fontSize: 9, // reduced from 10
                                                     fontWeight: FontWeight.bold,
                                                     color: AppTheme.primaryRed,
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 6),
-                                            // Add to Cart Button
+                                            const SizedBox(height: 4), // reduced from 6
+                                            // Add to Cart Button - smaller
                                             Container(
                                               width: double.infinity,
-                                              height: 28,
+                                              height: 26, // reduced from 28
                                               decoration: BoxDecoration(
                                                 color: AppTheme.getSurfaceColor(context),
                                                 borderRadius: BorderRadius.circular(20),
@@ -452,12 +487,12 @@ class FoodDetailScreen extends StatelessWidget {
                                                 },
                                                 style: TextButton.styleFrom(
                                                   padding: EdgeInsets.zero,
-                                                  minimumSize: const Size(0, 28),
+                                                  minimumSize: const Size(0, 26),
                                                 ),
                                                 child: Text(
                                                   'Add to Cart',
                                                   style: TextStyle(
-                                                    fontSize: 10,
+                                                    fontSize: 9, // reduced from 10
                                                     fontWeight: FontWeight.w500,
                                                     color: AppTheme.primaryRed,
                                                   ),

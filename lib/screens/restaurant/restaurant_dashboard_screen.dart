@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/models.dart';
 import 'restaurant_orders_screen.dart';
 import 'menu_management_screen.dart';
+import 'restaurant_profile_screen.dart'; // ✅ added import for profile screen
 
 class RestaurantDashboardScreen extends StatefulWidget {
   const RestaurantDashboardScreen({super.key});
@@ -528,45 +529,6 @@ class __SettingsContentState extends State<_SettingsContent> {
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.deepCrimson.withOpacity(0.3),
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: AppTheme.primaryRed, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.getPrimaryTextColor(context),
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppTheme.getSecondaryTextColor(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -579,7 +541,7 @@ class __SettingsContentState extends State<_SettingsContent> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Profile Header
+          // Profile Header (avatar, name, email, phone) – kept as is
           Container(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -628,43 +590,7 @@ class __SettingsContentState extends State<_SettingsContent> {
             ),
           ),
           
-          // Stats Cards
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    icon: Icons.shopping_bag_outlined,
-                    label: 'Total Orders',
-                    value: '42',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    icon: Icons.star_outline,
-                    label: 'Rating',
-                    value: '4.8',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    icon: Icons.menu_book_outlined,
-                    label: 'Menu Items',
-                    value: '12',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          
-          // ========== RESTAURANT STATUS ROW (below stats cards) ==========
+          // ========== RESTAURANT STATUS ROW ==========
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -689,7 +615,6 @@ class __SettingsContentState extends State<_SettingsContent> {
                     color: AppTheme.getPrimaryTextColor(context),
                   ),
                 ),
-                // Minimal toggle (exactly as before)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: BoxDecoration(
@@ -745,50 +670,15 @@ class __SettingsContentState extends State<_SettingsContent> {
             ),
           ),
           
+          // ✅ NEW: Profile button (navigates to RestaurantProfileScreen)
           _buildSettingsItem(
             context,
-            icon: Icons.restaurant_outlined,
-            title: 'Restaurant Details',
-            subtitle: 'View and edit your restaurant information',
+            icon: Icons.person_outline,
+            title: 'Profile',
+            subtitle: 'View and edit your profile information',
             onTap: () {
               context.push('/restaurant-profile');
             },
-          ),
-          
-          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-          
-          _buildSettingsItem(
-            context,
-            icon: Icons.menu_book_outlined,
-            title: 'Menu Management',
-            subtitle: 'Manage your menu items',
-            onTap: () {
-              final state = context.findAncestorStateOfType<_RestaurantDashboardScreenState>();
-              if (state != null) {
-                state.setState(() {
-                  state._selectedIndex = 2;
-                });
-              }
-            },
-            iconColor: AppTheme.orange,
-          ),
-          
-          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-          
-          _buildSettingsItem(
-            context,
-            icon: Icons.receipt_outlined,
-            title: 'Order History',
-            subtitle: 'View all your orders',
-            onTap: () {
-              final state = context.findAncestorStateOfType<_RestaurantDashboardScreenState>();
-              if (state != null) {
-                state.setState(() {
-                  state._selectedIndex = 1;
-                });
-              }
-            },
-            iconColor: AppTheme.teal,
           ),
           
           const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
@@ -816,17 +706,6 @@ class __SettingsContentState extends State<_SettingsContent> {
             onTap: () => _showLanguageDialog(context),
           ),
           
-          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-          
-          _buildSettingsItem(
-            context,
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
-            subtitle: 'Manage your notification preferences',
-            onTap: () {
-              context.push('/notifications');
-            },
-          ),
           
           const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
           

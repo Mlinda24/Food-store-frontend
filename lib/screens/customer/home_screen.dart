@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
 import '../../widgets/customer/restaurant_card.dart';
 import '../../widgets/customer/category_chip.dart';
 import '../../widgets/customer/featured_meal_card.dart';
@@ -139,11 +140,9 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         _isSearching = true;
         final lowerQuery = query.toLowerCase();
-        // Search in restaurants
         final restaurantMatches = _topRestaurants.where((r) =>
             r['name'].toString().toLowerCase().contains(lowerQuery) ||
             r['cuisine'].toString().toLowerCase().contains(lowerQuery)).toList();
-        // Search in meals
         final mealMatches = _featuredMeals.where((m) =>
             m['name'].toString().toLowerCase().contains(lowerQuery) ||
             m['restaurant'].toString().toLowerCase().contains(lowerQuery) ||
@@ -163,7 +162,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onSearchSubmitted(String query) {
     if (query.trim().isNotEmpty) {
-      // Keep search mode and show results
       _onSearchChanged(query);
     }
   }
@@ -176,15 +174,12 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         break;
       case 1:
-        context.push('/search');
-        break;
-      case 2:
         context.push('/cart');
         break;
-      case 3:
+      case 2:
         context.push('/my-orders');
         break;
-      case 4:
+      case 3:
         context.push('/settings');
         break;
     }
@@ -424,41 +419,99 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppTheme.getCardColor(context),
-        selectedItemColor: AppTheme.primaryRed,
-        unselectedItemColor: AppTheme.getMutedTextColor(context),
-        elevation: 8,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search_outlined),
-            activeIcon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart_outlined),
-            activeIcon: Icon(Icons.shopping_cart),
-            label: 'Cart',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_outlined),
-            activeIcon: Icon(Icons.receipt),
-            label: 'Orders',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            activeIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+      bottomNavigationBar: Consumer<CartProvider>(
+        builder: (context, cartProvider, child) {
+          final itemCount = cartProvider.itemCount;
+          return BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: AppTheme.getCardColor(context),
+            selectedItemColor: AppTheme.primaryRed,
+            unselectedItemColor: AppTheme.getMutedTextColor(context),
+            elevation: 8,
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Stack(
+                  children: [
+                    const Icon(Icons.shopping_cart_outlined),
+                    if (itemCount > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryRed,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 14,
+                            minHeight: 14,
+                          ),
+                          child: Text(
+                            '$itemCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                activeIcon: Stack(
+                  children: [
+                    const Icon(Icons.shopping_cart),
+                    if (itemCount > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryRed,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 14,
+                            minHeight: 14,
+                          ),
+                          child: Text(
+                            '$itemCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                label: 'Cart',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.receipt_outlined),
+                activeIcon: Icon(Icons.receipt),
+                label: 'Orders',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.settings_outlined),
+                activeIcon: Icon(Icons.settings),
+                label: 'Settings',
+              ),
+            ],
+          );
+        },
       ),
     );
   }
