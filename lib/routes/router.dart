@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/role_selection_screen.dart';
-import '../screens/location_gate_screen.dart'; // new import
+import '../screens/location_gate_screen.dart';
 import '../screens/customer/home_screen.dart';
 import '../screens/customer/restaurant_details_screen.dart';
 import '../screens/customer/checkout_screen.dart';
@@ -20,7 +20,7 @@ import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
 
 final GoRouter router = GoRouter(
-  initialLocation: '/location-gate', // changed from '/login'
+  initialLocation: '/location-gate',
   routes: [
     // Location gate (first screen)
     GoRoute(
@@ -49,12 +49,13 @@ final GoRouter router = GoRouter(
       name: 'search',
       builder: (context, state) => const SearchScreen(),
     ),
+    // ✅ FIXED: Use restaurantData (Map) instead of restaurant (Restaurant)
     GoRoute(
       path: '/restaurant-details',
       name: 'restaurant-details',
       builder: (context, state) {
-        final restaurant = state.extra as Restaurant?;
-        return RestaurantDetailsScreen(restaurant: restaurant);
+        final restaurantData = state.extra as Map<String, dynamic>?;
+        return RestaurantDetailsScreen(restaurantData: restaurantData);
       },
     ),
     GoRoute(

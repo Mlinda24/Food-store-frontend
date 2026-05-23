@@ -356,7 +356,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                             ),
                                           ),
                                           Text(
-                                            'MK2.99',
+                                            'MK2000.99',
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,

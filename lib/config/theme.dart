@@ -90,12 +90,14 @@ class AppTheme {
   
   // Local Poppins font family
   static const String fontFamily = 'Poppins';
+  static const List<String> fontFamilyFallback = ['Segoe UI', 'Roboto', 'sans-serif']; // fallback only if Poppins fails to load
   
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     primaryColor: primaryRed,
     fontFamily: fontFamily,
+    fontFamilyFallback: fontFamilyFallback,
     colorScheme: const ColorScheme.light(
       primary: primaryRed,
       secondary: brightAccentRed,
@@ -113,6 +115,7 @@ class AppTheme {
         fontSize: 18,
         fontWeight: FontWeight.bold,
         color: lightPrimaryText,
+        fontFamily: fontFamily,
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -123,6 +126,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+        textStyle: const TextStyle(fontFamily: fontFamily),
       ),
     ),
     cardTheme: const CardThemeData(
@@ -149,8 +153,8 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: primaryRed, width: 2),
       ),
-      hintStyle: const TextStyle(color: lightMutedText),
-      labelStyle: const TextStyle(color: lightSecondaryText),
+      hintStyle: const TextStyle(color: lightMutedText, fontFamily: fontFamily),
+      labelStyle: const TextStyle(color: lightSecondaryText, fontFamily: fontFamily),
     ),
     textTheme: const TextTheme(
       headlineLarge: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
@@ -171,6 +175,7 @@ class AppTheme {
     brightness: Brightness.dark,
     primaryColor: primaryRed,
     fontFamily: fontFamily,
+    fontFamilyFallback: fontFamilyFallback,
     colorScheme: const ColorScheme.dark(
       primary: primaryRed,
       secondary: brightAccentRed,
@@ -188,6 +193,7 @@ class AppTheme {
         fontSize: 18,
         fontWeight: FontWeight.bold,
         color: darkPrimaryText,
+        fontFamily: fontFamily,
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -198,6 +204,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+        textStyle: const TextStyle(fontFamily: fontFamily),
       ),
     ),
     cardTheme: const CardThemeData(
@@ -224,8 +231,8 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: primaryRed, width: 2),
       ),
-      hintStyle: const TextStyle(color: darkMutedText),
-      labelStyle: const TextStyle(color: darkSecondaryText),
+      hintStyle: const TextStyle(color: darkMutedText, fontFamily: fontFamily),
+      labelStyle: const TextStyle(color: darkSecondaryText, fontFamily: fontFamily),
     ),
     textTheme: const TextTheme(
       headlineLarge: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),

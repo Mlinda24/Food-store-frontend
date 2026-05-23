@@ -138,6 +138,9 @@ class ShoppingCartScreen extends StatelessWidget {
           groupedItems[restaurantKey]!.add(item);
         }
 
+        // Calculate total without tax
+        final totalWithoutTax = cartProvider.subtotal + cartProvider.deliveryFee;
+
         return Scaffold(
           backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
           appBar: AppBar(
@@ -314,7 +317,7 @@ class ShoppingCartScreen extends StatelessWidget {
                 ),
               ),
               
-              // Order Summary
+              // Order Summary (without tax)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -368,26 +371,7 @@ class ShoppingCartScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Tax (10%)',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                          ),
-                        ),
-                        Text(
-                          'MK${cartProvider.tax.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                          ),
-                        ),
-                      ],
-                    ),
+                    // Tax row removed
                     const Divider(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -401,7 +385,7 @@ class ShoppingCartScreen extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'MK${cartProvider.total.toStringAsFixed(0)}',
+                          'MK${totalWithoutTax.toStringAsFixed(0)}',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,

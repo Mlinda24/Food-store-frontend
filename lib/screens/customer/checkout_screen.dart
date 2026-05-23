@@ -61,7 +61,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     _selectedPhoneNumber = authProvider.currentUser?.phone ?? '';
     
-    // If no registered number, automatically switch to "different number" mode
     if (_selectedPhoneNumber.isEmpty) {
       _useNewPhone = true;
     }
@@ -87,7 +86,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return '${_streetNumberController.text}, ${_houseNumberController.text}${_floorNumberController.text.isNotEmpty ? ', Floor ${_floorNumberController.text}' : ''}';
   }
 
-  // If different number is selected but empty, fallback to registered number
   String _getPhoneNumber() {
     if (_useNewPhone && _newPhoneNumber.trim().isNotEmpty) {
       return _newPhoneNumber.trim();
@@ -401,23 +399,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ],
           ),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Edit Details', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showConfirmOrderDialog(total);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryRed,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
+                    ),
+                  ),
+                  child: Text('Edit Details', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                ),
               ),
-            ),
-            child: const Text('Proceed to Pay'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showConfirmOrderDialog(total);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryRed,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
+                  child: const Text('Proceed to Pay', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -474,23 +488,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ],
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _placeOrder();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryRed,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
+                    ),
+                  ),
+                  child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                ),
               ),
-            ),
-            child: const Text('Confirm Order'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _placeOrder();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryRed,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
+                  child: const Text('Confirm Order', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -861,7 +891,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 
                 const SizedBox(height: 24),
                 
-                // Phone Number Section - Modified to show optional message
+                // Phone Number Section
                 const Text(
                   'Contact Information',
                   style: TextStyle(
