@@ -11,24 +11,36 @@ class FoodDetailScreen extends StatelessWidget {
 
   const FoodDetailScreen({super.key, required this.food});
 
+  String _getImageUrl() {
+    String imagePath = food['image'] ?? '';
+    
+    if (imagePath.isEmpty) return '';
+    if (imagePath.startsWith('http')) return imagePath;
+    if (imagePath.startsWith('/media/')) return 'http://127.0.0.1:8000$imagePath';
+    return 'http://127.0.0.1:8000/media/$imagePath';
+  }
+
   void _addToCart(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    
+    String priceStr = food['price'].toString().replaceAll('MK', '').replaceAll(',', '').trim();
+    double price = double.tryParse(priceStr) ?? 0.0;
+    
     final menuItem = MenuItem(
-      id: food['id'],
-      restaurantId: food['restaurantId'],
+      id: food['id'].toString(),
+      restaurantId: food['restaurantId'].toString(),
       name: food['name'],
-      description: food['description'],
-      price: double.parse(food['price'].replaceAll('MK', '').replaceAll(',', '')),
+      description: food['description'] ?? '',
+      price: price,
       image: food['image'] ?? '',
       category: food['category'] ?? '',
       isAvailable: true,
     );
-    cartProvider.addItem(menuItem, 
-      restaurantId: food['restaurantId'], 
-      restaurantName: food['restaurant']
-    );
     
-    // Removed the snackbar notification
+    cartProvider.addItem(menuItem, 
+      restaurantId: food['restaurantId'].toString(), 
+      restaurantName: food['restaurant'] ?? ''
+    );
   }
 
   void _goToCart(BuildContext context) {
@@ -38,7 +50,8 @@ class FoodDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final imageUrl = food['image'] ?? '';
+    final imageUrl = _getImageUrl();
+    final screenWidth = MediaQuery.of(context).size.width;
     
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
@@ -105,41 +118,79 @@ class FoodDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Food Image
+            // Large image with margins - fits screen but doesn't touch borders
             Container(
-              height: 250,
-              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              width: screenWidth - 32,
+              height: 280,
               decoration: BoxDecoration(
-                gradient: AppTheme.cardGlowGradient(context),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
-                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: imageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      width: double.infinity,
-                      height: 250,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                      errorWidget: (context, url, error) => Center(
-                        child: Icon(
-                          Icons.fastfood,
-                          size: 80,
-                          color: AppTheme.getMutedTextColor(context),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        width: screenWidth - 32,
+                        height: 280,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: AppTheme.getSurfaceColor(context),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: AppTheme.getSurfaceColor(context),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.broken_image,
+                                size: 50,
+                                color: AppTheme.getMutedTextColor(context),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Image not available',
+                                style: TextStyle(
+                                  color: AppTheme.getSecondaryTextColor(context),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: AppTheme.getSurfaceColor(context),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.fastfood,
+                              size: 60,
+                              color: AppTheme.getMutedTextColor(context),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'No image available',
+                              style: TextStyle(
+                                color: AppTheme.getSecondaryTextColor(context),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    )
-                  : Center(
-                      child: Icon(
-                        Icons.fastfood,
-                        size: 80,
-                        color: AppTheme.getMutedTextColor(context),
-                      ),
-                    ),
+              ),
             ),
             
             Padding(
@@ -155,7 +206,7 @@ class FoodDetailScreen extends StatelessWidget {
                         child: Text(
                           food['name'],
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.getPrimaryTextColor(context),
                           ),
@@ -173,7 +224,7 @@ class FoodDetailScreen extends StatelessWidget {
                             const Icon(Icons.star, size: 14, color: AppTheme.yellow),
                             const SizedBox(width: 2),
                             Text(
-                              food['rating'].toString(),
+                              food['rating']?.toString() ?? '4.5',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -209,7 +260,7 @@ class FoodDetailScreen extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            food['restaurant'],
+                            food['restaurant'] ?? 'Restaurant',
                             style: TextStyle(
                               fontSize: 14,
                               color: AppTheme.primaryRed,
@@ -230,18 +281,64 @@ class FoodDetailScreen extends StatelessWidget {
                   
                   // Price
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryRed.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(25),
                     ),
                     child: Text(
                       food['price'],
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryRed,
                       ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Delivery Info Card
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.getSurfaceColor(context),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.delivery_dining, color: AppTheme.primaryRed),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Delivery',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.getPrimaryTextColor(context),
+                                ),
+                              ),
+                              Text(
+                                'MK${food['delivery_fee'] ?? 2000} • ${food['delivery_time'] ?? 30} min',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.getSecondaryTextColor(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          'Min Order: MK${food['min_order'] ?? 10}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.getSecondaryTextColor(context),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   
@@ -258,11 +355,11 @@ class FoodDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    food['description'],
+                    food['description'] ?? 'No description available',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppTheme.getSecondaryTextColor(context),
-                      height: 1.4,
+                      height: 1.5,
                     ),
                   ),
                   
@@ -271,7 +368,7 @@ class FoodDetailScreen extends StatelessWidget {
                   // Add to Cart Button
                   Container(
                     width: double.infinity,
-                    height: 50,
+                    height: 54,
                     decoration: BoxDecoration(
                       gradient: AppTheme.primaryButtonGradient,
                       borderRadius: BorderRadius.circular(30),

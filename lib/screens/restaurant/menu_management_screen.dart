@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../providers/restaurant_provider.dart';
+import '../../services/api_service.dart';
 
 class MenuManagementScreen extends StatefulWidget {
   const MenuManagementScreen({super.key});
@@ -15,31 +17,50 @@ class MenuManagementScreen extends StatefulWidget {
 
 class _MenuManagementScreenState extends State<MenuManagementScreen> {
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Pizza', 'Burgers', 'Sushi', 'Desserts', 'Drinks'];
-
-  List<String> get _availableCategories => _categories.where((c) => c != 'All').toList();
+  final List<String> _categories = ['All'];
+  final ApiService _apiService = ApiService();
+  bool _isMounted = true;
 
   @override
   void initState() {
     super.initState();
+    _isMounted = true;
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _isMounted = false;
+    super.dispose();
   }
 
   void _loadData() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<RestaurantProvider>().loadMenuItems();
+      if (_isMounted && mounted) {
+        context.read<RestaurantProvider>().loadMenuItems();
+      }
     });
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? AppTheme.error : AppTheme.success,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  void _updateCategories(List<MenuItem> items) {
+    final Set<String> cats = {'All'};
+    for (var item in items) {
+      if (item.category.isNotEmpty) {
+        cats.add(item.category);
+      }
+    }
+    if (_isMounted && mounted) {
+      setState(() {
+        _categories.clear();
+        _categories.addAll(cats);
+        if (!_categories.contains(_selectedCategory)) {
+          _selectedCategory = 'All';
+        }
+      });
+    }
   }
+
+  // REMOVED: _showSnackBar method - no more popup messages
 
   Future<void> _deleteMenuItem(MenuItem item) async {
     final confirmed = await showDialog<bool>(
@@ -90,39 +111,98 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
       ),
     );
 
-    if (confirmed == true) {
-      final success = await context.read<RestaurantProvider>().deleteMenuItem(item.id);
-      if (success) {
-        _showSnackBar('${item.name} deleted');
-      } else {
-        _showSnackBar('Failed to delete ${item.name}', isError: true);
-      }
+    if (confirmed == true && _isMounted && mounted) {
+      // Silent delete - no success message
+      await context.read<RestaurantProvider>().deleteMenuItem(item.id);
+      _loadData();
+      // NO SNACKBAR
     }
   }
 
-  Future<String?> _pickImage() async {
+  Future<XFile?> _pickImage() async {
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-      if (pickedFile != null) {
-        return pickedFile.path;
-      }
-      return null;
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      return pickedFile;
     } catch (e) {
-      _showSnackBar('Error picking image: $e', isError: true);
+      // Silent error - no snackbar
       return null;
     }
   }
 
-  Widget _buildImageWidget(String? imagePath) {
-    if (imagePath == null || imagePath.isEmpty) {
-      return Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context));
+  Widget _buildImagePreview(XFile? imageFile) {
+    if (imageFile == null) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context)),
+          const SizedBox(height: 8),
+          Text('Tap to add image', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
+        ],
+      );
     }
-    return Image.network(
-      imagePath,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 40, color: AppTheme.getMutedTextColor(context)),
+    
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        imageFile.path,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
+      ),
+    );
+  }
+
+  Widget _buildImageWidget(MenuItem item) {
+    final imageToUse = item.imageUrl.isNotEmpty ? item.imageUrl : item.image;
+    
+    if (imageToUse.isEmpty) {
+      return Container(
+        width: 60,
+        height: 60,
+        color: AppTheme.getSurfaceColor(context),
+        child: Icon(Icons.fastfood, size: 30, color: AppTheme.getMutedTextColor(context)),
+      );
+    }
+    
+    String fullUrl;
+    if (imageToUse.startsWith('http')) {
+      fullUrl = imageToUse;
+    } else if (imageToUse.startsWith('/media/')) {
+      fullUrl = 'http://127.0.0.1:8000$imageToUse';
+    } else {
+      fullUrl = 'http://127.0.0.1:8000/media/$imageToUse';
+    }
+    
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.network(
+        fullUrl,
+        fit: BoxFit.cover,
+        width: 60,
+        height: 60,
+        errorBuilder: (_, __, ___) => Container(
+          width: 60,
+          height: 60,
+          color: AppTheme.getSurfaceColor(context),
+          child: Icon(Icons.broken_image, size: 30, color: AppTheme.getMutedTextColor(context)),
+        ),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: 60,
+            height: 60,
+            color: AppTheme.getSurfaceColor(context),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -131,13 +211,15 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     final descCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
     
-    String selectedCategory = _availableCategories.isNotEmpty ? _availableCategories.first : 'Pizza';
-    String? imagePath;
+    String selectedCategory = 'General';
+    XFile? selectedImage;
+    bool isUploading = false;
+    bool dialogMounted = true;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
             backgroundColor: AppTheme.getCardColor(context),
@@ -146,157 +228,178 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
               side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
             ),
             title: const Text('Add Menu Item', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            content: SingleChildScrollView(
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: () async {
-                      final path = await _pickImage();
-                      if (path != null) setDialogState(() => imagePath = path);
-                    },
-                    child: Container(
-                      height: 120,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppTheme.getSurfaceColor(context),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.85,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        final image = await _pickImage();
+                        if (image != null && dialogMounted) {
+                          setDialogState(() => selectedImage = image);
+                        }
+                      },
+                      child: Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppTheme.getSurfaceColor(context),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+                        ),
+                        child: _buildImagePreview(selectedImage),
                       ),
-                      child: imagePath != null
-                          ? ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(imagePath!), fit: BoxFit.cover))
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context)),
-                                const SizedBox(height: 8),
-                                Text('Tap to add image', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
-                              ],
-                            ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: nameCtrl,
-                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-                    decoration: InputDecoration(
-                      labelText: 'Item Name *',
-                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                      filled: true,
-                      fillColor: AppTheme.getSurfaceColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: nameCtrl,
+                      style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                      decoration: InputDecoration(
+                        labelText: 'Item Name *',
+                        labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                        filled: true,
+                        fillColor: AppTheme.getSurfaceColor(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: descCtrl,
-                    maxLines: 2,
-                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-                    decoration: InputDecoration(
-                      labelText: 'Description',
-                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                      filled: true,
-                      fillColor: AppTheme.getSurfaceColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                      decoration: InputDecoration(
+                        labelText: 'Description',
+                        labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                        filled: true,
+                        fillColor: AppTheme.getSurfaceColor(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: priceCtrl,
-                    keyboardType: TextInputType.number,
-                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-                    decoration: InputDecoration(
-                      labelText: 'Price (MK) *',
-                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                      prefixText: 'MK ',
-                      prefixStyle: const TextStyle(color: AppTheme.primaryRed),
-                      filled: true,
-                      fillColor: AppTheme.getSurfaceColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: priceCtrl,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                      decoration: InputDecoration(
+                        labelText: 'Price (MK) *',
+                        labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                        prefixText: 'MK ',
+                        prefixStyle: const TextStyle(color: AppTheme.primaryRed),
+                        filled: true,
+                        fillColor: AppTheme.getSurfaceColor(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _availableCategories.contains(selectedCategory) ? selectedCategory : null,
-                    hint: const Text('Select Category'),
-                    dropdownColor: AppTheme.getCardColor(context),
-                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-                    decoration: InputDecoration(
-                      labelText: 'Category',
-                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                      filled: true,
-                      fillColor: AppTheme.getSurfaceColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: TextEditingController(text: selectedCategory),
+                      style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                      decoration: InputDecoration(
+                        labelText: 'Category',
+                        labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                        hintText: 'e.g., Pizza, Burgers, Desserts',
+                        filled: true,
+                        fillColor: AppTheme.getSurfaceColor(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                      onChanged: (value) {
+                        if (dialogMounted) {
+                          setDialogState(() => selectedCategory = value.trim().isEmpty ? 'General' : value.trim());
+                        }
+                      },
                     ),
-                    items: _availableCategories.map((category) => DropdownMenuItem(
-                      value: category,
-                      child: Text(category, style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-                    )).toList(),
-                    onChanged: (value) => setDialogState(() => selectedCategory = value!),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             actions: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
-                        ),
-                      ),
-                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
-                    ),
+              TextButton(
+                onPressed: () {
+                  dialogMounted = false;
+                  Navigator.pop(context);
+                },
+                style: TextButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (nameCtrl.text.isEmpty) {
-                          _showSnackBar('Please enter item name', isError: true);
-                          return;
-                        }
-                        if (priceCtrl.text.isEmpty) {
-                          _showSnackBar('Please enter price', isError: true);
-                          return;
-                        }
-                        
-                        final priceValue = double.tryParse(priceCtrl.text);
-                        if (priceValue == null) {
-                          _showSnackBar('Please enter a valid price', isError: true);
-                          return;
-                        }
-                        
-                        final itemData = {
-                          'name': nameCtrl.text.trim(),
-                          'description': descCtrl.text.trim(),
-                          'price': priceValue,
-                          'category': selectedCategory,
-                          'is_available': true,
-                        };
-                        
-                        print('Sending menu item data: $itemData');
-                        
-                        final success = await context.read<RestaurantProvider>().addMenuItem(itemData);
-                        
-                        if (success) {
-                          Navigator.pop(context);
-                          _showSnackBar('${nameCtrl.text} added to menu');
-                        } else {
-                          _showSnackBar('Failed to add item', isError: true);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryRed,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      ),
-                      child: const Text('Add Item', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
+                ),
+                child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () async {
+                  if (nameCtrl.text.trim().isEmpty) {
+                    // Silent validation - no snackbar
+                    return;
+                  }
+                  if (priceCtrl.text.trim().isEmpty) {
+                    // Silent validation - no snackbar
+                    return;
+                  }
+                  
+                  final priceValue = double.tryParse(priceCtrl.text.trim());
+                  if (priceValue == null) {
+                    // Silent validation - no snackbar
+                    return;
+                  }
+                  
+                  if (dialogMounted) {
+                    setDialogState(() => isUploading = true);
+                  }
+                  
+                  try {
+                    bool success;
+                    
+                    final XFile? image = selectedImage;
+                    if (image != null) {
+                      success = await context.read<RestaurantProvider>().addMenuItemWithImage(
+                        name: nameCtrl.text.trim(),
+                        description: descCtrl.text.trim(),
+                        price: priceValue,
+                        category: selectedCategory,
+                        imageFile: image,
+                      );
+                    } else {
+                      final itemData = {
+                        'name': nameCtrl.text.trim(),
+                        'description': descCtrl.text.trim(),
+                        'price': priceValue,
+                        'category': selectedCategory,
+                        'is_available': true,
+                      };
+                      success = await context.read<RestaurantProvider>().addMenuItem(itemData);
+                    }
+                    
+                    if (success && dialogMounted) {
+                      dialogMounted = false;
+                      Navigator.pop(context);
+                      _loadData();
+                      // NO SNACKBAR
+                    } else if (dialogMounted) {
+                      // Silent failure - no snackbar
+                      setDialogState(() => isUploading = false);
+                    }
+                  } catch (e) {
+                    // Silent error - no snackbar
+                    if (dialogMounted) {
+                      setDialogState(() => isUploading = false);
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryRed,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                ),
+                child: isUploading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Add Item', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           );
@@ -310,15 +413,15 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     final descCtrl = TextEditingController(text: item.description);
     final priceCtrl = TextEditingController(text: item.price.toString());
     
-    String selectedCategory = _availableCategories.contains(item.category) 
-        ? item.category 
-        : (_availableCategories.isNotEmpty ? _availableCategories.first : 'Pizza');
-    String? imagePath;
+    String selectedCategory = item.category.isEmpty ? 'General' : item.category;
+    XFile? selectedImage;
+    bool isUploading = false;
+    bool dialogMounted = true;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
             backgroundColor: AppTheme.getCardColor(context),
@@ -327,158 +430,173 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
               side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
             ),
             title: const Text('Edit Menu Item', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            content: SingleChildScrollView(
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: () async {
-                      final path = await _pickImage();
-                      if (path != null) setDialogState(() => imagePath = path);
-                    },
-                    child: Container(
-                      height: 120,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppTheme.getSurfaceColor(context),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.85,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        final image = await _pickImage();
+                        if (image != null && dialogMounted) {
+                          setDialogState(() => selectedImage = image);
+                        }
+                      },
+                      child: Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppTheme.getSurfaceColor(context),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+                        ),
+                        child: selectedImage != null
+                            ? _buildImagePreview(selectedImage)
+                            : (item.imageUrl.isNotEmpty || item.image.isNotEmpty
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: _buildImageWidget(item),
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context)),
+                                      const SizedBox(height: 8),
+                                      Text('Tap to change image', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
+                                    ],
+                                  )),
                       ),
-                      child: imagePath != null
-                          ? ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(imagePath!), fit: BoxFit.cover))
-                          : (item.image.isNotEmpty
-                              ? ClipRRect(borderRadius: BorderRadius.circular(12), child: _buildImageWidget(item.image))
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context)),
-                                    const SizedBox(height: 8),
-                                    Text('Tap to change image', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
-                                  ],
-                                )),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: nameCtrl,
-                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-                    decoration: InputDecoration(
-                      labelText: 'Item Name *',
-                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                      filled: true,
-                      fillColor: AppTheme.getSurfaceColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: nameCtrl,
+                      style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                      decoration: InputDecoration(
+                        labelText: 'Item Name *',
+                        labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                        filled: true,
+                        fillColor: AppTheme.getSurfaceColor(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: descCtrl,
-                    maxLines: 2,
-                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-                    decoration: InputDecoration(
-                      labelText: 'Description',
-                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                      filled: true,
-                      fillColor: AppTheme.getSurfaceColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                      decoration: InputDecoration(
+                        labelText: 'Description',
+                        labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                        filled: true,
+                        fillColor: AppTheme.getSurfaceColor(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: priceCtrl,
-                    keyboardType: TextInputType.number,
-                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-                    decoration: InputDecoration(
-                      labelText: 'Price (MK) *',
-                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                      prefixText: 'MK ',
-                      prefixStyle: const TextStyle(color: AppTheme.primaryRed),
-                      filled: true,
-                      fillColor: AppTheme.getSurfaceColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: priceCtrl,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                      decoration: InputDecoration(
+                        labelText: 'Price (MK) *',
+                        labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                        prefixText: 'MK ',
+                        prefixStyle: const TextStyle(color: AppTheme.primaryRed),
+                        filled: true,
+                        fillColor: AppTheme.getSurfaceColor(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _availableCategories.contains(selectedCategory) ? selectedCategory : null,
-                    hint: const Text('Select Category'),
-                    dropdownColor: AppTheme.getCardColor(context),
-                    style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-                    decoration: InputDecoration(
-                      labelText: 'Category',
-                      labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                      filled: true,
-                      fillColor: AppTheme.getSurfaceColor(context),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: TextEditingController(text: selectedCategory),
+                      style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+                      decoration: InputDecoration(
+                        labelText: 'Category',
+                        labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                        hintText: 'e.g., Pizza, Burgers, Desserts',
+                        filled: true,
+                        fillColor: AppTheme.getSurfaceColor(context),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                      onChanged: (value) {
+                        if (dialogMounted) {
+                          setDialogState(() => selectedCategory = value.trim().isEmpty ? 'General' : value.trim());
+                        }
+                      },
                     ),
-                    items: _availableCategories.map((category) => DropdownMenuItem(
-                      value: category,
-                      child: Text(category, style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-                    )).toList(),
-                    onChanged: (value) => setDialogState(() => selectedCategory = value!),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             actions: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
-                        ),
-                      ),
-                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
-                    ),
+              TextButton(
+                onPressed: () {
+                  dialogMounted = false;
+                  Navigator.pop(context);
+                },
+                style: TextButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (nameCtrl.text.isEmpty) {
-                          _showSnackBar('Please enter item name', isError: true);
-                          return;
-                        }
-                        if (priceCtrl.text.isEmpty) {
-                          _showSnackBar('Please enter price', isError: true);
-                          return;
-                        }
-                        
-                        final priceValue = double.tryParse(priceCtrl.text);
-                        if (priceValue == null) {
-                          _showSnackBar('Please enter a valid price', isError: true);
-                          return;
-                        }
-                        
-                        final itemData = {
-                          'id': item.id,
-                          'name': nameCtrl.text.trim(),
-                          'description': descCtrl.text.trim(),
-                          'price': priceValue,
-                          'category': selectedCategory,
-                          'is_available': item.isAvailable,
-                        };
-                        
-                        final success = await context.read<RestaurantProvider>().updateMenuItem(item.id, itemData);
-                        
-                        if (success) {
-                          Navigator.pop(context);
-                          _showSnackBar('${nameCtrl.text} updated');
-                        } else {
-                          _showSnackBar('Failed to update item', isError: true);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryRed,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      ),
-                      child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
+                ),
+                child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () async {
+                  if (nameCtrl.text.trim().isEmpty) {
+                    // Silent validation - no snackbar
+                    return;
+                  }
+                  if (priceCtrl.text.trim().isEmpty) {
+                    // Silent validation - no snackbar
+                    return;
+                  }
+                  
+                  final priceValue = double.tryParse(priceCtrl.text.trim());
+                  if (priceValue == null) {
+                    // Silent validation - no snackbar
+                    return;
+                  }
+                  
+                  if (dialogMounted) {
+                    setDialogState(() => isUploading = true);
+                  }
+                  
+                  final itemData = {
+                    'name': nameCtrl.text.trim(),
+                    'description': descCtrl.text.trim(),
+                    'price': priceValue,
+                    'category': selectedCategory,
+                    'is_available': item.isAvailable,
+                  };
+                  
+                  final success = await context.read<RestaurantProvider>().updateMenuItem(item.id, itemData);
+                  
+                  if (success && dialogMounted) {
+                    dialogMounted = false;
+                    Navigator.pop(context);
+                    _loadData();
+                    // NO SNACKBAR
+                  } else if (dialogMounted) {
+                    // Silent failure - no snackbar
+                    setDialogState(() => isUploading = false);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryRed,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                ),
+                child: isUploading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           );
@@ -488,21 +606,15 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
   }
 
   Future<void> _toggleAvailability(MenuItem item) async {
-    final itemData = {
-      'id': item.id,
-      'is_available': !item.isAvailable,
-    };
-    
-    final success = await context.read<RestaurantProvider>().updateMenuItem(item.id, itemData);
-    if (success) {
-      _showSnackBar('${item.name} is now ${!item.isAvailable ? 'available' : 'out of stock'}');
-    } else {
-      _showSnackBar('Failed to update availability', isError: true);
-    }
+    // Use the dedicated toggle method from provider
+    await context.read<RestaurantProvider>().toggleMenuItemAvailability(item.id, !item.isAvailable);
+    _loadData();
+    // NO SNACKBAR - completely silent
   }
 
   List<MenuItem> get _filteredItems {
     final items = context.watch<RestaurantProvider>().menuItems;
+    _updateCategories(items);
     return _selectedCategory == 'All' 
         ? items 
         : items.where((item) => item.category == _selectedCategory).toList();
@@ -510,48 +622,54 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = context.watch<RestaurantProvider>().isLoading;
+    final isLoading = context.watch<RestaurantProvider>().isLoadingMenu;
+    final filteredItems = _filteredItems;
     
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
       body: Column(
         children: [
-          SizedBox(
-            height: 50,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                final category = _categories[index];
-                final isSelected = _selectedCategory == category;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedCategory = category),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: isSelected ? AppTheme.primaryButtonGradient : null,
-                      color: isSelected ? null : AppTheme.getSurfaceColor(context),
-                      borderRadius: BorderRadius.circular(30),
-                      border: isSelected ? null : Border.all(color: AppTheme.getMutedTextColor(context).withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      category,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : AppTheme.getSecondaryTextColor(context),
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          if (_categories.length > 1)
+            SizedBox(
+              height: 50,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  final isSelected = _selectedCategory == category;
+                  return GestureDetector(
+                    onTap: () {
+                      if (_isMounted && mounted) {
+                        setState(() => _selectedCategory = category);
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: isSelected ? AppTheme.primaryButtonGradient : null,
+                        color: isSelected ? null : AppTheme.getSurfaceColor(context),
+                        borderRadius: BorderRadius.circular(30),
+                        border: isSelected ? null : Border.all(color: AppTheme.getMutedTextColor(context).withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        category,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : AppTheme.getSecondaryTextColor(context),
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _filteredItems.isEmpty
+                : filteredItems.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -566,9 +684,9 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _filteredItems.length,
+                        itemCount: filteredItems.length,
                         itemBuilder: (context, index) {
-                          final item = _filteredItems[index];
+                          final item = filteredItems[index];
                           return _buildMenuItemCard(item);
                         },
                       ),
@@ -595,17 +713,12 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: AppTheme.getSurfaceColor(context),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: item.image.isNotEmpty
-                ? ClipRRect(borderRadius: BorderRadius.circular(10), child: _buildImageWidget(item.image))
-                : Icon(Icons.fastfood, size: 30, color: AppTheme.getMutedTextColor(context)),
+          SizedBox(
+            width: 60,
+            height: 60,
+            child: _buildImageWidget(item),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -618,22 +731,25 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                       child: Text(
                         item.name,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.getPrimaryTextColor(context),
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: item.isAvailable ? AppTheme.success.withOpacity(0.2) : AppTheme.error.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        item.isAvailable ? 'Available' : 'Out of Stock',
+                        item.isAvailable ? 'Available' : 'Out',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.w500,
                           color: item.isAvailable ? AppTheme.success : AppTheme.error,
                         ),
@@ -664,21 +780,21 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                       ),
                     ),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 18, color: AppTheme.primaryRed),
+                        _buildActionButton(
+                          icon: Icons.edit,
+                          color: AppTheme.primaryRed,
                           onPressed: () => _showEditItemDialog(item),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.error),
+                        _buildActionButton(
+                          icon: Icons.delete_outline,
+                          color: AppTheme.error,
                           onPressed: () => _deleteMenuItem(item),
                         ),
-                        IconButton(
-                          icon: Icon(
-                            item.isAvailable ? Icons.visibility_off : Icons.visibility,
-                            size: 18,
-                            color: item.isAvailable ? AppTheme.getMutedTextColor(context) : AppTheme.success,
-                          ),
+                        _buildActionButton(
+                          icon: item.isAvailable ? Icons.visibility_off : Icons.visibility,
+                          color: item.isAvailable ? AppTheme.getMutedTextColor(context) : AppTheme.success,
                           onPressed: () => _toggleAvailability(item),
                         ),
                       ],
@@ -689,6 +805,24 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Icon(icon, size: 18, color: color),
+        ),
       ),
     );
   }

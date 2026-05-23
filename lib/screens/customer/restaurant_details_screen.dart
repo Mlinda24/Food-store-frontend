@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/location_service.dart';
+import '../../utils/delivery_fee_calculator.dart';
 import '../../widgets/customer/menu_item_card.dart';
-import '../customer/food_detail_screen.dart'; // Import the FoodDetailScreen
+import '../customer/food_detail_screen.dart';
 
 class RestaurantDetailsScreen extends StatefulWidget {
   final Map<String, dynamic>? restaurantData;
@@ -25,11 +28,112 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   String _selectedCategory = 'All';
   List<String> _categories = ['All'];
   String? _error;
+  
+  // Delivery related variables
+  Position? _currentLocation;
+  double? _distanceInMeters;
+  double? _deliveryFee;
+  bool _canDeliver = true;
+  String? _deliveryTier;
+  int? _calculatedDeliveryTime;
+  bool _isLoadingLocation = true;
+  bool _locationPermissionDenied = false;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _getUserLocation();
+  }
+
+  Future<void> _getUserLocation() async {
+    setState(() {
+      _isLoadingLocation = true;
+      _locationPermissionDenied = false;
+    });
+    
+    try {
+      final location = await LocationService.getCurrentLocation();
+      if (location != null) {
+        setState(() {
+          _currentLocation = location;
+        });
+        await _calculateDeliveryFee();
+      } else {
+        setState(() {
+          _locationPermissionDenied = true;
+        });
+      }
+    } catch (e) {
+      print('Error getting location: $e');
+      setState(() {
+        _locationPermissionDenied = true;
+      });
+    } finally {
+      setState(() {
+        _isLoadingLocation = false;
+      });
+    }
+  }
+
+  Future<void> _calculateDeliveryFee() async {
+    if (restaurant == null || _currentLocation == null) return;
+    
+    try {
+      final restaurantData = await _apiService.getRestaurant(restaurant!.id);
+      
+      final restaurantLat = restaurantData['latitude'] != null 
+          ? double.parse(restaurantData['latitude'].toString()) 
+          : null;
+      final restaurantLng = restaurantData['longitude'] != null 
+          ? double.parse(restaurantData['longitude'].toString()) 
+          : null;
+      
+      if (restaurantLat != null && restaurantLng != null) {
+        final distanceInMeters = await Geolocator.distanceBetween(
+          restaurantLat, restaurantLng,
+          _currentLocation!.latitude, _currentLocation!.longitude,
+        );
+        
+        final fee = DeliveryFeeCalculator.calculateFee(distanceInMeters);
+        final canDeliver = DeliveryFeeCalculator.canDeliver(distanceInMeters);
+        final tier = DeliveryFeeCalculator.getDeliveryTier(distanceInMeters);
+        final deliveryTime = DeliveryFeeCalculator.calculateDeliveryTime(distanceInMeters);
+        
+        setState(() {
+          _distanceInMeters = distanceInMeters;
+          _deliveryFee = fee;
+          _canDeliver = canDeliver;
+          _deliveryTier = tier;
+          _calculatedDeliveryTime = deliveryTime;
+        });
+        
+        final cartProvider = Provider.of<CartProvider>(context, listen: false);
+        cartProvider.setDeliveryInfo(
+          distanceInMeters: distanceInMeters,
+          deliveryFee: fee > 0 ? fee : 2000.0,
+          canDeliver: canDeliver,
+          tier: tier,
+        );
+        cartProvider.setRestaurantLocation(lat: restaurantLat, lng: restaurantLng);
+        cartProvider.setCalculatedDeliveryFee(fee > 0 ? fee : 2000.0);
+        
+        print('✅ Delivery fee synced with CartProvider: MK${fee.toStringAsFixed(0)} for ${DeliveryFeeCalculator.formatDistance(distanceInMeters)}');
+      } else {
+        setState(() {
+          _deliveryFee = restaurant?.deliveryFee ?? 2000.0;
+          _canDeliver = true;
+          _calculatedDeliveryTime = restaurant?.deliveryTime ?? 30;
+        });
+      }
+    } catch (e) {
+      print('Error calculating delivery fee: $e');
+      setState(() {
+        _deliveryFee = restaurant?.deliveryFee ?? 2000.0;
+        _canDeliver = true;
+        _calculatedDeliveryTime = restaurant?.deliveryTime ?? 30;
+      });
+    }
   }
 
   Future<void> _loadData() async {
@@ -56,7 +160,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           phone: data['phone'] ?? '',
           rating: (data['rating'] ?? 4.5).toDouble(),
           deliveryTime: data['delivery_time'] ?? data['deliveryTime'] ?? 30,
-          deliveryFee: (data['delivery_fee'] ?? data['deliveryFee'] ?? 2.99).toDouble(),
+          deliveryFee: (data['delivery_fee'] ?? data['deliveryFee'] ?? 2000.0).toDouble(),
           minOrderAmount: (data['min_order_amount'] ?? data['minOrderAmount'] ?? 10.0).toDouble(),
           categories: data['categories'] != null 
               ? List<String>.from(data['categories']) 
@@ -64,7 +168,12 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           isOpen: data['is_open'] ?? data['isOpen'] ?? true,
         );
         
+        await _apiService.getRestaurant(restaurant!.id);
         await _loadMenuItems();
+        
+        if (_currentLocation != null) {
+          await _calculateDeliveryFee();
+        }
       } else {
         setState(() {
           _isLoading = false;
@@ -82,39 +191,61 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
 
   Future<void> _loadMenuItems() async {
     try {
-      final restaurantId = restaurant!.id;
+      final restaurantId = int.parse(restaurant!.id);
       print('📦 Loading menu items for restaurant ID: $restaurantId');
       
-      final allItems = await _apiService.getMenuItems();
-      print('   Raw items from API: ${allItems.length}');
+      final menuItemsData = await _apiService.getRestaurantMenu(restaurantId);
       
-      final allMenuItems = <MenuItem>[];
+      print('📊 Received ${menuItemsData.length} menu items from API');
       
-      for (int i = 0; i < allItems.length; i++) {
-        final item = allItems[i];
-        print('   --- Item ${i + 1} ---');
+      final List<MenuItem> parsedItems = [];
+      
+      for (var itemData in menuItemsData) {
         try {
-          final menuItem = MenuItem.fromJson(item);
-          allMenuItems.add(menuItem);
-          print('   ✅ Successfully parsed: ${menuItem.name}');
-        } catch (e, stackTrace) {
+          final String itemName = itemData['name']?.toString() ?? 
+                                  itemData['item_name']?.toString() ?? 
+                                  'Unknown';
+          
+          final double itemPrice = (itemData['price'] != null) 
+              ? (itemData['price'] is int 
+                  ? (itemData['price'] as int).toDouble() 
+                  : double.parse(itemData['price'].toString()))
+              : 0.0;
+          
+          final String itemId = itemData['id']?.toString() ?? 
+                                itemData['menu_item_id']?.toString() ?? 
+                                DateTime.now().millisecondsSinceEpoch.toString();
+          
+          final String itemDescription = itemData['description']?.toString() ?? '';
+          final String itemImage = itemData['image']?.toString() ?? '';
+          final String itemCategory = itemData['category_name']?.toString() ?? 
+                                      itemData['category']?.toString() ?? 
+                                      'General';
+          final bool itemIsAvailable = itemData['is_available'] == true || 
+                                       itemData['available'] == true;
+          
+          final menuItem = MenuItem(
+            id: itemId,
+            name: itemName,
+            description: itemDescription,
+            price: itemPrice,
+            image: itemImage,
+            category: itemCategory,
+            restaurantId: restaurantId.toString(),
+            isAvailable: itemIsAvailable,
+          );
+          parsedItems.add(menuItem);
+          print('   ✅ Parsed: ${menuItem.name} - MK${menuItem.price}');
+        } catch (e) {
           print('   ❌ Error parsing item: $e');
-          print('   Item data: $item');
+          print('      Item data: $itemData');
         }
       }
       
-      _menuItems = allMenuItems.where((item) => 
-        item.restaurantId == restaurantId
-      ).toList();
-      
-      print('   Filtered menu items for this restaurant: ${_menuItems.length}');
-      
-      if (_menuItems.isNotEmpty) {
-        print('   Menu items found:');
-        for (var item in _menuItems) {
-          print('     - ${item.name} (ID: ${item.id})');
-        }
-      }
+      setState(() {
+        _menuItems = parsedItems;
+        _isLoading = false;
+      });
       
       final Set<String> categorySet = {'All'};
       for (var item in _menuItems) {
@@ -124,15 +255,17 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       }
       _categories = categorySet.toList();
       
-      setState(() {
-        _isLoading = false;
-      });
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('✅ Loaded ${_menuItems.length} menu items');
+      print('📂 Categories: ${_categories.join(', ')}');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
     } catch (e) {
       print('❌ Error loading menu items: $e');
       setState(() {
-        _error = e.toString();
+        _error = 'Failed to load menu: $e';
         _isLoading = false;
+        _menuItems = [];
       });
     }
   }
@@ -144,11 +277,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     return _menuItems.where((item) => item.category == _selectedCategory).toList();
   }
 
-  /// Navigates to the FoodDetailScreen when a meal is clicked.
-  /// This links the meal card to the restaurant details page,
-  /// passing all relevant meal and restaurant information.
   void _navigateToFoodDetail(MenuItem item) {
-    // Format the price with MK prefix
     final formattedPrice = 'MK${item.price.toStringAsFixed(0)}';
     
     final foodData = {
@@ -162,12 +291,11 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       'restaurant': restaurant?.name ?? '',
       'restaurant_address': restaurant?.address ?? '',
       'rating': restaurant?.rating ?? 0.0,
-      'delivery_fee': restaurant?.deliveryFee ?? 0.0,
-      'delivery_time': restaurant?.deliveryTime ?? 0,
+      'delivery_fee': _deliveryFee ?? restaurant?.deliveryFee ?? 2000.0,
+      'delivery_time': _calculatedDeliveryTime ?? restaurant?.deliveryTime ?? 0,
       'is_available': item.isAvailable,
     };
     
-    // Navigate to the FoodDetailScreen
     context.push('/food-detail', extra: foodData);
   }
 
@@ -242,40 +370,66 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: AppTheme.getPrimaryTextColor(context)),
-            onPressed: _loadData,
+            onPressed: () {
+              _loadData();
+              _getUserLocation();
+            },
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadData,
+        onRefresh: () async {
+          await _loadData();
+          await _getUserLocation();
+        },
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  _buildRestaurantHeader(),
-                  const SizedBox(height: 16),
-                  if (_categories.isNotEmpty) _buildCategoryFilter(),
-                  Expanded(
-                    child: filteredItems.isEmpty
-                        ? Center(
+            : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildRestaurantHeader(),
+                    const SizedBox(height: 16),
+                    _buildDeliveryInfoCard(),
+                    if (_categories.isNotEmpty && _categories.length > 1) 
+                      _buildCategoryFilter(),
+                    filteredItems.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(32),
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.restaurant_menu, size: 64, color: AppTheme.getMutedTextColor(context)),
                                 const SizedBox(height: 16),
                                 Text(
                                   'No menu items available',
-                                  style: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppTheme.getPrimaryTextColor(context),
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Check back later for updates',
-                                  style: TextStyle(color: AppTheme.getMutedTextColor(context)),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.getSecondaryTextColor(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _loadMenuItems,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Refresh Menu'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryRed,
+                                  ),
                                 ),
                               ],
                             ),
                           )
                         : ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
                             padding: const EdgeInsets.all(16),
                             itemCount: filteredItems.length,
                             itemBuilder: (context, index) {
@@ -290,14 +444,204 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                               );
                             },
                           ),
-                  ),
-                ],
+                  ],
+                ),
               ),
       ),
     );
   }
 
+  Widget _buildDeliveryInfoCard() {
+    final displayDeliveryTime = _calculatedDeliveryTime ?? restaurant?.deliveryTime ?? 30;
+    final deliveryTimeFormatted = DeliveryFeeCalculator.formatDeliveryTime(displayDeliveryTime);
+    
+    if (_isLoadingLocation) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Calculating delivery...'),
+          ],
+        ),
+      );
+    }
+    
+    if (_locationPermissionDenied) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.warning.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.warning),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.location_off, color: AppTheme.warning),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Location permission denied',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Enable location to see accurate delivery info',
+                    style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: _getUserLocation,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    if (!_canDeliver) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.error.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.error),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.warning, color: AppTheme.error),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Outside Delivery Zone',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.error),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'We only deliver within 2.5 km radius',
+                    style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.success.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.success),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.delivery_dining, color: AppTheme.success),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Delivery Available',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    if (_distanceInMeters != null) ...[
+                      Text(
+                        'Distance: ${DeliveryFeeCalculator.formatDistance(_distanceInMeters!)}',
+                        style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 12, color: AppTheme.primaryRed),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Est. Time: $deliveryTimeFormatted',
+                            style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'MK${(_deliveryFee ?? restaurant?.deliveryFee ?? 2000).toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryRed,
+                    ),
+                  ),
+                  if (_deliveryTier != null)
+                    Text(
+                      _deliveryTier!,
+                      style: TextStyle(fontSize: 10, color: AppTheme.getSecondaryTextColor(context)),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Min Order: MK${restaurant!.minOrderAmount.toStringAsFixed(0)}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              Row(
+                children: [
+                  Icon(Icons.motorcycle, size: 12, color: AppTheme.primaryRed),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Delivery',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRestaurantHeader() {
+    final displayDeliveryTime = _calculatedDeliveryTime ?? restaurant?.deliveryTime ?? 30;
+    final deliveryTimeFormatted = DeliveryFeeCalculator.formatDeliveryTime(displayDeliveryTime);
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -318,7 +662,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   borderRadius: BorderRadius.circular(16),
                   image: restaurant!.image.isNotEmpty
                       ? DecorationImage(
-                          image: NetworkImage(restaurant!.image),
+                          image: NetworkImage(_apiService.getImageUrl(restaurant!.image)),
                           fit: BoxFit.cover,
                         )
                       : null,
@@ -358,7 +702,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                         Icon(Icons.access_time, size: 14, color: AppTheme.getSecondaryTextColor(context)),
                         const SizedBox(width: 4),
                         Text(
-                          '${restaurant!.deliveryTime} min',
+                          deliveryTimeFormatted,
                           style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.getSecondaryTextColor(context),
@@ -430,22 +774,6 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: restaurant!.isOpen ? AppTheme.success : AppTheme.error,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  'Min Order: MK${restaurant!.minOrderAmount.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.getSecondaryTextColor(context),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  'Delivery: MK${restaurant!.deliveryFee.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.getSecondaryTextColor(context),
                   ),
                 ),
               ],

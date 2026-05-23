@@ -26,11 +26,6 @@ class MenuItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = _getImageUrl();
-    
-    print('🎨 Building MenuItemCard for: ${item.name}');
-    print('   Image URL: $imageUrl');
-    print('   Price: ${item.price}');
-    print('   Available: ${item.isAvailable}');
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -53,7 +48,6 @@ class MenuItemCard extends StatelessWidget {
                       height: 80,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
-                        print('❌ Image load error: $error');
                         return Container(
                           width: 80,
                           height: 80,
@@ -108,42 +102,13 @@ class MenuItemCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'MK${item.price.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red,
-                        ),
-                      ),
-                      if (item.isAvailable)
-                        Consumer<CartProvider>(
-                          builder: (context, cartProvider, child) {
-                            return IconButton(
-                              onPressed: () async {
-                                print('🛒 Adding to cart: ${item.name}');
-                                await cartProvider.addItem(
-                                  item,
-                                  restaurantId: restaurantId,
-                                  restaurantName: restaurantName,
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Added ${item.name} to cart'),
-                                    duration: const Duration(seconds: 1),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.add_shopping_cart),
-                              color: Colors.red,
-                            );
-                          },
-                        ),
-                    ],
+                  Text(
+                    'MK${item.price.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
                   ),
                 ],
               ),

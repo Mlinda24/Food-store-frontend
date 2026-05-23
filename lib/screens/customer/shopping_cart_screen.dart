@@ -423,26 +423,6 @@ class ShoppingCartScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Tax (10%)',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                          ),
-                        ),
-                        Text(
-                          'MK${cartProvider.tax.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                          ),
-                        ),
-                      ],
-                    ),
                     const Divider(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

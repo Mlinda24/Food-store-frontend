@@ -129,6 +129,7 @@ class MenuItem {
   final String description;
   final double price;
   final String image;
+  final String imageUrl;  // ADDED: For full URL from backend
   final String category;
   final bool isAvailable;
   final List<String>? options;
@@ -140,6 +141,7 @@ class MenuItem {
     required this.description,
     required this.price,
     required this.image,
+    this.imageUrl = '',  // ADDED: Default empty string
     required this.category,
     required this.isAvailable,
     this.options,
@@ -179,16 +181,25 @@ class MenuItem {
     print('   description: ${json['description']}');
     print('   price: ${json['price']}');
     print('   image: ${json['image']}');
+    print('   image_url: ${json['image_url']}');
     print('   category: ${json['category']}');
     print('   category_name: ${json['category_name']}');
     print('   is_available: ${json['is_available']}');
 
     // Safe category extraction - handle both 'category' and 'category_name' fields
     String categoryValue = 'General';
-    if (json['category'] != null && json['category'].toString().isNotEmpty) {
-      categoryValue = json['category'].toString();
-    } else if (json['category_name'] != null && json['category_name'].toString().isNotEmpty) {
+    if (json['category_name'] != null && json['category_name'].toString().isNotEmpty) {
       categoryValue = json['category_name'].toString();
+    } else if (json['category'] != null && json['category'].toString().isNotEmpty) {
+      categoryValue = json['category'].toString();
+    }
+
+    // Get image URL - prefer image_url from backend, otherwise build from image field
+    String imageUrl = '';
+    if (json['image_url'] != null && json['image_url'].toString().isNotEmpty) {
+      imageUrl = json['image_url'].toString();
+    } else if (json['image'] != null && json['image'].toString().isNotEmpty) {
+      imageUrl = _getImageUrl(json['image']);
     }
 
     return MenuItem(
@@ -197,7 +208,8 @@ class MenuItem {
       name: _toString(json['name']),
       description: _toString(json['description']),
       price: _toDouble(json['price']),
-      image: _getImageUrl(json['image']),
+      image: _toString(json['image']),
+      imageUrl: imageUrl,  // ADDED: Use the full URL
       category: categoryValue,
       isAvailable: json['is_available'] ?? true,
       options: json['options'] != null ? List<String>.from(json['options']) : null,
@@ -254,12 +266,21 @@ class CartItem {
       return value.toString();
     }
 
+    String _getImageUrl(dynamic image) {
+      if (image == null) return '';
+      String imageStr = image.toString();
+      if (imageStr.isEmpty) return '';
+      if (imageStr.startsWith('http')) return imageStr;
+      if (imageStr.startsWith('/media/')) return 'http://127.0.0.1:8000$imageStr';
+      return 'http://127.0.0.1:8000/media/$imageStr';
+    }
+
     return CartItem(
       menuItemId: _toString(json['menu_item']),
       name: _toString(json['menu_item_name']),
       quantity: json['quantity'] ?? 1,
       price: _toDouble(json['menu_item_price']),
-      image: _toString(json['menu_item_image']),
+      image: _getImageUrl(json['menu_item_image']),
       restaurantId: _toString(json['restaurant']),
       restaurantName: '',
     );

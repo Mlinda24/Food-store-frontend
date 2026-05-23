@@ -2,14 +2,22 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cross_file/cross_file.dart';
 import '../models/models.dart';
+import '../models/payment_model.dart';
+import 'package:path/path.dart' as path;
+import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  static const String baseUrl = 'http://127.0.0.1:8000';
   static const String mediaBaseUrl = 'http://127.0.0.1:8000';
   
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
+  
+  // ============================================
+  // GROUP 1: TOKEN MANAGEMENT
+  // ============================================
   
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -25,6 +33,14 @@ class ApiService {
     final token = await getToken();
     return {
       'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+  
+  Future<Map<String, String>> getMultipartHeaders() async {
+    final token = await getToken();
+    return {
+      'Content-Type': 'multipart/form-data',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
@@ -59,7 +75,7 @@ class ApiService {
     
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/refresh/'),
+        Uri.parse('$baseUrl/api/auth/refresh/'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'refresh': refreshToken}),
       );
@@ -78,11 +94,13 @@ class ApiService {
     return false;
   }
   
-  // ========== AUTH ENDPOINTS ==========
+  // ============================================
+  // GROUP 2: AUTH ENDPOINTS
+  // ============================================
   
   Future<Map<String, dynamic>> login(String username, String password) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/login/'),
+      Uri.parse('$baseUrl/api/auth/login/'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'username': username, 'password': password}),
     );
@@ -100,7 +118,7 @@ class ApiService {
   
   Future<User> getCurrentUser() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/auth/me/'),
+      Uri.parse('$baseUrl/api/auth/me/'),
       headers: await getHeaders(),
     );
     
@@ -136,7 +154,7 @@ class ApiService {
     String? phone,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/register/'),
+      Uri.parse('$baseUrl/api/auth/register/'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'username': username,
@@ -156,375 +174,221 @@ class ApiService {
     }
   }
   
-  // ========== RESTAURANT ENDPOINTS ==========
+  // ============================================
+  // GROUP 3: CUSTOMER RESTAURANT ENDPOINTS
+  // ============================================
   
   Future<List<dynamic>> getRestaurants() async {
+    final token = await getToken();
+    if (token == null) {
+      print('❌ No token found, please login first');
+      return [];
+    }
+    
+    final url = '$baseUrl/api/customer/restaurants/';
+    print('📡 Fetching restaurants from: $url');
+    
     final response = await http.get(
-      Uri.parse('$baseUrl/restaurants/'),
+      Uri.parse(url),
       headers: await getHeaders(),
     );
     
     print('Get restaurants response: ${response.statusCode}');
     
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final data = json.decode(response.body);
+      print('✅ Found ${data.length} restaurants');
+      return data;
     } else if (response.statusCode == 401) {
       final refreshed = await refreshToken();
       if (refreshed) return getRestaurants();
       return [];
     } else {
+      print('❌ Error getting restaurants: ${response.statusCode}');
       return [];
     }
   }
   
   Future<Map<String, dynamic>> getRestaurant(String id) async {
+    final url = '$baseUrl/api/customer/restaurants/$id/';
+    print('📡 Fetching restaurant details from: $url');
+    
     final response = await http.get(
-      Uri.parse('$baseUrl/restaurants/$id/'),
+      Uri.parse(url),
       headers: await getHeaders(),
     );
     
     print('Get restaurant response: ${response.statusCode}');
     
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final data = json.decode(response.body);
+      print('✅ Restaurant loaded: ${data['name']}');
+      return data;
     } else if (response.statusCode == 401) {
       final refreshed = await refreshToken();
       if (refreshed) return getRestaurant(id);
-      throw Exception('Please login again');
+      return {};
     } else {
-      throw Exception('Failed to load restaurant: ${response.statusCode}');
+      print('❌ Failed to load restaurant: ${response.statusCode}');
+      return {};
     }
   }
   
-  // ========== MENU ENDPOINTS ==========
-  
-  Future<List<dynamic>> getMenuItems() async {
+  Future<Map<String, dynamic>> getRestaurantDeliveryInfo(
+    String restaurantId, double lat, double lng
+  ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/menu-items/'),
+      Uri.parse('$baseUrl/api/customer/restaurants/$restaurantId/delivery-info/?lat=$lat&lng=$lng'),
       headers: await getHeaders(),
     );
     
-    print('Get menu items response: ${response.statusCode}');
+    print('Delivery info response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      return {'can_deliver': true, 'delivery_fee': 2000.0};
+    }
+  }
+  
+  Future<List<dynamic>> getFeaturedRestaurants() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/customer/featured/'),
+      headers: await getHeaders(),
+    );
+    
+    print('Get featured restaurants response: ${response.statusCode}');
     
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else if (response.statusCode == 401) {
       final refreshed = await refreshToken();
-      if (refreshed) return getMenuItems();
+      if (refreshed) return getFeaturedRestaurants();
       return [];
     } else {
       return [];
     }
   }
   
-  Future<List<dynamic>> getAvailableMenuItems() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/menu/available/'),
-      headers: await getHeaders(),
-    );
-    
-    print('Get available menu items response: ${response.statusCode}');
-    
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return getAvailableMenuItems();
-      return getMenuItems();
-    } else {
-      return getMenuItems();
-    }
-  }
+  // ============================================
+  // GROUP 4: CUSTOMER MENU ENDPOINTS
+  // ============================================
   
-  // ========== MENU ITEM CRUD ENDPOINTS ==========
-  
-  Future<Map<String, dynamic>> createMenuItem(Map<String, dynamic> itemData) async {
-    print('➕ Create menu item');
-    print('   Data: $itemData');
-    
-    final response = await http.post(
-      Uri.parse('$baseUrl/menu-items/'),
-      headers: await getHeaders(),
-      body: json.encode(itemData),
-    );
-    
-    print('Create menu item response: ${response.statusCode}');
-    print('Create menu item response body: ${response.body}');
-    
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      try {
-        final error = json.decode(response.body);
-        throw Exception('Failed to create menu item: ${error.toString()}');
-      } catch (e) {
-        throw Exception('Failed to create menu item: ${response.statusCode}');
-      }
-    }
-  }
-  
-  Future<Map<String, dynamic>> updateMenuItem(String id, Map<String, dynamic> itemData) async {
-    print('✏️ Update menu item');
-    print('   ID: $id');
-    print('   Data: $itemData');
-    
-    final response = await http.put(
-      Uri.parse('$baseUrl/menu-items/$id/'),
-      headers: await getHeaders(),
-      body: json.encode(itemData),
-    );
-    
-    print('Update menu item response: ${response.statusCode}');
-    print('Update menu item response body: ${response.body}');
-    
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to update menu item: ${response.statusCode}');
-    }
-  }
-  
-  Future<void> deleteMenuItem(String id) async {
-    print('🗑️ Delete menu item: $id');
-    
-    final response = await http.delete(
-      Uri.parse('$baseUrl/menu-items/$id/'),
-      headers: await getHeaders(),
-    );
-    
-    print('Delete menu item response: ${response.statusCode}');
-    
-    if (response.statusCode != 204 && response.statusCode != 200) {
-      throw Exception('Failed to delete menu item: ${response.statusCode}');
-    }
-  }
-  
-  // ========== CART ENDPOINTS ==========
-  
-  Future<Map<String, dynamic>> getCart() async {
+  Future<List<dynamic>> getRestaurantMenu(int restaurantId) async {
     final token = await getToken();
     if (token == null) {
-      print('No token, returning empty cart');
-      return {'items': [], 'total_price': 0};
-    }
-    
-    final response = await http.get(
-      Uri.parse('$baseUrl/orders/cart/'),
-      headers: await getHeaders(),
-    );
-    
-    print('Get cart response: ${response.statusCode}');
-    
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return getCart();
-      return {'items': [], 'total_price': 0};
-    } else {
-      print('Failed to load cart, returning empty cart');
-      return {'items': [], 'total_price': 0};
-    }
-  }
-  
-  Future<Map<String, dynamic>> addToCart(int menuItemId, int quantity) async {
-    print('➕ Add to cart: menuItemId=$menuItemId, quantity=$quantity');
-    
-    final response = await http.post(
-      Uri.parse('$baseUrl/orders/cart/add_item/'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'menu_item_id': menuItemId,
-        'quantity': quantity,
-      }),
-    );
-    
-    print('Add to cart response: ${response.statusCode}');
-    
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return json.decode(response.body);
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return addToCart(menuItemId, quantity);
-      throw Exception('Please login again');
-    } else {
-      throw Exception('Failed to add to cart: ${response.statusCode}');
-    }
-  }
-  
-  Future<Map<String, dynamic>> removeFromCart(int cartItemId) async {
-    print('❌ Remove from cart: cartItemId=$cartItemId');
-    
-    final response = await http.delete(
-      Uri.parse('$baseUrl/orders/cart/remove_item/'),
-      headers: await getHeaders(),
-      body: json.encode({'cart_item_id': cartItemId}),
-    );
-    
-    print('Remove from cart response: ${response.statusCode}');
-    
-    if (response.statusCode == 200 || response.statusCode == 204) {
-      return json.decode(response.body) ?? {};
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return removeFromCart(cartItemId);
-      throw Exception('Please login again');
-    } else {
-      throw Exception('Failed to remove from cart: ${response.statusCode}');
-    }
-  }
-  
-  Future<Map<String, dynamic>> updateCartItem(int cartItemId, int quantity) async {
-    print('🔄 Update cart item: cartItemId=$cartItemId, quantity=$quantity');
-    
-    final response = await http.patch(
-      Uri.parse('$baseUrl/orders/cart/update_item/'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'cart_item_id': cartItemId,
-        'quantity': quantity,
-      }),
-    );
-    
-    print('Update cart item response: ${response.statusCode}');
-    
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return updateCartItem(cartItemId, quantity);
-      throw Exception('Please login again');
-    } else {
-      throw Exception('Failed to update cart item: ${response.statusCode}');
-    }
-  }
-  
-  Future<void> clearCart() async {
-    print('🧹 Clear cart');
-    
-    final response = await http.post(
-      Uri.parse('$baseUrl/orders/cart/clear_cart/'),
-      headers: await getHeaders(),
-    );
-    
-    print('Clear cart response: ${response.statusCode}');
-  }
-  
-  // ========== ORDER ENDPOINTS ==========
-  
-  Future<List<dynamic>> getOrders() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/orders/orders/'),
-      headers: await getHeaders(),
-    );
-    
-    print('Get orders response: ${response.statusCode}');
-    
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return getOrders();
+      print('❌ No token found, please login first');
       return [];
+    }
+    
+    final url = '$baseUrl/api/customer/restaurants/$restaurantId/menu/';
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    print('🍽️ FETCHING MENU');
+    print('   Restaurant ID: $restaurantId');
+    print('   URL: $url');
+    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
+      );
+      
+      print('📊 Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('✅ SUCCESS! Raw data type: ${data.runtimeType}');
+        
+        List<dynamic> menuItems = [];
+        
+        if (data.containsKey('menu') && data['menu'] is List) {
+          final menuList = data['menu'] as List;
+          for (var menuCategory in menuList) {
+            if (menuCategory.containsKey('items') && menuCategory['items'] is List) {
+              final items = menuCategory['items'] as List;
+              menuItems.addAll(items);
+              print('✅ Found ${items.length} items in category: ${menuCategory['category_name'] ?? 'Uncategorized'}');
+            }
+          }
+        }
+        
+        if (menuItems.isEmpty && data.containsKey('restaurant') && data['restaurant'].containsKey('menu_items')) {
+          menuItems = data['restaurant']['menu_items'] as List;
+          print('✅ Found ${menuItems.length} items in restaurant.menu_items');
+        }
+        
+        if (menuItems.isEmpty && data.containsKey('menu_items')) {
+          menuItems = data['menu_items'] as List;
+          print('✅ Found ${menuItems.length} items in direct menu_items');
+        }
+        
+        print('📊 Total menu items extracted: ${menuItems.length}');
+        if (menuItems.isNotEmpty) {
+          print('📋 First item: ${menuItems[0]['name']} - MK${menuItems[0]['price']}');
+        }
+        
+        return menuItems;
+      } else if (response.statusCode == 401) {
+        print('⚠️ Token expired, attempting refresh...');
+        final refreshed = await refreshToken();
+        if (refreshed) return getRestaurantMenu(restaurantId);
+        return [];
+      } else {
+        print('❌ Error: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ Exception fetching menu: $e');
+      return [];
+    }
+  }
+  
+  Future<List<dynamic>> getMenuItems({int? restaurantId}) async {
+    if (restaurantId == null) {
+      return [];
+    }
+    return getRestaurantMenu(restaurantId);
+  }
+  
+  Future<List<dynamic>> searchMenu(String query) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/customer/menu/search/?q=$query'),
+      headers: await getHeaders(),
+    );
+    
+    print('Search menu response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      print('✅ Found ${data.length} items matching "$query"');
+      return data;
     } else {
       return [];
     }
   }
   
-  Future<Map<String, dynamic>> createOrder(Map<String, dynamic> data) async {
-    print('📝 Create order');
-    print('   Data: $data');
-    
-    final response = await http.post(
-      Uri.parse('$baseUrl/orders/orders/'),
-      headers: await getHeaders(),
-      body: json.encode(data),
-    );
-    
-    print('Create order response: ${response.statusCode}');
-    print('Create order body: ${response.body}');
-    
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      return json.decode(response.body);
-    } else if (response.statusCode == 400) {
-      final errorBody = await decodeResponse(response);
-      throw Exception('Invalid order data: ${errorBody?['error'] ?? response.body}');
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return createOrder(data);
-      throw Exception('Please login again');
-    } else {
-      throw Exception('Failed to create order: ${response.statusCode}');
-    }
-  }
-  
-  Future<Map<String, dynamic>> getOrder(String orderId) async {
-    print('📦 Get order: $orderId');
-    
-    final response = await http.get(
-      Uri.parse('$baseUrl/orders/orders/$orderId/'),
-      headers: await getHeaders(),
-    );
-    
-    print('Get order response: ${response.statusCode}');
-    
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return getOrder(orderId);
-      throw Exception('Please login again');
-    } else {
-      throw Exception('Failed to load order: ${response.statusCode}');
-    }
-  }
-  
-  Future<Map<String, dynamic>> updateOrderStatus(String orderId, String status) async {
-    print('📝 Update order status: $orderId -> $status');
-    
-    final response = await http.patch(
-      Uri.parse('$baseUrl/orders/orders/$orderId/'),
-      headers: await getHeaders(),
-      body: json.encode({'status': status}),
-    );
-    
-    print('Update order status response: ${response.statusCode}');
-    
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return updateOrderStatus(orderId, status);
-      throw Exception('Please login again');
-    } else {
-      throw Exception('Failed to update order status: ${response.statusCode}');
-    }
-  }
-  
-  // ========== RESTAURANT OWNER ENDPOINTS ==========
+  // ============================================
+  // GROUP 5: RESTAURANT OWNER ENDPOINTS
+  // ============================================
   
   Future<Map<String, dynamic>> getMyRestaurant() async {
-    print('🏪 Get my restaurant');
-    
     final response = await http.get(
-      Uri.parse('$baseUrl/restaurants/my_restaurant/'),
+      Uri.parse('$baseUrl/api/owner/restaurants/'),
       headers: await getHeaders(),
     );
     
     print('Get my restaurant response: ${response.statusCode}');
     
     if (response.statusCode == 200) {
-      final data = json.decode(response.body);
+      final dynamic data = json.decode(response.body);
       if (data is List && data.isNotEmpty) {
         return Map<String, dynamic>.from(data[0]);
       }
-      if (data is Map) {
-        return Map<String, dynamic>.from(data);
+      if (data is Map<String, dynamic>) {
+        return data;
       }
-      return {};
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return getMyRestaurant();
       return {};
     } else {
       return {};
@@ -532,11 +396,8 @@ class ApiService {
   }
   
   Future<Map<String, dynamic>> updateMyRestaurant(Map<String, dynamic> data) async {
-    print('🏪 Update my restaurant');
-    print('   Data: $data');
-    
     final response = await http.patch(
-      Uri.parse('$baseUrl/restaurants/my_restaurant/'),
+      Uri.parse('$baseUrl/api/owner/restaurants/'),
       headers: await getHeaders(),
       body: json.encode(data),
     );
@@ -550,86 +411,570 @@ class ApiService {
     }
   }
   
-  Future<Map<String, dynamic>> getRestaurantStats() async {
-    print('📊 Get restaurant stats');
+  Future<Map<String, dynamic>> updateRestaurantLocation({
+    required String restaurantId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final data = {
+      'latitude': latitude,
+      'longitude': longitude,
+    };
     
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/owner/restaurants/$restaurantId/'),
+      headers: await getHeaders(),
+      body: json.encode(data),
+    );
+    
+    print('Update restaurant location response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to update restaurant location: ${response.statusCode}');
+    }
+  }
+  
+  Future<List<dynamic>> getRestaurantOrders() async {
+    try {
+      final myRestaurant = await getMyRestaurant();
+      final restaurantId = myRestaurant['id']?.toString();
+      
+      print('🏪 Getting orders for restaurant ID: $restaurantId');
+      
+      if (restaurantId == null) {
+        print('⚠️ No restaurant found for this user');
+        return [];
+      }
+      
+      List<dynamic> allOrders = [];
+      
+      final allOrdersResponse = await http.get(
+        Uri.parse('$baseUrl/api/orders/orders/'),
+        headers: await getHeaders(),
+      );
+      
+      if (allOrdersResponse.statusCode == 200) {
+        final data = json.decode(allOrdersResponse.body);
+        List<dynamic> orders = [];
+        
+        if (data is List) {
+          orders = data;
+        } else if (data is Map && data.containsKey('results')) {
+          orders = data['results'];
+        } else if (data is Map && data.containsKey('orders')) {
+          orders = data['orders'];
+        }
+        
+        for (var order in orders) {
+          final orderRestaurantId = order['restaurant']?.toString() ?? 
+                                    order['restaurant_id']?.toString();
+          if (orderRestaurantId == restaurantId) {
+            allOrders.add(order);
+          }
+        }
+        print('✅ Found ${allOrders.length} orders for restaurant after filtering');
+      } else {
+        print('⚠️ Failed to get orders: ${allOrdersResponse.statusCode}');
+      }
+      
+      return allOrders;
+    } catch (e) {
+      print('❌ Error in getRestaurantOrders: $e');
+      return [];
+    }
+  }
+  
+  Future<Map<String, dynamic>> getRestaurantStats() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/restaurants/stats/'),
+      Uri.parse('$baseUrl/api/owner/restaurants/stats/'),
       headers: await getHeaders(),
     );
     
-    print('Get restaurant stats response: ${response.statusCode}');
-    
     if (response.statusCode == 200) {
-      final data = await decodeResponse(response);
-      if (data is List && data.isNotEmpty) {
-        return Map<String, dynamic>.from(data[0]);
+      final dynamic data = await decodeResponse(response);
+      if (data is Map<String, dynamic>) {
+        return data;
       }
-      if (data is Map) {
-        return Map<String, dynamic>.from(data);
-      }
-      return {};
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return getRestaurantStats();
-      return {};
+      return {
+        'todayEarnings': 0,
+        'todayOrders': 0,
+        'monthlyEarnings': 0,
+        'monthlyOrders': 0,
+        'totalEarnings': 0,
+        'totalOrders': 0,
+        'activeOrders': 0,
+        'averageRating': 0,
+      };
     } else {
       return {};
     }
   }
   
-  // ========== RESTAURANT ORDERS ==========
-  
-  Future<List<dynamic>> getRestaurantOrders() async {
-    print('📦 Get restaurant orders');
+  Future<Map<String, dynamic>> createMenuItem(Map<String, dynamic> itemData) async {
+    print('➕ Create menu item');
     
-    try {
-      // First, get the current user's restaurant
-      final myRestaurant = await getMyRestaurant();
-      final restaurantId = myRestaurant['id']?.toString();
-      print('My restaurant ID: $restaurantId');
-      
-      if (restaurantId == null) {
-        print('No restaurant found for this user');
-        return [];
-      }
-      
-      // Get all orders
-      final response = await http.get(
-        Uri.parse('$baseUrl/orders/orders/'),
-        headers: await getHeaders(),
-      );
-      
-      print('Get restaurant orders response: ${response.statusCode}');
-      
-      if (response.statusCode == 200) {
-        final allOrders = json.decode(response.body);
-        print('All orders count: ${allOrders.length}');
-        
-        // Filter orders for this restaurant
-        final filteredOrders = allOrders.where((order) => 
-          order['restaurant'].toString() == restaurantId
-        ).toList();
-        
-        print('Filtered orders count: ${filteredOrders.length}');
-        
-        // Debug print each order
-        for (var order in filteredOrders) {
-          print('  Order #${order['id']}: Status=${order['status']}, Total=${order['total_price']}');
-        }
-        
-        return filteredOrders;
-      } else if (response.statusCode == 401) {
-        final refreshed = await refreshToken();
-        if (refreshed) return getRestaurantOrders();
-        return [];
-      } else {
-        print('Failed to get orders: ${response.statusCode}');
-        return [];
-      }
-    } catch (e) {
-      print('Error in getRestaurantOrders: $e');
+    final myRestaurant = await getMyRestaurant();
+    final restaurantId = myRestaurant['id']?.toString();
+    
+    if (restaurantId == null) {
+      throw Exception('No restaurant found for this user. Please register a restaurant first.');
+    }
+    
+    final dataWithRestaurant = Map<String, dynamic>.from(itemData);
+    dataWithRestaurant['restaurant'] = int.parse(restaurantId);
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/owner/menu-items/'),
+      headers: await getHeaders(),
+      body: json.encode(dataWithRestaurant),
+    );
+    
+    print('Create menu item response: ${response.statusCode}');
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+      return data is Map<String, dynamic> ? data : {'success': true};
+    } else {
+      throw Exception('Failed to create menu item: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> createMenuItemWithImage({
+    required String name,
+    required String description,
+    required double price,
+    required String category,
+    required XFile imageFile,
+  }) async {
+    print('📸 Creating menu item with image upload');
+    
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/owner/menu-items/'),
+    );
+    
+    final token = await getToken();
+    request.headers['Authorization'] = 'Bearer $token';
+    
+    final myRestaurant = await getMyRestaurant();
+    final restaurantId = myRestaurant['id']?.toString();
+    
+    if (restaurantId == null) {
+      throw Exception('No restaurant found for this user');
+    }
+    
+    request.fields['name'] = name;
+    request.fields['description'] = description;
+    request.fields['price'] = price.toString();
+    request.fields['category'] = category;
+    request.fields['restaurant'] = restaurantId;
+    
+    final bytes = await imageFile.readAsBytes();
+    final fileName = path.basename(imageFile.path);
+    
+    final multipartFile = http.MultipartFile.fromBytes(
+      'image',
+      bytes,
+      filename: fileName,
+      contentType: MediaType('image', 'jpeg'),
+    );
+    request.files.add(multipartFile);
+    
+    final response = await request.send();
+    final responseBody = await http.Response.fromStream(response);
+    
+    print('Create menu item response: ${response.statusCode}');
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return json.decode(responseBody.body);
+    } else {
+      throw Exception('Failed to create menu item: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> updateMenuItem(String id, Map<String, dynamic> itemData) async {
+    print('✏️ Update menu item');
+    print('   ID: $id');
+    print('   Data to update: $itemData');
+    
+    final cleanedData = Map<String, dynamic>.from(itemData);
+    
+    cleanedData.remove('id');
+    cleanedData.remove('restaurant');
+    cleanedData.remove('restaurant_id');
+    cleanedData.remove('restaurant_name');
+    cleanedData.remove('created');
+    cleanedData.remove('category_name');
+    
+    if (cleanedData.containsKey('is_available')) {
+      cleanedData['is_available'] = cleanedData['is_available'] == true;
+    }
+    
+    if (cleanedData.containsKey('category') && cleanedData['category'] == null) {
+      cleanedData['category'] = null;
+    }
+    
+    print('   Cleaned data: $cleanedData');
+    
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/owner/menu-items/$id/'),
+      headers: await getHeaders(),
+      body: json.encode(cleanedData),
+    );
+    
+    print('Update response status: ${response.statusCode}');
+    print('Update response body: ${response.body}');
+    
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+      print('✅ Menu item updated successfully');
+      return data is Map<String, dynamic> ? data : {'success': true};
+    } else if (response.statusCode == 400) {
+      final error = json.decode(response.body);
+      print('❌ Validation errors: $error');
+      throw Exception('Validation error: ${error.toString()}');
+    } else {
+      throw Exception('Failed to update menu item: ${response.statusCode}');
+    }
+  }
+  
+  Future<void> deleteMenuItem(String id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/owner/menu-items/$id/'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to delete menu item: ${response.statusCode}');
+    }
+  }
+  
+  // ============================================
+  // GROUP 6: CART ENDPOINTS
+  // ============================================
+  
+  Future<Map<String, dynamic>> getCart() async {
+    final token = await getToken();
+    if (token == null) {
+      print('❌ No token, returning empty cart');
+      return {'items': [], 'total_price': 0, 'total_items': 0};
+    }
+    
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/orders/cart/'),
+      headers: await getHeaders(),
+    );
+    
+    print('Get cart response status: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      print('✅ Cart loaded successfully');
+      print('   Items in cart: ${data['items']?.length ?? 0}');
+      print('   Total price: ${data['total_price']}');
+      return data;
+    } else if (response.statusCode == 401) {
+      print('⚠️ Token expired, refreshing...');
+      final refreshed = await refreshToken();
+      if (refreshed) return getCart();
+      return {'items': [], 'total_price': 0, 'total_items': 0};
+    } else {
+      print('❌ Failed to load cart: ${response.statusCode}');
+      return {'items': [], 'total_price': 0, 'total_items': 0};
+    }
+  }
+  
+  Future<Map<String, dynamic>> addToCart(int menuItemId, int quantity) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/orders/cart/add_item/'),
+      headers: await getHeaders(),
+      body: json.encode({
+        'menu_item_id': menuItemId,
+        'quantity': quantity,
+      }),
+    );
+    
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to add to cart: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> removeFromCart(int cartItemId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/orders/cart/remove_item/'),
+      headers: await getHeaders(),
+      body: json.encode({'cart_item_id': cartItemId}),
+    );
+    
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return {};
+    } else {
+      throw Exception('Failed to remove from cart: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> updateCartItem(int cartItemId, int quantity) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/orders/cart/update_item/'),
+      headers: await getHeaders(),
+      body: json.encode({
+        'cart_item_id': cartItemId,
+        'quantity': quantity,
+      }),
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to update cart item: ${response.statusCode}');
+    }
+  }
+  
+  Future<void> clearCart() async {
+    await http.post(
+      Uri.parse('$baseUrl/api/orders/cart/clear_cart/'),
+      headers: await getHeaders(),
+    );
+  }
+  
+  // ============================================
+  // GROUP 7: ORDER ENDPOINTS
+  // ============================================
+  
+  Future<List<dynamic>> getOrders() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/orders/orders/'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
       return [];
     }
+  }
+  
+  Future<Map<String, dynamic>> createOrder(Map<String, dynamic> orderData) async {
+    print('📝 Creating order');
+    print('📤 Order data: $orderData');
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/orders/orders/'),
+      headers: await getHeaders(),
+      body: json.encode(orderData),
+    );
+    
+    print('Create order response: ${response.statusCode}');
+    print('Response body: ${response.body}');
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return json.decode(response.body);
+    } else if (response.statusCode == 400) {
+      final error = json.decode(response.body);
+      print('❌ Validation errors: $error');
+      throw Exception(error['error'] ?? error.toString());
+    } else {
+      throw Exception('Failed to create order: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> getOrder(String orderId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/orders/orders/$orderId/'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load order: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> updateOrderStatus(String orderId, String status) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/orders/orders/$orderId/update_status/'),
+      headers: await getHeaders(),
+      body: json.encode({'status': status}),
+    );
+    
+    print('Update order status response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to update order status: ${response.statusCode}');
+    }
+  }
+  
+  // ============================================
+  // GROUP 8: PAYMENT ENDPOINTS
+  // ============================================
+  
+  Future<Map<String, dynamic>> initiatePayment({
+    required double amount,
+    required String phoneNumber,
+    required String orderId,
+    required PaymentMethod method,
+  }) async {
+    print('💳 Initiating payment of MK$amount');
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/paychangu/initiate/'),
+      headers: await getHeaders(),
+      body: json.encode({
+        'amount': amount,
+        'phone_number': phoneNumber,
+        'order_id': orderId,
+        'payment_method': method.value,
+      }),
+    );
+    
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to initiate payment: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> verifyPayment(String transactionId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/paychangu/$transactionId/status/'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to verify payment: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> getPaymentStatusByReference(String reference) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/paychangu/status_by_reference/?reference=$reference'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to get payment status');
+    }
+  }
+  
+  Future<List<dynamic>> getMyPayments() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/paychangu/my_payments/'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data is List ? data : [];
+    } else {
+      return [];
+    }
+  }
+  
+  // ============================================
+  // GROUP 9: NOTIFICATION ENDPOINTS (FIXED)
+  // ============================================
+  
+  Future<List<dynamic>> getNotifications() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/notifications/notifications/'),
+      headers: await getHeaders(),
+    );
+    
+    print('📬 Get notifications response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data is List) {
+        print('✅ Found ${data.length} notifications');
+        return data;
+      } else if (data is Map && data.containsKey('results')) {
+        final results = data['results'] as List;
+        print('✅ Found ${results.length} notifications (paginated)');
+        return results;
+      }
+      return [];
+    }
+    return [];
+  }
+  
+  Future<int> getUnreadNotificationCount() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/notifications/notifications/unread_count/'),
+      headers: await getHeaders(),
+    );
+    
+    print('📬 Unread count response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['unread_count'] ?? 0;
+    }
+    return 0;
+  }
+  
+  Future<Map<String, dynamic>> markNotificationRead(String notificationId) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/notifications/notifications/$notificationId/mark_read/'),
+      headers: await getHeaders(),
+    );
+    
+    print('📬 Mark read response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to mark notification as read');
+  }
+  
+  Future<Map<String, dynamic>> markAllNotificationsRead() async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/notifications/notifications/mark_all_read/'),
+      headers: await getHeaders(),
+    );
+    
+    print('📬 Mark all read response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Failed to mark all as read');
+  }
+  
+  Future<void> deleteNotification(String notificationId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/notifications/notifications/$notificationId/'),
+      headers: await getHeaders(),
+    );
+    
+    print('📬 Delete notification response: ${response.statusCode}');
+    
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to delete notification');
+    }
+  }
+  
+  // ============================================
+  // GROUP 10: UTILITY METHODS
+  // ============================================
+  
+  String getImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return '';
+    }
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    return '$mediaBaseUrl$imagePath';
   }
 }
