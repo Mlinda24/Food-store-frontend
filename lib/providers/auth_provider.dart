@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
-import 'package:provider/provider.dart';  // Add this import
+import 'package:provider/provider.dart'; // Add this import
 import '../services/api_service.dart';
-import '../models/models.dart';
 import 'cart_provider.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
-  
+
   User? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
@@ -19,7 +18,8 @@ class AuthProvider extends ChangeNotifier {
   bool get isRestaurant => _currentUser?.role == UserRole.restaurant;
   bool get isCustomer => _currentUser?.role == UserRole.customer;
 
-  Future<bool> login(String username, String password, {BuildContext? context}) async {
+  Future<bool> login(String username, String password,
+      {BuildContext? context}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -27,7 +27,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _apiService.login(username, password);
       _currentUser = await _apiService.getCurrentUser();
-      
+
       // Load cart after successful login
       if (context != null && _currentUser != null) {
         try {
@@ -37,7 +37,7 @@ class AuthProvider extends ChangeNotifier {
           print('Error loading cart after login: $e');
         }
       }
-      
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -82,10 +82,10 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout({BuildContext? context}) async {
     _isLoading = true;
     notifyListeners();
-    
+
     await _apiService.clearTokens();
     _currentUser = null;
-    
+
     // Clear cart after logout
     if (context != null) {
       try {
@@ -95,7 +95,7 @@ class AuthProvider extends ChangeNotifier {
         print('Error clearing cart after logout: $e');
       }
     }
-    
+
     _isLoading = false;
     notifyListeners();
   }
@@ -104,7 +104,7 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
-  
+
   // Refresh user data
   Future<void> refreshUser() async {
     try {

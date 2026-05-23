@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 
 class PaymentProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
-  
+
   List<Payment> _payments = [];
   bool _isLoading = false;
   String? _error;
@@ -14,29 +14,28 @@ class PaymentProvider extends ChangeNotifier {
   // ============================================
   // GROUP 1: GETTERS
   // ============================================
-  
+
   List<Payment> get payments => _payments;
   bool get isLoading => _isLoading;
   bool get isProcessing => _isProcessing;
   String? get error => _error;
   Payment? get currentPayment => _currentPayment;
-  
-  // Get pending payments
-  List<Payment> get pendingPayments => 
+
+  List<Payment> get pendingPayments =>
       _payments.where((p) => p.status == 'pending').toList();
-  
-  // Get completed payments
-  List<Payment> get completedPayments => 
+
+  List<Payment> get completedPayments =>
       _payments.where((p) => p.status == 'completed').toList();
-  
-  // Get failed payments
-  List<Payment> get failedPayments => 
+
+  List<Payment> get failedPayments =>
       _payments.where((p) => p.status == 'failed').toList();
 
   // ============================================
   // GROUP 2: PAYMENT INITIATION
   // ============================================
-  
+
+  /// Calls POST /api/payments/initiate/
+  /// Returns the full response map including checkout_url and reference.
   Future<Map<String, dynamic>> initiatePayment({
     required double amount,
     required String phoneNumber,
@@ -54,17 +53,22 @@ class PaymentProvider extends ChangeNotifier {
     print('   Method: ${method.displayName}');
 
     try {
-      // ✅ FIXED: Use 'method' parameter (not 'paymentMethod')
       final result = await _apiService.initiatePayment(
         amount: amount,
         phoneNumber: phoneNumber,
         orderId: orderId,
-        method: method,  // Pass the enum directly
+        method: method,
       );
-      
+
       print('✅ Payment initiated: $result');
-      
-      _currentPayment = Payment.fromJson(result);
+
+      // Store current payment if the response has enough data
+      try {
+        _currentPayment = Payment.fromJson(result);
+      } catch (_) {
+        // fromJson may fail if checkout_url fields differ — non-fatal
+      }
+
       _isLoading = false;
       _safeNotify();
       return result;
@@ -80,32 +84,36 @@ class PaymentProvider extends ChangeNotifier {
   // ============================================
   // GROUP 3: PAYMENT VERIFICATION
   // ============================================
-  
+
+  /// Verifies by transaction ID. Returns true if completed.
   Future<bool> verifyPayment(String transactionId) async {
     _isProcessing = true;
     _safeNotify();
 
     try {
       final result = await _apiService.verifyPayment(transactionId);
-      final isSuccessful = result['status'] == 'completed' || result['status'] == 'success';
-      
-      // Update local payment status if found
-      final index = _payments.indexWhere((p) => p.transactionId == transactionId);
-      if (index != -1 && isSuccessful) {
-        _payments[index] = Payment(
-          id: _payments[index].id,
-          transactionId: _payments[index].transactionId,
-          orderId: _payments[index].orderId,
-          amount: _payments[index].amount,
-          phoneNumber: _payments[index].phoneNumber,
-          paymentMethod: _payments[index].paymentMethod,
-          status: 'completed',
-          reference: _payments[index].reference,
-          createdAt: _payments[index].createdAt,
-          completedAt: DateTime.now(),
-        );
+      final isSuccessful =
+          result['status'] == 'completed' || result['status'] == 'success';
+
+      if (isSuccessful) {
+        final index =
+            _payments.indexWhere((p) => p.transactionId == transactionId);
+        if (index != -1) {
+          _payments[index] = Payment(
+            id: _payments[index].id,
+            transactionId: _payments[index].transactionId,
+            orderId: _payments[index].orderId,
+            amount: _payments[index].amount,
+            phoneNumber: _payments[index].phoneNumber,
+            paymentMethod: _payments[index].paymentMethod,
+            status: 'completed',
+            reference: _payments[index].reference,
+            createdAt: _payments[index].createdAt,
+            completedAt: DateTime.now(),
+          );
+        }
       }
-      
+
       _isProcessing = false;
       _safeNotify();
       return isSuccessful;
@@ -117,7 +125,19 @@ class PaymentProvider extends ChangeNotifier {
       return false;
     }
   }
-  
+
+  /// Polls GET /api/payments/status_by_reference/?reference=xxx
+  /// Returns the full status map or null on error.
+  Future<Map<String, dynamic>?> getPaymentStatusByReference(
+      String reference) async {
+    try {
+      return await _apiService.getPaymentStatusByReference(reference);
+    } catch (e) {
+      print('❌ Error getting payment by reference: $e');
+      return null;
+    }
+  }
+
   Future<bool> checkPaymentStatus(String transactionId) async {
     try {
       final result = await _apiService.verifyPayment(transactionId);
@@ -127,20 +147,11 @@ class PaymentProvider extends ChangeNotifier {
       return false;
     }
   }
-  
-  Future<Map<String, dynamic>?> getPaymentStatusByReference(String reference) async {
-    try {
-      return await _apiService.getPaymentStatusByReference(reference);
-    } catch (e) {
-      print('Error getting payment by reference: $e');
-      return null;
-    }
-  }
 
   // ============================================
   // GROUP 4: PAYMENT HISTORY
   // ============================================
-  
+
   Future<void> loadMyPayments() async {
     _isLoading = true;
     _safeNotify();
@@ -158,11 +169,11 @@ class PaymentProvider extends ChangeNotifier {
       print('❌ Failed to load payments: $e');
     }
   }
-  
+
   Future<void> refreshPayments() async {
     await loadMyPayments();
   }
-  
+
   Payment? getPaymentForOrder(String orderId) {
     try {
       return _payments.firstWhere((p) => p.orderId == orderId);
@@ -174,15 +185,14 @@ class PaymentProvider extends ChangeNotifier {
   // ============================================
   // GROUP 5: PAYMENT CANCELLATION
   // ============================================
-  
+
   Future<bool> cancelPayment(String transactionId) async {
     _isProcessing = true;
     _safeNotify();
-    
+
     try {
-      // Call API to cancel payment (if your backend supports it)
-      // For now, just update local status
-      final index = _payments.indexWhere((p) => p.transactionId == transactionId);
+      final index =
+          _payments.indexWhere((p) => p.transactionId == transactionId);
       if (index != -1) {
         _payments[index] = Payment(
           id: _payments[index].id,
@@ -197,7 +207,7 @@ class PaymentProvider extends ChangeNotifier {
           completedAt: DateTime.now(),
         );
       }
-      
+
       _isProcessing = false;
       _safeNotify();
       return true;
@@ -212,17 +222,17 @@ class PaymentProvider extends ChangeNotifier {
   // ============================================
   // GROUP 6: UTILITY METHODS
   // ============================================
-  
+
   void clearError() {
     _error = null;
     _safeNotify();
   }
-  
+
   void clearCurrentPayment() {
     _currentPayment = null;
     _safeNotify();
   }
-  
+
   void reset() {
     _payments = [];
     _error = null;
@@ -231,18 +241,19 @@ class PaymentProvider extends ChangeNotifier {
     _isProcessing = false;
     _safeNotify();
   }
-  
+
   void _safeNotify() {
     if (hasListeners) {
       notifyListeners();
     }
   }
-  
-  // Get payment status text for display
+
   String getPaymentStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
         return 'Pending';
+      case 'processing':
+        return 'Processing';
       case 'completed':
         return 'Completed';
       case 'failed':
@@ -255,10 +266,11 @@ class PaymentProvider extends ChangeNotifier {
         return status;
     }
   }
-  
+
   Color getPaymentStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
+      case 'processing':
         return Colors.orange;
       case 'completed':
         return Colors.green;
@@ -272,7 +284,7 @@ class PaymentProvider extends ChangeNotifier {
         return Colors.grey;
     }
   }
-  
+
   IconData getPaymentMethodIcon(String method) {
     switch (method.toLowerCase()) {
       case 'mpamba':
@@ -285,14 +297,13 @@ class PaymentProvider extends ChangeNotifier {
         return Icons.payment;
     }
   }
-  
-  // Format amount for display
+
   String formatAmount(double amount) {
     return 'MK${amount.toStringAsFixed(0)}';
   }
-  
-  // Format date for display
+
   String formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    return '${date.day}/${date.month}/${date.year} '
+        '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

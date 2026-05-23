@@ -16,8 +16,8 @@ class FoodDetailScreen extends StatelessWidget {
     
     if (imagePath.isEmpty) return '';
     if (imagePath.startsWith('http')) return imagePath;
-    if (imagePath.startsWith('/media/')) return 'http://127.0.0.1:8000$imagePath';
-    return 'http://127.0.0.1:8000/media/$imagePath';
+    if (imagePath.startsWith('/media/')) return 'http://192.168.137.1:8000$imagePath';
+    return 'http://192.168.137.1:8000/media/$imagePath';
   }
 
   void _addToCart(BuildContext context) {

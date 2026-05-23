@@ -47,6 +47,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   Future<void> _getUserLocation() async {
+    if (!mounted) return;
     setState(() {
       _isLoadingLocation = true;
       _locationPermissionDenied = false;
@@ -55,21 +56,25 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     try {
       final location = await LocationService.getCurrentLocation();
       if (location != null) {
+        if (!mounted) return;
         setState(() {
           _currentLocation = location;
         });
         await _calculateDeliveryFee();
       } else {
+        if (!mounted) return;
         setState(() {
           _locationPermissionDenied = true;
         });
       }
     } catch (e) {
       print('Error getting location: $e');
+      if (!mounted) return;
       setState(() {
         _locationPermissionDenied = true;
       });
     } finally {
+      if (!mounted) return;
       setState(() {
         _isLoadingLocation = false;
       });
@@ -100,6 +105,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         final tier = DeliveryFeeCalculator.getDeliveryTier(distanceInMeters);
         final deliveryTime = DeliveryFeeCalculator.calculateDeliveryTime(distanceInMeters);
         
+        if (!mounted) return;
+        
         setState(() {
           _distanceInMeters = distanceInMeters;
           _deliveryFee = fee;
@@ -120,6 +127,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         
         print('✅ Delivery fee synced with CartProvider: MK${fee.toStringAsFixed(0)} for ${DeliveryFeeCalculator.formatDistance(distanceInMeters)}');
       } else {
+        if (!mounted) return;
         setState(() {
           _deliveryFee = restaurant?.deliveryFee ?? 2000.0;
           _canDeliver = true;
@@ -128,6 +136,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       }
     } catch (e) {
       print('Error calculating delivery fee: $e');
+      if (!mounted) return;
       setState(() {
         _deliveryFee = restaurant?.deliveryFee ?? 2000.0;
         _canDeliver = true;
@@ -137,6 +146,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -175,6 +185,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           await _calculateDeliveryFee();
         }
       } else {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
           _error = 'No restaurant data provided';
@@ -182,6 +193,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       }
     } catch (e) {
       print('❌ Error loading data: $e');
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -242,6 +254,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         }
       }
       
+      if (!mounted) return;
+      
       setState(() {
         _menuItems = parsedItems;
         _isLoading = false;
@@ -262,6 +276,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       
     } catch (e) {
       print('❌ Error loading menu items: $e');
+      if (!mounted) return;
       setState(() {
         _error = 'Failed to load menu: $e';
         _isLoading = false;
@@ -795,7 +810,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           final category = _categories[index];
           final isSelected = _selectedCategory == category;
           return GestureDetector(
-            onTap: () => setState(() => _selectedCategory = category),
+            onTap: () { if (!mounted) return; setState(() => _selectedCategory = category); },
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -819,3 +834,5 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     );
   }
 }
+
+

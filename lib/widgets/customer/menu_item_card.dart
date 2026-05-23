@@ -19,8 +19,8 @@ class MenuItemCard extends StatelessWidget {
     if (item.image.isEmpty) return '';
     String imageStr = item.image;
     if (imageStr.startsWith('http')) return imageStr;
-    if (imageStr.startsWith('/media/')) return 'http://127.0.0.1:8000$imageStr';
-    return 'http://127.0.0.1:8000/media/$imageStr';
+    if (imageStr.startsWith('/media/')) return 'http://192.168.137.1:8000$imageStr';
+    return 'http://192.168.137.1:8000/media/$imageStr';
   }
 
   @override

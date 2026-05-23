@@ -169,9 +169,9 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     if (imageToUse.startsWith('http')) {
       fullUrl = imageToUse;
     } else if (imageToUse.startsWith('/media/')) {
-      fullUrl = 'http://127.0.0.1:8000$imageToUse';
+      fullUrl = 'http://192.168.137.1:8000$imageToUse';
     } else {
-      fullUrl = 'http://127.0.0.1:8000/media/$imageToUse';
+      fullUrl = 'http://192.168.137.1:8000/media/$imageToUse';
     }
     
     return ClipRRect(

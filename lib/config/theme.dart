@@ -7,17 +7,17 @@ class AppTheme {
   static const Color brightAccentRed = Color(0xFFFF3B3B);
   static const Color deepCrimson = Color(0xFFB11226);
   static const Color darkRedBase = Color(0xFF7A0C18);
-  
+
   // Status Colors
   static const Color success = Color(0xFF22C55E);
   static const Color warning = Color(0xFFF97316);
   static const Color error = Color(0xFFEF4444);
-  
+
   // Accent Colors
   static const Color yellow = Color(0xFFFACC15);
   static const Color orange = Color(0xFFFB923C);
   static const Color teal = Color(0xFF14B8A6);
-  
+
   // Light Theme Colors
   static const Color lightBackground = Color(0xFFF8F9FA);
   static const Color lightSurface = Color(0xFFFFFFFF);
@@ -26,7 +26,7 @@ class AppTheme {
   static const Color lightSecondaryText = Color(0xFF6B7280);
   static const Color lightMutedText = Color(0xFF9CA3AF);
   static const Color lightElevatedPanel = Color(0xFFFAFAFA);
-  
+
   // Dark Theme Colors
   static const Color darkBackground = Color(0xFF0F0A0A);
   static const Color darkSurface = Color(0xFF1A0D0D);
@@ -35,7 +35,7 @@ class AppTheme {
   static const Color darkSecondaryText = Color(0xFFC9C9C9);
   static const Color darkMutedText = Color(0xFF8A8A8A);
   static const Color darkElevatedPanel = Color(0xFF331313);
-  
+
   // Legacy colors for backward compatibility
   static const Color mainBackground = darkBackground;
   static const Color secondaryBackground = darkSurface;
@@ -44,14 +44,14 @@ class AppTheme {
   static const Color primaryText = darkPrimaryText;
   static const Color secondaryText = darkSecondaryText;
   static const Color mutedText = darkMutedText;
-  
+
   // Gradients
   static const LinearGradient primaryButtonGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [primaryRed, deepCrimson],
   );
-  
+
   static LinearGradient cardGlowGradient(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (isDark) {
@@ -68,7 +68,7 @@ class AppTheme {
       );
     }
   }
-  
+
   // ==================== LIGHT THEME ====================
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
@@ -79,7 +79,6 @@ class AppTheme {
       primary: primaryRed,
       secondary: brightAccentRed,
       surface: lightSurface,
-      background: lightBackground,
       error: error,
     ),
     scaffoldBackgroundColor: lightBackground,
@@ -132,16 +131,23 @@ class AppTheme {
       labelStyle: const TextStyle(color: lightSecondaryText),
     ),
     textTheme: const TextTheme(
-      headlineLarge: TextStyle(color: lightPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
-      headlineMedium: TextStyle(color: lightPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
-      headlineSmall: TextStyle(color: lightPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
-      titleLarge: TextStyle(color: lightPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
-      titleMedium: TextStyle(color: lightPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
-      titleSmall: TextStyle(color: lightPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
+      headlineLarge: TextStyle(
+          color: lightPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
+      headlineMedium: TextStyle(
+          color: lightPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
+      headlineSmall: TextStyle(
+          color: lightPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(
+          color: lightPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
+      titleMedium: TextStyle(
+          color: lightPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
+      titleSmall: TextStyle(
+          color: lightPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
       bodyLarge: TextStyle(color: lightSecondaryText, fontSize: 16),
       bodyMedium: TextStyle(color: lightSecondaryText, fontSize: 14),
       bodySmall: TextStyle(color: lightMutedText, fontSize: 12),
-      labelLarge: TextStyle(color: lightPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
+      labelLarge: TextStyle(
+          color: lightPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: lightCard,
@@ -151,7 +157,7 @@ class AppTheme {
       elevation: 8,
     ),
   );
-  
+
   // ==================== DARK THEME ====================
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
@@ -162,12 +168,10 @@ class AppTheme {
       primary: primaryRed,
       secondary: brightAccentRed,
       surface: darkSurface,
-      background: darkBackground,
       error: error,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: darkPrimaryText,
-      onBackground: darkPrimaryText,
       onError: Colors.white,
     ),
     scaffoldBackgroundColor: darkBackground,
@@ -221,16 +225,23 @@ class AppTheme {
       labelStyle: const TextStyle(color: darkSecondaryText),
     ),
     textTheme: const TextTheme(
-      headlineLarge: TextStyle(color: darkPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
-      headlineMedium: TextStyle(color: darkPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
-      headlineSmall: TextStyle(color: darkPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
-      titleLarge: TextStyle(color: darkPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
-      titleMedium: TextStyle(color: darkPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
-      titleSmall: TextStyle(color: darkPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
+      headlineLarge: TextStyle(
+          color: darkPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
+      headlineMedium: TextStyle(
+          color: darkPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
+      headlineSmall: TextStyle(
+          color: darkPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(
+          color: darkPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
+      titleMedium: TextStyle(
+          color: darkPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
+      titleSmall: TextStyle(
+          color: darkPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
       bodyLarge: TextStyle(color: darkSecondaryText, fontSize: 16),
       bodyMedium: TextStyle(color: darkSecondaryText, fontSize: 14),
       bodySmall: TextStyle(color: darkMutedText, fontSize: 12),
-      labelLarge: TextStyle(color: darkPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
+      labelLarge: TextStyle(
+          color: darkPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: darkCard,
@@ -240,50 +251,50 @@ class AppTheme {
       elevation: 8,
     ),
   );
-  
+
   // ==================== DEFAULT THEME ====================
   static ThemeData get defaultTheme => darkTheme;
-  
+
   // Helper methods for dynamic theming
   static Color getBackgroundColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? darkBackground : lightBackground;
   }
-  
+
   static Color getPrimaryTextColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? darkPrimaryText : lightPrimaryText;
   }
-  
+
   static Color getSecondaryTextColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? darkSecondaryText : lightSecondaryText;
   }
-  
+
   static Color getMutedTextColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? darkMutedText : lightMutedText;
   }
-  
+
   static Color getCardColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? darkCard : lightCard;
   }
-  
+
   static Color getSurfaceColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? darkSurface : lightSurface;
   }
-  
+
   static Color getElevatedPanelColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? darkElevatedPanel : lightElevatedPanel;
   }
-  
+
   static LinearGradient getCardGlowGradient(BuildContext context) {
     return cardGlowGradient(context);
   }
-  
+
   static LinearGradient getPrimaryButtonGradient() {
     return primaryButtonGradient;
   }

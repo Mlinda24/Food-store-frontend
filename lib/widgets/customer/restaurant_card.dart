@@ -26,7 +26,7 @@ class RestaurantCard extends StatelessWidget {
           gradient: AppTheme.cardGlowGradient(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: AppTheme.deepCrimson.withOpacity(0.3),
+            color: AppTheme.deepCrimson.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
@@ -42,21 +42,30 @@ class RestaurantCard extends StatelessWidget {
                       placeholder: (context, url) => Container(
                         width: 80,
                         height: 80,
-                        color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                        child: const Icon(Icons.restaurant, size: 30, color: Colors.grey),
+                        color: isDark
+                            ? AppTheme.darkSurface
+                            : AppTheme.lightBackground,
+                        child: const Icon(Icons.restaurant,
+                            size: 30, color: Colors.grey),
                       ),
                       errorWidget: (context, url, error) => Container(
                         width: 80,
                         height: 80,
-                        color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                        child: const Icon(Icons.restaurant, size: 30, color: Colors.grey),
+                        color: isDark
+                            ? AppTheme.darkSurface
+                            : AppTheme.lightBackground,
+                        child: const Icon(Icons.restaurant,
+                            size: 30, color: Colors.grey),
                       ),
                     )
                   : Container(
                       width: 80,
                       height: 80,
-                      color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                      child: const Icon(Icons.restaurant, size: 30, color: Colors.grey),
+                      color: isDark
+                          ? AppTheme.darkSurface
+                          : AppTheme.lightBackground,
+                      child: const Icon(Icons.restaurant,
+                          size: 30, color: Colors.grey),
                     ),
             ),
             const SizedBox(width: 14),
@@ -69,8 +78,12 @@ class RestaurantCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+                      color: isDark
+                          ? AppTheme.darkPrimaryText
+                          : AppTheme.lightPrimaryText,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -82,25 +95,35 @@ class RestaurantCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+                          color: isDark
+                              ? AppTheme.darkPrimaryText
+                              : AppTheme.lightPrimaryText,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.access_time, size: 12, color: AppTheme.mutedText),
+                      const Icon(Icons.access_time,
+                          size: 12, color: AppTheme.mutedText),
                       const SizedBox(width: 2),
-                      Text(
-                        restaurant['time'] ?? '20-30 min',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText,
+                      Expanded(
+                        child: Text(
+                          restaurant['time'] ?? '20-30 min',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? AppTheme.darkMutedText
+                                : AppTheme.lightMutedText,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       Container(
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: (restaurant['is_open'] ?? true) ? AppTheme.success : AppTheme.error,
+                          color: (restaurant['is_open'] ?? true)
+                              ? AppTheme.success
+                              : AppTheme.error,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -109,7 +132,9 @@ class RestaurantCard extends StatelessWidget {
                         (restaurant['is_open'] ?? true) ? 'Open' : 'Closed',
                         style: TextStyle(
                           fontSize: 10,
-                          color: (restaurant['is_open'] ?? true) ? AppTheme.success : AppTheme.error,
+                          color: (restaurant['is_open'] ?? true)
+                              ? AppTheme.success
+                              : AppTheme.error,
                         ),
                       ),
                     ],
@@ -119,7 +144,9 @@ class RestaurantCard extends StatelessWidget {
                     restaurant['cuisine'] ?? 'Various Cuisines',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                      color: isDark
+                          ? AppTheme.darkSecondaryText
+                          : AppTheme.lightSecondaryText,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -127,7 +154,8 @@ class RestaurantCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppTheme.mutedText, size: 20),
+            const Icon(Icons.chevron_right,
+                color: AppTheme.mutedText, size: 20),
           ],
         ),
       ),

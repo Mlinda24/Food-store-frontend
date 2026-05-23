@@ -192,9 +192,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (image == null) return '';
     if (image is String && image.isNotEmpty) {
       if (image.startsWith('http')) return image;
-      if (image.startsWith('/media/')) return 'http://127.0.0.1:8000$image';
-      if (image.startsWith('/')) return 'http://127.0.0.1:8000$image';
-      return 'http://127.0.0.1:8000/media/$image';
+      if (image.startsWith('/media/')) return 'http://192.168.137.1:8000$image';
+      if (image.startsWith('/')) return 'http://192.168.137.1:8000$image';
+      return 'http://192.168.137.1:8000/media/$image';
     }
     return '';
   }
