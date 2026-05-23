@@ -35,33 +35,52 @@ class _HomeScreenState extends State<HomeScreen> {
     'Desserts'
   ];
 
+  // Updated featured meals with complete restaurant information
   final List<Map<String, dynamic>> _featuredMeals = [
     {
       'id': '1',
       'name': 'Salmon Poke Supreme',
-      'description': 'Green Garden + 15-20 min',
+      'description': 'Fresh salmon poke with avocado, cucumber, and special sauce. A healthy and delicious bowl that will leave you wanting more.',
       'price': 'MK4,000',
       'rating': 4.0,
+      'reviews': 128,
+      'prepTime': '15-20 min',
       'restaurant': 'Sushi Master',
       'restaurantId': '1',
+      'restaurantAddress': '123 Beach Road, Cape Maclear',
+      'restaurantRating': 4.8,
+      'restaurantDeliveryTime': '25-35 min',
+      'ingredients': ['Fresh Salmon', 'Avocado', 'Cucumber', 'Sesame Seeds', 'Special Sauce'],
     },
     {
       'id': '2',
       'name': 'Classic Lugga Kaki',
-      'description': 'Traditional taste',
+      'description': 'Traditional Malawian dish with tender beef, fresh vegetables, and served with nsima. A local favorite!',
       'price': 'MK8,000',
       'rating': 4.5,
+      'reviews': 256,
+      'prepTime': '20-25 min',
       'restaurant': 'Luspernando Food Hub',
       'restaurantId': '2',
+      'restaurantAddress': '456 Freedom Road, Lilongwe',
+      'restaurantRating': 4.9,
+      'restaurantDeliveryTime': '30-40 min',
+      'ingredients': ['Beef', 'Spinach', 'Tomatoes', 'Onions', 'Nsima'],
     },
     {
       'id': '3',
       'name': 'Spicy Chicken Burger',
-      'description': 'Grilled chicken + 20 min',
+      'description': 'Grilled chicken breast with spicy sauce, fresh lettuce, melted cheese, and a soft brioche bun.',
       'price': 'MK5,500',
       'rating': 4.3,
+      'reviews': 89,
+      'prepTime': '15-20 min',
       'restaurant': 'BossMan',
       'restaurantId': '3',
+      'restaurantAddress': '789 Presidential Way, Blantyre',
+      'restaurantRating': 4.7,
+      'restaurantDeliveryTime': '20-30 min',
+      'ingredients': ['Chicken Breast', 'Spicy Sauce', 'Lettuce', 'Cheese', 'Brioche Bun'],
     },
   ];
 
@@ -130,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header with Welcome Text (Removed DELIVERY TO)
+            // Header with Welcome Text
             Container(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Row(

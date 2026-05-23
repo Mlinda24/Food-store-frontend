@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../utils/theme.dart';
+import '../../config/theme.dart';
 
 class FeaturedMealCard extends StatelessWidget {
   final Map<String, dynamic> meal;
@@ -13,8 +13,6 @@ class FeaturedMealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -28,7 +26,7 @@ class FeaturedMealCard extends StatelessWidget {
               height: 140,
               width: double.infinity,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                gradient: AppTheme.cardGlowGradient(context),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: AppTheme.deepCrimson.withOpacity(0.3),
@@ -38,7 +36,7 @@ class FeaturedMealCard extends StatelessWidget {
                 child: Icon(
                   Icons.fastfood,
                   size: 50,
-                  color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText,
+                  color: AppTheme.getMutedTextColor(context),
                 ),
               ),
             ),
@@ -48,7 +46,7 @@ class FeaturedMealCard extends StatelessWidget {
               meal['restaurant'],
               style: TextStyle(
                 fontSize: 11,
-                color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                color: AppTheme.getSecondaryTextColor(context),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -60,7 +58,7 @@ class FeaturedMealCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+                color: AppTheme.getPrimaryTextColor(context),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -78,7 +76,7 @@ class FeaturedMealCard extends StatelessWidget {
                       meal['rating'].toString(),
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                        color: AppTheme.getSecondaryTextColor(context),
                       ),
                     ),
                   ],

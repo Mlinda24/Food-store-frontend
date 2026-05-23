@@ -10,8 +10,9 @@ import '../screens/customer/order_tracking_screen.dart';
 import '../screens/customer/search_screen.dart';
 import '../screens/customer/customer_profile_screen.dart';
 import '../screens/customer/settings_screen.dart';
+import '../screens/customer/food_detail_screen.dart';  // IMPORTANT: Add this import
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
-import '../screens/restaurant/restaurant_profile_screen.dart';  // Add this import
+import '../screens/restaurant/restaurant_profile_screen.dart';
 import '../screens/driver/driver_dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
@@ -46,6 +47,15 @@ final GoRouter router = GoRouter(
       builder: (context, state) {
         final restaurant = state.extra as Restaurant?;
         return RestaurantDetailsScreen(restaurant: restaurant);
+      },
+    ),
+    // IMPORTANT: Add the food-detail route
+    GoRoute(
+      path: '/food-detail',
+      name: 'food-detail',
+      builder: (context, state) {
+        final food = state.extra as Map<String, dynamic>;
+        return FoodDetailScreen(food: food);
       },
     ),
     GoRoute(
@@ -88,7 +98,7 @@ final GoRouter router = GoRouter(
       builder: (context, state) => const RestaurantDashboardScreen(),
     ),
     GoRoute(
-      path: '/restaurant-profile',  // Add this route
+      path: '/restaurant-profile',
       name: 'restaurant-profile',
       builder: (context, state) => const RestaurantProfileScreen(),
     ),

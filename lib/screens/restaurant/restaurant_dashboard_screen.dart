@@ -23,7 +23,7 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
     const _DashboardContent(),
     const RestaurantOrdersScreen(),
     const MenuManagementScreen(),
-    const _SettingsContent(),  // Settings with Profile
+    const _SettingsContent(),
   ];
 
   @override
@@ -464,144 +464,31 @@ class _SettingsContent extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final restaurantName = authProvider.currentUser?.name ?? 'My Restaurant';
-    final restaurantEmail = authProvider.currentUser?.email ?? 'restaurant@example.com';
-    final restaurantPhone = authProvider.currentUser?.phone ?? '+265 888 123 456';
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Profile Header Card - THIS IS THE PROFILE SECTION
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: AppTheme.cardGlowGradient(context),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+  void _showLanguageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.getCardColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+        ),
+        title: Text('Select Language', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.check, color: AppTheme.primaryRed),
+              title: Text('English', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
+              onTap: () => Navigator.pop(context),
             ),
-            child: Column(
-              children: [
-                // Profile Image
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryButtonGradient,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppTheme.primaryRed, width: 2),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.restaurant,
-                      size: 40,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Restaurant Name
-                Text(
-                  restaurantName,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.getPrimaryTextColor(context),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // Email
-                Text(
-                  restaurantEmail,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.getSecondaryTextColor(context),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // Phone
-                Text(
-                  restaurantPhone,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.getSecondaryTextColor(context),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Edit Profile Button
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryButtonGradient,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      context.push('/restaurant-profile');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: const Text('Edit Profile'),
-                  ),
-                ),
-              ],
+            ListTile(
+              leading: const Icon(Icons.check, color: Colors.transparent),
+              title: Text('Chichewa', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+              onTap: () => Navigator.pop(context),
             ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Account Actions Section
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'ACCOUNT ACTIONS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.getMutedTextColor(context),
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-          
-          // Switch to Customer Button
-          _buildSettingsItem(
-            context,
-            icon: Icons.switch_account_outlined,
-            title: 'Switch to Customer',
-            subtitle: 'Switch to customer mode',
-            onTap: () {
-              context.go('/settings');
-            },
-            iconColor: AppTheme.warning,
-          ),
-          
-          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-          
-          // Logout Button
-          _buildSettingsItem(
-            context,
-            icon: Icons.logout,
-            title: 'Logout',
-            subtitle: 'Sign out of your account',
-            onTap: () => _showLogoutDialog(context),
-            textColor: AppTheme.error,
-            iconColor: AppTheme.error,
-          ),
-          
-          const SizedBox(height: 30),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -661,6 +548,322 @@ class _SettingsContent extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: AppTheme.cardGlowGradient(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.deepCrimson.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: AppTheme.primaryRed, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.getPrimaryTextColor(context),
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.getSecondaryTextColor(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final restaurant = authProvider.currentUser;
+    final restaurantName = restaurant?.name ?? 'My Restaurant';
+    final restaurantEmail = restaurant?.email ?? 'restaurant@example.com';
+    final restaurantPhone = restaurant?.phone ?? '+265 888 123 456';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Profile Header
+          Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.cardGlowGradient(context),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppTheme.primaryRed.withOpacity(0.5),
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.restaurant,
+                    size: 50,
+                    color: AppTheme.getPrimaryTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  restaurantName,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.getPrimaryTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  restaurantEmail,
+                  style: TextStyle(
+                    color: AppTheme.getSecondaryTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  restaurantPhone,
+                  style: TextStyle(
+                    color: AppTheme.getSecondaryTextColor(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Stats Cards
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    context,
+                    icon: Icons.shopping_bag_outlined,
+                    label: 'Total Orders',
+                    value: '42',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    context,
+                    icon: Icons.star_outline,
+                    label: 'Rating',
+                    value: '4.8',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    context,
+                    icon: Icons.menu_book_outlined,
+                    label: 'Menu Items',
+                    value: '12',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Account Section
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'ACCOUNT',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.getMutedTextColor(context),
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          
+          _buildSettingsItem(
+            context,
+            icon: Icons.restaurant_outlined,
+            title: 'Restaurant Details',
+            subtitle: 'View and edit your restaurant information',
+            onTap: () {
+              context.push('/restaurant-profile');
+            },
+          ),
+          
+          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+          
+          _buildSettingsItem(
+            context,
+            icon: Icons.menu_book_outlined,
+            title: 'Menu Management',
+            subtitle: 'Manage your menu items',
+            onTap: () {
+              final state = context.findAncestorStateOfType<_RestaurantDashboardScreenState>();
+              if (state != null) {
+                state.setState(() {
+                  state._selectedIndex = 2;
+                });
+              }
+            },
+            iconColor: AppTheme.orange,
+          ),
+          
+          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+          
+          _buildSettingsItem(
+            context,
+            icon: Icons.receipt_outlined,
+            title: 'Order History',
+            subtitle: 'View all your orders',
+            onTap: () {
+              final state = context.findAncestorStateOfType<_RestaurantDashboardScreenState>();
+              if (state != null) {
+                state.setState(() {
+                  state._selectedIndex = 1;
+                });
+              }
+            },
+            iconColor: AppTheme.teal,
+          ),
+          
+          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+          
+          // Preferences Section
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'PREFERENCES',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.getMutedTextColor(context),
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          
+          _buildSettingsItem(
+            context,
+            icon: Icons.language_outlined,
+            title: 'Language',
+            subtitle: 'English / Chichewa',
+            onTap: () => _showLanguageDialog(context),
+          ),
+          
+          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+          
+          _buildSettingsItem(
+            context,
+            icon: Icons.notifications_outlined,
+            title: 'Notifications',
+            subtitle: 'Manage your notification preferences',
+            onTap: () {
+              context.push('/notifications');
+            },
+          ),
+          
+          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+          
+          // Support Section
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'SUPPORT',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.getMutedTextColor(context),
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          
+          _buildSettingsItem(
+            context,
+            icon: Icons.help_outline,
+            title: 'Help & Support',
+            subtitle: 'Get help or contact us',
+            onTap: () {},
+          ),
+          
+          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+          
+          _buildSettingsItem(
+            context,
+            icon: Icons.info_outline,
+            title: 'About',
+            subtitle: 'Version 1.0.0',
+            onTap: () {},
+          ),
+          
+          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+          
+          // Account Actions Section
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'ACCOUNT ACTIONS',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.getMutedTextColor(context),
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          
+          _buildSettingsItem(
+            context,
+            icon: Icons.switch_account_outlined,
+            title: 'Switch to Customer',
+            subtitle: 'Switch to customer mode',
+            onTap: () {
+              context.go('/settings');
+            },
+            iconColor: AppTheme.warning,
+          ),
+          
+          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+          
+          _buildSettingsItem(
+            context,
+            icon: Icons.logout,
+            title: 'Logout',
+            subtitle: 'Sign out of your account',
+            onTap: () => _showLogoutDialog(context),
+            textColor: AppTheme.error,
+            iconColor: AppTheme.error,
+          ),
+          
+          const SizedBox(height: 30),
+        ],
       ),
     );
   }
