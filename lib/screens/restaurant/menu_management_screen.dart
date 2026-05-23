@@ -17,7 +17,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
   String _selectedCategory = 'All';
   final List<String> _categories = ['All', 'Pizza', 'Burgers', 'Sushi', 'Desserts', 'Drinks'];
 
-  // Get available categories (excluding 'All')
   List<String> get _availableCategories => _categories.where((c) => c != 'All').toList();
 
   @override
@@ -132,7 +131,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     final descCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
     
-    // Initialize with first available category, not 'All'
     String selectedCategory = _availableCategories.isNotEmpty ? _availableCategories.first : 'Pizza';
     String? imagePath;
 
@@ -217,7 +215,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // FIXED: Dropdown with proper null safety
                   DropdownButtonFormField<String>(
                     value: _availableCategories.contains(selectedCategory) ? selectedCategory : null,
                     hint: const Text('Select Category'),
@@ -267,13 +264,21 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                           return;
                         }
                         
+                        final priceValue = double.tryParse(priceCtrl.text);
+                        if (priceValue == null) {
+                          _showSnackBar('Please enter a valid price', isError: true);
+                          return;
+                        }
+                        
                         final itemData = {
-                          'name': nameCtrl.text,
-                          'description': descCtrl.text,
-                          'price': double.parse(priceCtrl.text) ?? 0,
+                          'name': nameCtrl.text.trim(),
+                          'description': descCtrl.text.trim(),
+                          'price': priceValue,
                           'category': selectedCategory,
                           'is_available': true,
                         };
+                        
+                        print('Sending menu item data: $itemData');
                         
                         final success = await context.read<RestaurantProvider>().addMenuItem(itemData);
                         
@@ -305,7 +310,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     final descCtrl = TextEditingController(text: item.description);
     final priceCtrl = TextEditingController(text: item.price.toString());
     
-    // Ensure selectedCategory is valid
     String selectedCategory = _availableCategories.contains(item.category) 
         ? item.category 
         : (_availableCategories.isNotEmpty ? _availableCategories.first : 'Pizza');
@@ -394,7 +398,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // FIXED: Dropdown with proper null safety
                   DropdownButtonFormField<String>(
                     value: _availableCategories.contains(selectedCategory) ? selectedCategory : null,
                     hint: const Text('Select Category'),
@@ -444,11 +447,17 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                           return;
                         }
                         
+                        final priceValue = double.tryParse(priceCtrl.text);
+                        if (priceValue == null) {
+                          _showSnackBar('Please enter a valid price', isError: true);
+                          return;
+                        }
+                        
                         final itemData = {
                           'id': item.id,
-                          'name': nameCtrl.text,
-                          'description': descCtrl.text,
-                          'price': double.parse(priceCtrl.text),
+                          'name': nameCtrl.text.trim(),
+                          'description': descCtrl.text.trim(),
+                          'price': priceValue,
                           'category': selectedCategory,
                           'is_available': item.isAvailable,
                         };
@@ -507,7 +516,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
       backgroundColor: AppTheme.getBackgroundColor(context),
       body: Column(
         children: [
-          // Categories
           SizedBox(
             height: 50,
             child: ListView.builder(
@@ -540,7 +548,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
               },
             ),
           ),
-          // Menu Items List
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -589,7 +596,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
       ),
       child: Row(
         children: [
-          // Image
           Container(
             width: 70,
             height: 70,
@@ -602,7 +608,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                 : Icon(Icons.fastfood, size: 30, color: AppTheme.getMutedTextColor(context)),
           ),
           const SizedBox(width: 12),
-          // Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

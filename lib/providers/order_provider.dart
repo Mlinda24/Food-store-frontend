@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../models/models.dart';
 import '../services/api_service.dart';
 
 class OrderProvider extends ChangeNotifier {
@@ -7,10 +8,12 @@ class OrderProvider extends ChangeNotifier {
   
   List<Order> _orders = [];
   bool _isLoading = false;
+  bool _isLoadingOrder = false;
   String? _error;
 
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
+  bool get isLoadingOrder => _isLoadingOrder;
   String? get error => _error;
 
   Future<void> fetchOrders() async {
@@ -50,12 +53,62 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  Future<Order?> getOrder(String orderId) async {
+    _isLoadingOrder = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.getOrder(orderId);
+      final order = _parseOrder(response);
+      _isLoadingOrder = false;
+      notifyListeners();
+      return order;
+    } catch (e) {
+      _error = e.toString();
+      _isLoadingOrder = false;
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<bool> updateOrderStatus(String orderId, String status) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _apiService.updateOrderStatus(orderId, status);
+      await fetchOrders(); // Refresh orders list
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   List<Order> _parseOrders(List<dynamic> data) {
     return data.map((item) => _parseOrder(item)).toList();
   }
 
   Order _parseOrder(Map<String, dynamic> json) {
     final itemsList = json['items'] as List? ?? [];
+    
+    // Get customer name and phone from serializer fields
+    String customerName = json['customer_name'] ?? 'Customer';
+    String customerPhone = json['customer_phone'] ?? 'No phone';
+    
+    // If customer_name not present, try to get from customer object
+    if (customerName == 'Customer' && json['customer'] != null) {
+      if (json['customer'] is Map) {
+        customerName = json['customer']['username'] ?? 'Customer';
+        customerPhone = json['customer']['phone'] ?? 'No phone';
+      }
+    }
+    
     final items = itemsList.map((item) => OrderItemModel(
       menuItemId: item['menu_item']?.toString() ?? item['menu_item_id']?.toString() ?? '0',
       name: item['menu_item_name'] ?? item['name'] ?? 'Item',
@@ -65,13 +118,13 @@ class OrderProvider extends ChangeNotifier {
 
     return Order(
       id: json['id'].toString(),
-      userId: json['user']?.toString() ?? '',
+      userId: json['customer']?.toString() ?? json['user']?.toString() ?? '',
       restaurantId: json['restaurant']?.toString() ?? '0',
       driverId: json['driver']?.toString(),
       items: items,
       status: _parseStatus(json['status'] ?? 'pending'),
       subtotal: _parseDouble(json['subtotal']) ?? _calculateSubtotal(items),
-      deliveryFee: _parseDouble(json['delivery_fee']) ?? 0,
+      deliveryFee: _parseDouble(json['delivery_fee']) ?? 2.99,
       tax: _parseDouble(json['tax']) ?? 0,
       total: _parseDouble(json['total_price']) ?? _parseDouble(json['total']) ?? 0,
       deliveryAddress: json['delivery_address'] ?? '',
@@ -129,5 +182,15 @@ class OrderProvider extends ChangeNotifier {
       case 'cancelled': return OrderStatus.cancelled;
       default: return OrderStatus.pending;
     }
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
+  void clearOrders() {
+    _orders = [];
+    notifyListeners();
   }
 }

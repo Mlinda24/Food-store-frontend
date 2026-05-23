@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../models/models.dart';
 import '../services/api_service.dart';
 
 class RestaurantProvider extends ChangeNotifier {
@@ -29,7 +30,6 @@ class RestaurantProvider extends ChangeNotifier {
   Restaurant? get restaurant => _restaurant;
   String? get error => _error;
 
-  // Helper methods for safe type conversion
   double _toDouble(dynamic value) {
     if (value == null) return 0.0;
     if (value is double) return value;
@@ -44,6 +44,14 @@ class RestaurantProvider extends ChangeNotifier {
     if (value is double) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
     return 0;
+  }
+
+  void _safeNotify() {
+    Future.microtask(() {
+      if (hasListeners) {
+        notifyListeners();
+      }
+    });
   }
 
   Future<void> loadRestaurantData() async {
@@ -61,22 +69,27 @@ class RestaurantProvider extends ChangeNotifier {
       print('Error loading restaurant data: $e');
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
   Future<void> loadRestaurantOrders() async {
+    print('🔄 Loading restaurant orders...');
     _isLoadingOrders = true;
-    notifyListeners();
+    _safeNotify();
     
     try {
       final allOrders = await _apiService.getRestaurantOrders();
-      final restaurantId = _restaurant?.id;
+      print('Raw orders from API: ${allOrders.length}');
       
-      _orders = allOrders.where((order) => 
-        order['restaurant'].toString() == restaurantId?.toString()
-      ).toList();
+      _orders = allOrders;
       
+      // Debug: Print each order
+      for (var order in _orders) {
+        print('  Order #${order['id']}: Status=${order['status']}');
+      }
+      
+      // Convert to RestaurantOrder objects for UI
       final List<RestaurantOrder> allRestaurantOrders = [];
       
       for (var order in _orders) {
@@ -88,10 +101,29 @@ class RestaurantProvider extends ChangeNotifier {
           price: _toDouble(item['price']),
         )).toList();
         
+        // Extract customer information
+        String customerName = 'Customer';
+        String customerPhone = 'No phone';
+        
+        if (order['customer_name'] != null) {
+          customerName = order['customer_name'].toString();
+        } else if (order['customer'] != null) {
+          if (order['customer'] is Map) {
+            customerName = order['customer']['username'] ?? 'Customer';
+            customerPhone = order['customer']['phone'] ?? 'No phone';
+          } else {
+            customerName = 'Customer #${order['customer']}';
+          }
+        }
+        
+        if (order['customer_phone'] != null) {
+          customerPhone = order['customer_phone'].toString();
+        }
+        
         allRestaurantOrders.add(RestaurantOrder(
           id: order['id'].toString(),
-          customerName: order['customer']?['username'] ?? 'Customer',
-          customerPhone: order['customer']?['phone'] ?? '',
+          customerName: customerName,
+          customerPhone: customerPhone,
           customerAddress: order['delivery_address'] ?? '',
           items: orderItems,
           status: _getOrderStatus(order['status'] ?? 'pending'),
@@ -102,6 +134,7 @@ class RestaurantProvider extends ChangeNotifier {
         ));
       }
       
+      // Split into categories
       _activeOrders = allRestaurantOrders.where((o) => 
         o.status == OrderStatus.pending || 
         o.status == OrderStatus.confirmed || 
@@ -117,12 +150,16 @@ class RestaurantProvider extends ChangeNotifier {
         o.status == OrderStatus.cancelled
       ).toList();
       
+      print('Active orders: ${_activeOrders.length}');
+      print('Ready orders: ${_readyOrders.length}');
+      print('Past orders: ${_pastOrders.length}');
+      
       _isLoadingOrders = false;
-      notifyListeners();
+      _safeNotify();
     } catch (e) {
       _error = e.toString();
       _isLoadingOrders = false;
-      notifyListeners();
+      _safeNotify();
       print('Error loading orders: $e');
     }
   }
@@ -133,6 +170,7 @@ class RestaurantProvider extends ChangeNotifier {
       case 'confirmed': return OrderStatus.confirmed;
       case 'preparing': return OrderStatus.preparing;
       case 'ready': return OrderStatus.ready;
+      case 'picked_up': return OrderStatus.pickedUp;  // ✅ Added pickedUp
       case 'delivered': return OrderStatus.delivered;
       case 'cancelled': return OrderStatus.cancelled;
       default: return OrderStatus.pending;
@@ -148,18 +186,18 @@ class RestaurantProvider extends ChangeNotifier {
         description: restaurantData['description'] ?? '',
         image: restaurantData['image'] ?? '',
         address: restaurantData['address'] ?? '',
+        phone: restaurantData['phone'] ?? '',
         rating: _toDouble(restaurantData['rating']),
         deliveryTime: _toInt(restaurantData['delivery_time']),
         deliveryFee: _toDouble(restaurantData['delivery_fee']),
         minOrderAmount: _toDouble(restaurantData['min_order_amount']),
-        phone: restaurantData['phone'] ?? '',
         categories: restaurantData['categories'] != null 
             ? List<String>.from(restaurantData['categories']) 
             : ['All'],
         isOpen: restaurantData['is_open'] ?? true,
       );
       _isRestaurantOpen = _restaurant?.isOpen ?? true;
-      notifyListeners();
+      _safeNotify();
     } catch (e) {
       _error = e.toString();
       print('Error loading restaurant info: $e');
@@ -179,7 +217,7 @@ class RestaurantProvider extends ChangeNotifier {
         category: item['category']?.toString() ?? 'General',
         isAvailable: item['is_available'] ?? true,
       )).toList();
-      notifyListeners();
+      _safeNotify();
     } catch (e) {
       _error = e.toString();
       print('Error loading menu items: $e');
@@ -199,7 +237,7 @@ class RestaurantProvider extends ChangeNotifier {
         monthlyEarnings: _toDouble(statsData['monthlyEarnings']),
         monthlyOrders: _toInt(statsData['monthlyOrders']),
       );
-      notifyListeners();
+      _safeNotify();
     } catch (e) {
       _error = e.toString();
       print('Error loading stats: $e');
@@ -220,7 +258,6 @@ class RestaurantProvider extends ChangeNotifier {
     try {
       await _apiService.updateOrderStatus(orderId, status);
       await loadRestaurantOrders();
-      notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString();
@@ -240,16 +277,16 @@ class RestaurantProvider extends ChangeNotifier {
           description: _restaurant!.description,
           image: _restaurant!.image,
           address: _restaurant!.address,
+          phone: _restaurant!.phone,
           rating: _restaurant!.rating,
           deliveryTime: _restaurant!.deliveryTime,
           deliveryFee: _restaurant!.deliveryFee,
           minOrderAmount: _restaurant!.minOrderAmount,
-          phone: _restaurant!.phone,
           categories: _restaurant!.categories,
           isOpen: isOpen,
         );
       }
-      notifyListeners();
+      _safeNotify();
       return true;
     } catch (e) {
       _error = e.toString();
@@ -272,7 +309,7 @@ class RestaurantProvider extends ChangeNotifier {
       return false;
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
@@ -290,7 +327,7 @@ class RestaurantProvider extends ChangeNotifier {
       return false;
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
@@ -308,12 +345,12 @@ class RestaurantProvider extends ChangeNotifier {
       return false;
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
   void clearError() {
     _error = null;
-    notifyListeners();
+    _safeNotify();
   }
 }
