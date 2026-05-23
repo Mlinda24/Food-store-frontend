@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
-import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   String? _error;
-  final ApiService _apiService = ApiService();
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -19,31 +17,25 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.login(email: email, password: password);
+      await Future.delayed(const Duration(seconds: 1));
       
-      // Parse user data from response
-      final userData = response['user'];
-      
+      // Determine role based on email for demo
       UserRole role;
-      switch (userData['role']) {
-        case 'admin':
-          role = UserRole.admin;
-          break;
-        case 'driver':
-          role = UserRole.driver;
-          break;
-        case 'restaurant':
-          role = UserRole.restaurant;
-          break;
-        default:
-          role = UserRole.customer;
+      if (email.contains('admin')) {
+        role = UserRole.admin;
+      } else if (email.contains('driver')) {
+        role = UserRole.driver;
+      } else if (email.contains('restaurant')) {
+        role = UserRole.restaurant;
+      } else {
+        role = UserRole.customer;
       }
 
       _currentUser = User(
-        id: userData['id'].toString(),
-        name: userData['name'],
-        email: userData['email'],
-        phone: userData['phone'] ?? '',
+        id: 'user_${DateTime.now().millisecondsSinceEpoch}',
+        name: email.split('@')[0],
+        email: email,
+        phone: '+1234567890',
         role: role,
         isActive: true,
         createdAt: DateTime.now(),
@@ -53,7 +45,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = 'Login failed: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -72,18 +64,38 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.register(
+      await Future.delayed(const Duration(seconds: 1));
+      
+      UserRole userRole;
+      switch (role) {
+        case 'admin':
+          userRole = UserRole.admin;
+          break;
+        case 'driver':
+          userRole = UserRole.driver;
+          break;
+        case 'restaurant':
+          userRole = UserRole.restaurant;
+          break;
+        default:
+          userRole = UserRole.customer;
+      }
+
+      _currentUser = User(
+        id: 'user_${DateTime.now().millisecondsSinceEpoch}',
         name: name,
         email: email,
         phone: phone,
-        password: password,
-        role: role,
+        role: userRole,
+        isActive: true,
+        createdAt: DateTime.now(),
       );
       
-      // Auto login after registration
-      return await login(email, password);
+      _isLoading = false;
+      notifyListeners();
+      return true;
     } catch (e) {
-      _error = e.toString();
+      _error = 'Registration failed: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -91,7 +103,6 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _apiService.clearToken();
     _currentUser = null;
     notifyListeners();
   }
