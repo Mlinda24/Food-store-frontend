@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
+import '../../providers/restaurant_provider.dart';
 
 class MenuManagementScreen extends StatefulWidget {
   const MenuManagementScreen({super.key});
@@ -12,60 +14,22 @@ class MenuManagementScreen extends StatefulWidget {
 }
 
 class _MenuManagementScreenState extends State<MenuManagementScreen> {
-  List<MenuItem> _menuItems = [];
   String _selectedCategory = 'All';
-
   final List<String> _categories = ['All', 'Pizza', 'Burgers', 'Sushi', 'Desserts', 'Drinks'];
+
+  // Get available categories (excluding 'All')
+  List<String> get _availableCategories => _categories.where((c) => c != 'All').toList();
 
   @override
   void initState() {
     super.initState();
-    _loadMenuItems();
+    _loadData();
   }
 
-  void _loadMenuItems() {
-    _menuItems = [
-      MenuItem(
-        id: '1',
-        restaurantId: '1',
-        name: 'Margherita Pizza',
-        description: 'Fresh mozzarella, tomato sauce, basil',
-        price: 4500,
-        image: '',
-        category: 'Pizza',
-        isAvailable: true,
-      ),
-      MenuItem(
-        id: '2',
-        restaurantId: '1',
-        name: 'Pepperoni Pizza',
-        description: 'Classic pepperoni with mozzarella',
-        price: 5500,
-        image: '',
-        category: 'Pizza',
-        isAvailable: true,
-      ),
-      MenuItem(
-        id: '3',
-        restaurantId: '1',
-        name: 'Cheeseburger',
-        description: 'Beef patty with cheese, lettuce, tomato',
-        price: 3800,
-        image: '',
-        category: 'Burgers',
-        isAvailable: true,
-      ),
-      MenuItem(
-        id: '4',
-        restaurantId: '1',
-        name: 'Veggie Burger',
-        description: 'Plant-based patty with fresh veggies',
-        price: 4200,
-        image: '',
-        category: 'Burgers',
-        isAvailable: false,
-      ),
-    ];
+  void _loadData() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RestaurantProvider>().loadMenuItems();
+    });
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -78,8 +42,8 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     );
   }
 
-  void _deleteMenuItem(MenuItem item) {
-    showDialog(
+  Future<void> _deleteMenuItem(MenuItem item) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.getCardColor(context),
@@ -100,7 +64,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
             children: [
               Expanded(
                 child: TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(context, false),
                   style: TextButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
@@ -113,11 +77,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    setState(() => _menuItems.removeWhere((i) => i.id == item.id));
-                    Navigator.pop(context);
-                    _showSnackBar('${item.name} deleted');
-                  },
+                  onPressed: () => Navigator.pop(context, true),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.error,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -130,6 +90,15 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
         ],
       ),
     );
+
+    if (confirmed == true) {
+      final success = await context.read<RestaurantProvider>().deleteMenuItem(item.id);
+      if (success) {
+        _showSnackBar('${item.name} deleted');
+      } else {
+        _showSnackBar('Failed to delete ${item.name}', isError: true);
+      }
+    }
   }
 
   Future<String?> _pickImage() async {
@@ -162,7 +131,9 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
-    String selectedCategory = 'Pizza';
+    
+    // Initialize with first available category, not 'All'
+    String selectedCategory = _availableCategories.isNotEmpty ? _availableCategories.first : 'Pizza';
     String? imagePath;
 
     showDialog(
@@ -194,7 +165,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
                       ),
                       child: imagePath != null
-                          ? ClipRRect(borderRadius: BorderRadius.circular(12), child: _buildImageWidget(imagePath))
+                          ? ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(imagePath!), fit: BoxFit.cover))
                           : Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -246,8 +217,10 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  // FIXED: Dropdown with proper null safety
                   DropdownButtonFormField<String>(
-                    value: selectedCategory,
+                    value: _availableCategories.contains(selectedCategory) ? selectedCategory : null,
+                    hint: const Text('Select Category'),
                     dropdownColor: AppTheme.getCardColor(context),
                     style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
                     decoration: InputDecoration(
@@ -257,7 +230,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                       fillColor: AppTheme.getSurfaceColor(context),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
-                    items: _categories.where((c) => c != 'All').map((category) => DropdownMenuItem(
+                    items: _availableCategories.map((category) => DropdownMenuItem(
                       value: category,
                       child: Text(category, style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
                     )).toList(),
@@ -284,7 +257,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (nameCtrl.text.isEmpty) {
                           _showSnackBar('Please enter item name', isError: true);
                           return;
@@ -293,20 +266,23 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                           _showSnackBar('Please enter price', isError: true);
                           return;
                         }
-                        setState(() {
-                          _menuItems.add(MenuItem(
-                            id: DateTime.now().millisecondsSinceEpoch.toString(),
-                            restaurantId: '1',
-                            name: nameCtrl.text,
-                            description: descCtrl.text,
-                            price: double.parse(priceCtrl.text),
-                            image: imagePath ?? '',
-                            category: selectedCategory,
-                            isAvailable: true,
-                          ));
-                        });
-                        Navigator.pop(context);
-                        _showSnackBar('${nameCtrl.text} added to menu');
+                        
+                        final itemData = {
+                          'name': nameCtrl.text,
+                          'description': descCtrl.text,
+                          'price': double.parse(priceCtrl.text) ?? 0,
+                          'category': selectedCategory,
+                          'is_available': true,
+                        };
+                        
+                        final success = await context.read<RestaurantProvider>().addMenuItem(itemData);
+                        
+                        if (success) {
+                          Navigator.pop(context);
+                          _showSnackBar('${nameCtrl.text} added to menu');
+                        } else {
+                          _showSnackBar('Failed to add item', isError: true);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryRed,
@@ -328,8 +304,12 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     final nameCtrl = TextEditingController(text: item.name);
     final descCtrl = TextEditingController(text: item.description);
     final priceCtrl = TextEditingController(text: item.price.toString());
-    String selectedCategory = item.category;
-    String? imagePath = item.image;
+    
+    // Ensure selectedCategory is valid
+    String selectedCategory = _availableCategories.contains(item.category) 
+        ? item.category 
+        : (_availableCategories.isNotEmpty ? _availableCategories.first : 'Pizza');
+    String? imagePath;
 
     showDialog(
       context: context,
@@ -359,16 +339,18 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
                       ),
-                      child: imagePath != null && imagePath!.isNotEmpty
-                          ? ClipRRect(borderRadius: BorderRadius.circular(12), child: _buildImageWidget(imagePath))
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context)),
-                                const SizedBox(height: 8),
-                                Text('Tap to change image', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
-                              ],
-                            ),
+                      child: imagePath != null
+                          ? ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(imagePath!), fit: BoxFit.cover))
+                          : (item.image.isNotEmpty
+                              ? ClipRRect(borderRadius: BorderRadius.circular(12), child: _buildImageWidget(item.image))
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_photo_alternate, size: 40, color: AppTheme.getMutedTextColor(context)),
+                                    const SizedBox(height: 8),
+                                    Text('Tap to change image', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
+                                  ],
+                                )),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -412,8 +394,10 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  // FIXED: Dropdown with proper null safety
                   DropdownButtonFormField<String>(
-                    value: selectedCategory,
+                    value: _availableCategories.contains(selectedCategory) ? selectedCategory : null,
+                    hint: const Text('Select Category'),
                     dropdownColor: AppTheme.getCardColor(context),
                     style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
                     decoration: InputDecoration(
@@ -423,7 +407,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                       fillColor: AppTheme.getSurfaceColor(context),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
-                    items: _categories.where((c) => c != 'All').map((category) => DropdownMenuItem(
+                    items: _availableCategories.map((category) => DropdownMenuItem(
                       value: category,
                       child: Text(category, style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
                     )).toList(),
@@ -450,7 +434,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (nameCtrl.text.isEmpty) {
                           _showSnackBar('Please enter item name', isError: true);
                           return;
@@ -459,22 +443,24 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                           _showSnackBar('Please enter price', isError: true);
                           return;
                         }
-                        setState(() {
-                          final index = _menuItems.indexOf(item);
-                          _menuItems[index] = MenuItem(
-                            id: item.id,
-                            restaurantId: item.restaurantId,
-                            name: nameCtrl.text,
-                            description: descCtrl.text,
-                            price: double.parse(priceCtrl.text),
-                            image: imagePath ?? '',
-                            category: selectedCategory,
-                            isAvailable: item.isAvailable,
-                            options: item.options,
-                          );
-                        });
-                        Navigator.pop(context);
-                        _showSnackBar('${nameCtrl.text} updated');
+                        
+                        final itemData = {
+                          'id': item.id,
+                          'name': nameCtrl.text,
+                          'description': descCtrl.text,
+                          'price': double.parse(priceCtrl.text),
+                          'category': selectedCategory,
+                          'is_available': item.isAvailable,
+                        };
+                        
+                        final success = await context.read<RestaurantProvider>().updateMenuItem(item.id, itemData);
+                        
+                        if (success) {
+                          Navigator.pop(context);
+                          _showSnackBar('${nameCtrl.text} updated');
+                        } else {
+                          _showSnackBar('Failed to update item', isError: true);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryRed,
@@ -492,17 +478,33 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     );
   }
 
+  Future<void> _toggleAvailability(MenuItem item) async {
+    final itemData = {
+      'id': item.id,
+      'is_available': !item.isAvailable,
+    };
+    
+    final success = await context.read<RestaurantProvider>().updateMenuItem(item.id, itemData);
+    if (success) {
+      _showSnackBar('${item.name} is now ${!item.isAvailable ? 'available' : 'out of stock'}');
+    } else {
+      _showSnackBar('Failed to update availability', isError: true);
+    }
+  }
+
   List<MenuItem> get _filteredItems {
+    final items = context.watch<RestaurantProvider>().menuItems;
     return _selectedCategory == 'All' 
-        ? _menuItems 
-        : _menuItems.where((item) => item.category == _selectedCategory).toList();
+        ? items 
+        : items.where((item) => item.category == _selectedCategory).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<RestaurantProvider>().isLoading;
+    
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
-      // No AppBar – using parent’s AppBar instead
       body: Column(
         children: [
           // Categories
@@ -540,31 +542,32 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
           ),
           // Menu Items List
           Expanded(
-            child: _filteredItems.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.restaurant_menu, size: 64, color: AppTheme.getMutedTextColor(context)),
-                        const SizedBox(height: 16),
-                        Text('No items in this category', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                        const SizedBox(height: 8),
-                        Text('Tap + Add to add new items', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredItems.length,
-                    itemBuilder: (context, index) {
-                      final item = _filteredItems[index];
-                      return _buildMenuItemCard(item);
-                    },
-                  ),
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredItems.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.restaurant_menu, size: 64, color: AppTheme.getMutedTextColor(context)),
+                            const SizedBox(height: 16),
+                            Text('No items in this category', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                            const SizedBox(height: 8),
+                            Text('Tap + Add to add new items', style: TextStyle(color: AppTheme.getMutedTextColor(context))),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _filteredItems.length,
+                        itemBuilder: (context, index) {
+                          final item = _filteredItems[index];
+                          return _buildMenuItemCard(item);
+                        },
+                      ),
           ),
         ],
       ),
-      // FAB remains (only visible on this screen because the parent doesn't have one)
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddItemDialog,
         backgroundColor: AppTheme.primaryRed,
@@ -657,40 +660,21 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                     ),
                     Row(
                       children: [
-                        // Edit Button
                         IconButton(
                           icon: const Icon(Icons.edit, size: 18, color: AppTheme.primaryRed),
                           onPressed: () => _showEditItemDialog(item),
                         ),
-                        // Delete Button
                         IconButton(
                           icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.error),
                           onPressed: () => _deleteMenuItem(item),
                         ),
-                        // Toggle Availability Button
                         IconButton(
                           icon: Icon(
                             item.isAvailable ? Icons.visibility_off : Icons.visibility,
                             size: 18,
                             color: item.isAvailable ? AppTheme.getMutedTextColor(context) : AppTheme.success,
                           ),
-                          onPressed: () {
-                            setState(() {
-                              final index = _menuItems.indexOf(item);
-                              _menuItems[index] = MenuItem(
-                                id: item.id,
-                                restaurantId: item.restaurantId,
-                                name: item.name,
-                                description: item.description,
-                                price: item.price,
-                                image: item.image,
-                                category: item.category,
-                                isAvailable: !item.isAvailable,
-                                options: item.options,
-                              );
-                            });
-                            _showSnackBar('${item.name} is now ${!item.isAvailable ? 'available' : 'out of stock'}');
-                          },
+                          onPressed: () => _toggleAvailability(item),
                         ),
                       ],
                     ),

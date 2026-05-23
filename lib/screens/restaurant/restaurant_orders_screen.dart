@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../utils/theme.dart';
 import '../../models/models.dart';
+import '../../providers/restaurant_provider.dart';
 
 class RestaurantOrdersScreen extends StatefulWidget {
   const RestaurantOrdersScreen({super.key});
@@ -13,10 +15,6 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
   String _selectedTab = 'Active';
   final List<String> _tabs = ['Active', 'Ready', 'Past'];
 
-  List<RestaurantOrder> _activeOrders = [];
-  List<RestaurantOrder> _readyOrders = [];
-  List<RestaurantOrder> _pastOrders = [];
-
   @override
   void initState() {
     super.initState();
@@ -24,82 +22,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
   }
 
   void _loadOrders() {
-    _activeOrders = [
-      RestaurantOrder(
-        id: 'ORD-001',
-        customerName: 'John Doe',
-        customerPhone: '+265 888 123 456',
-        customerAddress: '123 Main St, Area 3',
-        items: [
-          OrderItemModel(menuItemId: '1', name: 'Margherita Pizza', quantity: 2, price: 4500),
-          OrderItemModel(menuItemId: '2', name: 'Coke', quantity: 2, price: 800),
-        ],
-        status: OrderStatus.confirmed,
-        total: 10600,
-        orderTime: DateTime.now().subtract(const Duration(minutes: 5)),
-        estimatedPrepTime: 20,
-      ),
-      RestaurantOrder(
-        id: 'ORD-002',
-        customerName: 'Jane Smith',
-        customerPhone: '+265 999 789 012',
-        customerAddress: '456 Oak Ave, Area 47',
-        items: [
-          OrderItemModel(menuItemId: '3', name: 'Cheeseburger', quantity: 1, price: 3800),
-          OrderItemModel(menuItemId: '4', name: 'French Fries', quantity: 1, price: 1200),
-        ],
-        status: OrderStatus.pending,
-        total: 5000,
-        orderTime: DateTime.now().subtract(const Duration(minutes: 12)),
-        estimatedPrepTime: 15,
-      ),
-      RestaurantOrder(
-        id: 'ORD-005',
-        customerName: 'Alice Brown',
-        customerPhone: '+265 888 555 777',
-        customerAddress: '789 Pine St, Area 9',
-        items: [
-          OrderItemModel(menuItemId: '1', name: 'Pepperoni Pizza', quantity: 1, price: 5500),
-          OrderItemModel(menuItemId: '5', name: 'Chicken Wings', quantity: 2, price: 3900),
-        ],
-        status: OrderStatus.preparing,
-        total: 13300,
-        orderTime: DateTime.now().subtract(const Duration(minutes: 8)),
-        estimatedPrepTime: 10,
-      ),
-    ];
-
-    _readyOrders = [
-      RestaurantOrder(
-        id: 'ORD-003',
-        customerName: 'Mike Johnson',
-        customerPhone: '+265 777 456 789',
-        customerAddress: '789 Pine St, Area 9',
-        items: [
-          OrderItemModel(menuItemId: '1', name: 'Pepperoni Pizza', quantity: 1, price: 5500),
-        ],
-        status: OrderStatus.ready,
-        total: 5500,
-        orderTime: DateTime.now().subtract(const Duration(minutes: 25)),
-        estimatedPrepTime: 0,
-      ),
-    ];
-
-    _pastOrders = [
-      RestaurantOrder(
-        id: 'ORD-004',
-        customerName: 'Sarah Wilson',
-        customerPhone: '+265 666 321 654',
-        customerAddress: '321 Elm St, Area 12',
-        items: [
-          OrderItemModel(menuItemId: '5', name: 'Chicken Wings', quantity: 1, price: 3900),
-        ],
-        status: OrderStatus.delivered,
-        total: 3900,
-        orderTime: DateTime.now().subtract(const Duration(hours: 2)),
-        estimatedPrepTime: 0,
-      ),
-    ];
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    provider.loadRestaurantOrders();
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -112,96 +36,67 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     );
   }
 
-  void _acceptOrder(RestaurantOrder order) {
-    setState(() {
-      final index = _activeOrders.indexOf(order);
-      if (index != -1) {
-        _activeOrders[index] = RestaurantOrder(
-          id: order.id,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
-          customerAddress: order.customerAddress,
-          items: order.items,
-          status: OrderStatus.confirmed,
-          total: order.total,
-          orderTime: order.orderTime,
-          specialInstructions: order.specialInstructions,
-          estimatedPrepTime: order.estimatedPrepTime,
-        );
-      }
-    });
-    _showSnackBar('Order ${order.id} accepted!');
+  Future<void> _acceptOrder(dynamic order) async {
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    await provider.updateOrderStatus(order['id'], 'confirmed');
+    _loadOrders();
+    _showSnackBar('Order ${order['id']} accepted!');
   }
 
-  void _declineOrder(RestaurantOrder order) {
-    setState(() {
-      _activeOrders.removeWhere((o) => o.id == order.id);
-    });
-    _showSnackBar('Order ${order.id} declined', isError: true);
+  Future<void> _declineOrder(dynamic order) async {
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    await provider.updateOrderStatus(order['id'], 'cancelled');
+    _loadOrders();
+    _showSnackBar('Order ${order['id']} declined', isError: true);
   }
 
-  void _markAsPreparing(RestaurantOrder order) {
-    setState(() {
-      final index = _activeOrders.indexOf(order);
-      if (index != -1) {
-        _activeOrders[index] = RestaurantOrder(
-          id: order.id,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
-          customerAddress: order.customerAddress,
-          items: order.items,
-          status: OrderStatus.preparing,
-          total: order.total,
-          orderTime: order.orderTime,
-          specialInstructions: order.specialInstructions,
-          estimatedPrepTime: 15,
-        );
-      }
-    });
-    _showSnackBar('Order ${order.id} is now being prepared');
+  Future<void> _markAsPreparing(dynamic order) async {
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    await provider.updateOrderStatus(order['id'], 'preparing');
+    _loadOrders();
+    _showSnackBar('Order ${order['id']} is now being prepared');
   }
 
-  void _markAsReady(RestaurantOrder order) {
-    setState(() {
-      _activeOrders.removeWhere((o) => o.id == order.id);
-      _readyOrders.add(RestaurantOrder(
-        id: order.id,
-        customerName: order.customerName,
-        customerPhone: order.customerPhone,
-        customerAddress: order.customerAddress,
-        items: order.items,
-        status: OrderStatus.ready,
-        total: order.total,
-        orderTime: order.orderTime,
-        specialInstructions: order.specialInstructions,
-        estimatedPrepTime: 0,
-      ));
-    });
-    _showSnackBar('Order ${order.id} is ready for pickup!');
+  Future<void> _markAsReady(dynamic order) async {
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    await provider.updateOrderStatus(order['id'], 'ready');
+    _loadOrders();
+    _showSnackBar('Order ${order['id']} is ready for pickup!');
   }
 
-  void _markAsPickedUp(RestaurantOrder order) {
-    setState(() {
-      _readyOrders.removeWhere((o) => o.id == order.id);
-      _pastOrders.add(RestaurantOrder(
-        id: order.id,
-        customerName: order.customerName,
-        customerPhone: order.customerPhone,
-        customerAddress: order.customerAddress,
-        items: order.items,
-        status: OrderStatus.pickedUp,
-        total: order.total,
-        orderTime: order.orderTime,
-        specialInstructions: order.specialInstructions,
-        estimatedPrepTime: 0,
-      ));
-    });
-    _showSnackBar('Order ${order.id} has been picked up');
+  Future<void> _markAsDelivered(dynamic order) async {
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    await provider.updateOrderStatus(order['id'], 'delivered');
+    _loadOrders();
+    _showSnackBar('Order ${order['id']} has been delivered');
   }
 
   @override
   Widget build(BuildContext context) {
-    // Removed Scaffold – now returns a Column directly
+    final provider = Provider.of<RestaurantProvider>(context);
+    final isLoading = provider.isLoadingOrders;
+    final allOrders = provider.orders;
+
+    // Filter orders by status
+    final activeOrders = allOrders.where((o) => 
+      o['status'] == 'pending' || o['status'] == 'confirmed' || o['status'] == 'preparing'
+    ).toList();
+    
+    final readyOrders = allOrders.where((o) => o['status'] == 'ready').toList();
+    
+    final pastOrders = allOrders.where((o) => 
+      o['status'] == 'delivered' || o['status'] == 'cancelled'
+    ).toList();
+
+    List<dynamic> orders;
+    if (_selectedTab == 'Active') {
+      orders = activeOrders;
+    } else if (_selectedTab == 'Ready') {
+      orders = readyOrders;
+    } else {
+      orders = pastOrders;
+    }
+
     return Column(
       children: [
         // Tabs
@@ -237,48 +132,44 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         ),
         // Orders List
         Expanded(
-          child: _getOrdersList(),
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : orders.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inbox_outlined, size: 64, color: AppTheme.mutedText),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No $_selectedTab orders',
+                            style: TextStyle(fontSize: 16, color: AppTheme.secondaryText),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: orders.length,
+                      itemBuilder: (context, index) {
+                        return _buildOrderCard(context, orders[index]);
+                      },
+                    ),
         ),
       ],
     );
   }
 
-  Widget _getOrdersList() {
-    List<RestaurantOrder> orders;
-    if (_selectedTab == 'Active') {
-      orders = _activeOrders;
-    } else if (_selectedTab == 'Ready') {
-      orders = _readyOrders;
-    } else {
-      orders = _pastOrders;
-    }
+  Widget _buildOrderCard(BuildContext context, dynamic order) {
+    final items = order['items'] as List? ?? [];
+    final total = order['total_price'] ?? 0;
+    final status = order['status'] ?? 'pending';
+    final orderTime = DateTime.parse(order['created'] ?? DateTime.now().toIso8601String());
+    final difference = DateTime.now().difference(orderTime);
+    final timeAgo = difference.inMinutes < 60 
+        ? '${difference.inMinutes} min ago' 
+        : '${difference.inHours} hours ago';
 
-    if (orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 64, color: AppTheme.mutedText),
-            const SizedBox(height: 16),
-            Text(
-              'No $_selectedTab orders',
-              style: TextStyle(fontSize: 16, color: AppTheme.secondaryText),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        return _buildOrderCard(context, orders[index]);
-      },
-    );
-  }
-
-  Widget _buildOrderCard(BuildContext context, RestaurantOrder order) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -299,27 +190,27 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(order.status).withOpacity(0.2),
+                      color: _getStatusColor(status).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _getStatusText(order.status),
+                      _getStatusText(status),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: _getStatusColor(order.status),
+                        color: _getStatusColor(status),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    order.id,
+                    'ORD-${order['id']}',
                     style: TextStyle(fontSize: 12, color: AppTheme.mutedText),
                   ),
                 ],
               ),
               Text(
-                order.formattedTime,
+                timeAgo,
                 style: TextStyle(fontSize: 11, color: AppTheme.mutedText),
               ),
             ],
@@ -342,11 +233,11 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      order.customerName,
+                      order['customer']?['username'] ?? 'Customer',
                       style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryText),
                     ),
                     Text(
-                      order.customerPhone,
+                      order['customer']?['phone'] ?? 'No phone',
                       style: TextStyle(fontSize: 12, color: AppTheme.secondaryText),
                     ),
                   ],
@@ -362,7 +253,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  order.customerAddress,
+                  order['delivery_address'] ?? 'No address',
                   style: TextStyle(fontSize: 12, color: AppTheme.secondaryText),
                 ),
               ),
@@ -370,17 +261,17 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
           ),
           const Divider(height: 24, color: AppTheme.deepCrimson),
           // Items
-          ...order.items.map((item) => Padding(
+          ...items.map((item) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${item.quantity}x ${item.name}',
+                      '${item['quantity']}x ${item['menu_item_name']}',
                       style: TextStyle(fontSize: 13, color: AppTheme.secondaryText),
                     ),
                     Text(
-                      'MK${(item.price * item.quantity).toStringAsFixed(0)}',
+                      'MK${(item['price'] * item['quantity']).toStringAsFixed(0)}',
                       style: TextStyle(fontSize: 13, color: AppTheme.primaryText),
                     ),
                   ],
@@ -396,53 +287,50 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryText),
               ),
               Text(
-                'MK${order.total.toStringAsFixed(0)}',
+                'MK${total.toStringAsFixed(0)}',
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryRed),
               ),
             ],
           ),
 
-          // Action Buttons
-          if (_selectedTab == 'Active' && order.status == OrderStatus.pending) const SizedBox(height: 16),
-          if (_selectedTab == 'Active' && order.status == OrderStatus.pending)
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 100,
-                    child: OutlinedButton(
-                      onPressed: () => _declineOrder(order),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                          side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
-                        ),
+          // Action Buttons based on status
+          const SizedBox(height: 16),
+          if (status == 'pending')
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 100,
+                  child: OutlinedButton(
+                    onPressed: () => _declineOrder(order),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                        side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
                       ),
-                      child: const Text('Decline', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppTheme.error)),
                     ),
+                    child: const Text('Decline', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppTheme.error)),
                   ),
-                  const SizedBox(width: 16),
-                  SizedBox(
-                    width: 100,
-                    child: ElevatedButton(
-                      onPressed: () => _acceptOrder(order),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.success,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                        elevation: 0,
-                      ),
-                      child: const Text('Accept', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.white)),
+                ),
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 100,
+                  child: ElevatedButton(
+                    onPressed: () => _acceptOrder(order),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.success,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                      elevation: 0,
                     ),
+                    child: const Text('Accept', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.white)),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
 
-          if (_selectedTab == 'Active' && order.status == OrderStatus.confirmed) const SizedBox(height: 16),
-          if (_selectedTab == 'Active' && order.status == OrderStatus.confirmed)
+          if (status == 'confirmed')
             Center(
               child: SizedBox(
                 width: 140,
@@ -466,8 +354,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               ),
             ),
 
-          if (_selectedTab == 'Active' && order.status == OrderStatus.preparing) const SizedBox(height: 16),
-          if (_selectedTab == 'Active' && order.status == OrderStatus.preparing)
+          if (status == 'preparing')
             Center(
               child: SizedBox(
                 width: 100,
@@ -491,13 +378,12 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               ),
             ),
 
-          if (_selectedTab == 'Ready') const SizedBox(height: 16),
-          if (_selectedTab == 'Ready')
+          if (status == 'ready')
             Center(
               child: SizedBox(
                 width: 120,
                 child: OutlinedButton(
-                  onPressed: () => _markAsPickedUp(order),
+                  onPressed: () => _markAsDelivered(order),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: AppTheme.teal, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -508,7 +394,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                     children: [
                       Icon(Icons.local_shipping, size: 14, color: AppTheme.teal),
                       SizedBox(width: 6),
-                      Text('Picked Up', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppTheme.teal)),
+                      Text('Delivered', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: AppTheme.teal)),
                     ],
                   ),
                 ),
@@ -519,27 +405,26 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     );
   }
 
-  Color _getStatusColor(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending: return AppTheme.warning;
-      case OrderStatus.confirmed: return AppTheme.primaryRed;
-      case OrderStatus.preparing: return AppTheme.warning;
-      case OrderStatus.ready: return AppTheme.success;
-      case OrderStatus.pickedUp: return AppTheme.teal;
-      case OrderStatus.delivered: return AppTheme.success;
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending': return AppTheme.warning;
+      case 'confirmed': return AppTheme.primaryRed;
+      case 'preparing': return AppTheme.warning;
+      case 'ready': return AppTheme.success;
+      case 'delivered': return AppTheme.teal;
       default: return AppTheme.mutedText;
     }
   }
 
-  String _getStatusText(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending: return 'Pending';
-      case OrderStatus.confirmed: return 'Confirmed';
-      case OrderStatus.preparing: return 'Preparing';
-      case OrderStatus.ready: return 'Ready for Pickup';
-      case OrderStatus.pickedUp: return 'Picked Up';
-      case OrderStatus.delivered: return 'Delivered';
-      default: return 'Unknown';
+  String _getStatusText(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending': return 'Pending';
+      case 'confirmed': return 'Confirmed';
+      case 'preparing': return 'Preparing';
+      case 'ready': return 'Ready for Pickup';
+      case 'delivered': return 'Delivered';
+      case 'cancelled': return 'Cancelled';
+      default: return status;
     }
   }
 }

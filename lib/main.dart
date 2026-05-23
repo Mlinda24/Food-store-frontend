@@ -5,6 +5,7 @@ import 'providers/auth_provider.dart';
 import 'providers/app_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/restaurant_provider.dart';  // Add this import
 import 'routes/router.dart';
 
 void main() async {
@@ -23,6 +24,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => RestaurantProvider()),  // Add this line
       ],
       child: Consumer<AppProvider>(
         builder: (context, appProvider, child) {

@@ -30,14 +30,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeInstructionControllers();
+    _loadCart();
     _loadUserPhoneNumber();
+  }
+
+  Future<void> _loadCart() async {
+    await context.read<CartProvider>().loadCart();
+    _initializeInstructionControllers();
   }
 
   void _initializeInstructionControllers() {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    _itemInstructions.clear();
     for (var item in cartProvider.items) {
-      _itemInstructions[item.menuItemId] = TextEditingController();
+      if (!_itemInstructions.containsKey(item.menuItemId)) {
+        _itemInstructions[item.menuItemId] = TextEditingController();
+      }
     }
   }
 
@@ -119,11 +127,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    final cartProvider = context.read<CartProvider>();
+    
+    // Debug: Check cart contents
+    print('Cart items count before order: ${cartProvider.items.length}');
+    print('Cart items: ${cartProvider.items.map((i) => i.name).toList()}');
+    
+    if (cartProvider.items.isEmpty) {
+      _showError('Your cart is empty. Please add items first.');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
-    final cartProvider = context.read<CartProvider>();
     final orderProvider = context.read<OrderProvider>();
     final authProvider = context.read<AuthProvider>();
 
@@ -151,12 +169,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ? 'Item Instructions: ${instructions.entries.map((e) => '${e.key}: ${e.value}').join(', ')}'
         : '';
     
-    // Create order data for API
+    // IMPORTANT: Only send delivery_address and note
+    // The backend automatically gets restaurant from cart items
     final orderData = {
-      'restaurant': int.tryParse(cartProvider.restaurantId ?? '0'),
       'delivery_address': deliveryAddress,
-      'note': 'Phone: $phoneNumber, Address: $deliveryAddress. $instructionsText',
+      'note': 'Phone: $phoneNumber. $instructionsText',
     };
+    
+    print('Order data being sent: $orderData');
 
     try {
       final placedOrder = await orderProvider.placeOrder(orderData);
@@ -166,7 +186,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       });
 
       if (placedOrder != null && mounted) {
-        cartProvider.clearCart();
+        await cartProvider.clearCart();
         _showSuccess('Order placed successfully!');
         
         // Show order confirmation dialog
@@ -179,6 +199,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _isLoading = false;
       });
       _showError('Error placing order: $e');
+      print('Order placement error: $e');
     }
   }
 
@@ -196,9 +217,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             Icon(Icons.check_circle, color: AppTheme.success),
             const SizedBox(width: 8),
-            const Text(
-              'Order Confirmed!',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            const Expanded(
+              child: Text(
+                'Order Confirmed!',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -208,7 +231,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const Icon(Icons.receipt_long, size: 60, color: AppTheme.success),
             const SizedBox(height: 16),
             Text(
-              'Order #${order.id.length > 8 ? order.id.substring(order.id.length - 8) : order.id}',
+              'Order #${order.id}',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -253,11 +276,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     children: [
                       Icon(Icons.access_time, size: 16, color: AppTheme.primaryRed),
                       const SizedBox(width: 8),
-                      Text(
-                        'Estimated delivery: 30-45 min',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.getSecondaryTextColor(context),
+                      Expanded(
+                        child: Text(
+                          'Estimated delivery: 30-45 min',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.getSecondaryTextColor(context),
+                          ),
                         ),
                       ),
                     ],
@@ -325,6 +350,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
+        // Show loading indicator while cart is loading
+        if (cartProvider.isLoading) {
+          return Scaffold(
+            backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+            appBar: AppBar(
+              title: const Text('Checkout'),
+              backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+              foregroundColor: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back, color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        
         if (!cartProvider.hasItems) {
           return Scaffold(
             backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
@@ -384,8 +427,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
 
         final subtotal = cartProvider.subtotal;
-        final deliveryFee = 2.99;
-        final total = subtotal + deliveryFee;
+        final deliveryFee = cartProvider.deliveryFee;
+        final total = cartProvider.total;
 
         return Scaffold(
           backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
@@ -419,10 +462,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   itemCount: cartProvider.items.length,
                   itemBuilder: (context, index) {
                     final item = cartProvider.items[index];
-                    final instructionController = _itemInstructions[item.menuItemId] ?? TextEditingController();
                     if (!_itemInstructions.containsKey(item.menuItemId)) {
-                      _itemInstructions[item.menuItemId] = instructionController;
+                      _itemInstructions[item.menuItemId] = TextEditingController();
                     }
+                    final instructionController = _itemInstructions[item.menuItemId]!;
                     final imageUrl = item.image ?? '';
                     
                     return Container(
@@ -436,6 +479,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       child: Column(
                         children: [
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Item Image
                               ClipRRect(
@@ -443,33 +487,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 child: imageUrl.isNotEmpty
                                     ? CachedNetworkImage(
                                         imageUrl: imageUrl,
-                                        width: 60,
-                                        height: 60,
+                                        width: 50,
+                                        height: 50,
                                         fit: BoxFit.cover,
                                         placeholder: (context, url) => Container(
-                                          width: 60,
-                                          height: 60,
+                                          width: 50,
+                                          height: 50,
                                           color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
                                           child: const Center(
                                             child: CircularProgressIndicator(strokeWidth: 2),
                                           ),
                                         ),
                                         errorWidget: (context, url, error) => Container(
-                                          width: 60,
-                                          height: 60,
+                                          width: 50,
+                                          height: 50,
                                           color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                                          child: Icon(Icons.fastfood, size: 30, color: Colors.grey),
+                                          child: Icon(Icons.fastfood, size: 25, color: Colors.grey),
                                         ),
                                       )
                                     : Container(
-                                        width: 60,
-                                        height: 60,
+                                        width: 50,
+                                        height: 50,
                                         color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                                        child: Icon(Icons.fastfood, size: 30, color: Colors.grey),
+                                        child: Icon(Icons.fastfood, size: 25, color: Colors.grey),
                                       ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
                               Expanded(
+                                flex: 2,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -477,31 +522,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                       item.name,
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
+                                        fontSize: 13,
                                         color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
                                       ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 2),
                                     Text(
-                                      'Quantity: ${item.quantity}',
+                                      'Qty: ${item.quantity}',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 11,
                                         color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
                                       ),
                                     ),
                                     Text(
-                                      'MK${item.price.toStringAsFixed(0)} each',
+                                      'MK${item.price.toStringAsFixed(0)}',
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 10,
                                         color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: 4),
                               Text(
                                 'MK${(item.price * item.quantity).toStringAsFixed(0)}',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.primaryRed,
                                 ),

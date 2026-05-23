@@ -109,6 +109,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
+      // Load cart from backend
+      await context.read<CartProvider>().loadCart();
+      
       // Fetch restaurants from API
       final restaurantsData = await _apiService.getRestaurants();
       final List<Map<String, dynamic>> restaurants = [];
@@ -144,19 +147,21 @@ class _HomeScreenState extends State<HomeScreen> {
           'name': item['name'] ?? 'Menu Item',
           'description': item['description'] ?? 'Delicious meal prepared with fresh ingredients',
           'price': 'MK${_formatPrice(item['price'])}',
+          'price_value': double.tryParse(item['price']?.toString() ?? '0') ?? 0,
           'rating': _getMenuItemRating(item),
           'restaurant': _getRestaurantNameById(item['restaurant'].toString(), restaurantsData),
           'restaurantId': item['restaurant'].toString(),
           'image': imageUrl,
           'category': itemCategory,
+          'is_available': item['is_available'] ?? true,
         };
         _allMenuItems.add(menuItem);
       }
       
       _categories = categorySet.toList();
       
-      // Get featured meals (first 6)
-      _featuredMeals = _allMenuItems.take(6).toList();
+      // Get featured meals (first 6 available items)
+      _featuredMeals = _allMenuItems.where((item) => item['is_available'] == true).take(6).toList();
       
       setState(() {
         _isLoading = false;
@@ -261,13 +266,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index) async {
     setState(() => _selectedIndex = index);
     switch (index) {
-      case 0: break;
-      case 1: context.push('/cart'); break;
-      case 2: context.push('/my-orders'); break;
-      case 3: context.push('/settings'); break;
+      case 0:
+        break;
+      case 1:
+        await context.read<CartProvider>().loadCart();
+        context.push('/cart');
+        break;
+      case 2:
+        context.push('/my-orders');
+        break;
+      case 3:
+        context.push('/settings');
+        break;
     }
   }
 
@@ -276,7 +289,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final filteredMeals = _filteredMeals;
     final authProvider = Provider.of<AuthProvider>(context);
-    final userName = authProvider.currentUser?.name?.split('@')[0] ?? 'Guest';
+    // FIXED: Use 'name' instead of 'username'
+    final userName = authProvider.currentUser?.name?.split('@')[0] ?? 
+                     'Guest';
 
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
@@ -296,7 +311,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           Row(
                             children: [
                               Text('Hello, ', style: TextStyle(fontSize: 14, color: AppTheme.getSecondaryTextColor(context))),
-                              Text(userName, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
+                              Flexible(
+                                child: Text(
+                                  userName,
+                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context)),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               const SizedBox(width: 4),
                               const Icon(Icons.restaurant, size: 22, color: AppTheme.primaryRed),
                             ],
@@ -365,7 +386,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               const SizedBox(height: 8),
                               Text(_error!, style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
                               const SizedBox(height: 16),
-                              ElevatedButton(onPressed: _loadData, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed), child: const Text('Try Again')),
+                              ElevatedButton(
+                                onPressed: _loadData, 
+                                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed), 
+                                child: const Text('Try Again')
+                              ),
                             ],
                           ),
                         )
@@ -377,34 +402,36 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const DeliveryStatusCard(),
                                   
                                   // Categories Section
-                                  FadeInUp(
-                                    child: Padding(
-                                      padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-                                      child: Row(
-                                        children: [
-                                          Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
-                                        ],
+                                  if (_categories.length > 1)
+                                    FadeInUp(
+                                      child: Padding(
+                                        padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                                        child: Row(
+                                          children: [
+                                            Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  FadeInUp(
-                                    child: SizedBox(
-                                      height: 45,
-                                      child: ListView.builder(
-                                        scrollDirection: Axis.horizontal,
-                                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                                        itemCount: _categories.length,
-                                        itemBuilder: (context, index) => Padding(
-                                          padding: const EdgeInsets.only(right: 8),
-                                          child: CategoryChip(
-                                            label: _categories[index],
-                                            isSelected: _selectedCategory == _categories[index],
-                                            onTap: () => setState(() => _selectedCategory = _categories[index]),
+                                  if (_categories.length > 1)
+                                    FadeInUp(
+                                      child: SizedBox(
+                                        height: 45,
+                                        child: ListView.builder(
+                                          scrollDirection: Axis.horizontal,
+                                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                                          itemCount: _categories.length,
+                                          itemBuilder: (context, index) => Padding(
+                                            padding: const EdgeInsets.only(right: 8),
+                                            child: CategoryChip(
+                                              label: _categories[index],
+                                              isSelected: _selectedCategory == _categories[index],
+                                              onTap: () => setState(() => _selectedCategory = _categories[index]),
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
                                   
                                   // Featured Meals Section (Horizontal)
                                   if (filteredMeals.isNotEmpty)
@@ -542,7 +569,11 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 8),
             Text('Try searching for something else', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
             const SizedBox(height: 24),
-            ElevatedButton(onPressed: _clearSearch, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed), child: const Text('Clear Search')),
+            ElevatedButton(
+              onPressed: _clearSearch, 
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed), 
+              child: const Text('Clear Search')
+            ),
           ],
         ),
       );
@@ -557,12 +588,24 @@ class _HomeScreenState extends State<HomeScreen> {
         if (isRestaurant) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: RestaurantCard(restaurant: item, onTap: () { _clearSearch(); context.push('/restaurant-details', extra: item); }),
+            child: RestaurantCard(
+              restaurant: item, 
+              onTap: () { 
+                _clearSearch(); 
+                context.push('/restaurant-details', extra: item); 
+              }
+            ),
           );
         } else {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: FeaturedMealCard(meal: item, onTap: () { _clearSearch(); context.push('/food-detail', extra: item); }),
+            child: FeaturedMealCard(
+              meal: item, 
+              onTap: () { 
+                _clearSearch(); 
+                context.push('/food-detail', extra: item); 
+              }
+            ),
           );
         }
       },

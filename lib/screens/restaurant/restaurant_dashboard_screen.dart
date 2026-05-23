@@ -3,10 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../models/models.dart';
+import '../../providers/restaurant_provider.dart';
 import 'restaurant_orders_screen.dart';
 import 'menu_management_screen.dart';
-import 'restaurant_profile_screen.dart'; // ✅ added import for profile screen
+import 'restaurant_profile_screen.dart';
 
 class RestaurantDashboardScreen extends StatefulWidget {
   const RestaurantDashboardScreen({super.key});
@@ -17,36 +17,20 @@ class RestaurantDashboardScreen extends StatefulWidget {
 
 class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
   int _selectedIndex = 0;
-  bool _isRestaurantOpen = true;
-  late RestaurantStats _stats;
 
   @override
   void initState() {
     super.initState();
-    _loadStats();
+    // Use addPostFrameCallback to avoid calling during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
-  void _loadStats() {
-    _stats = RestaurantStats(
-      todayEarnings: 24500,
-      todayOrders: 8,
-      totalEarnings: 125000,
-      totalOrders: 42,
-      averageRating: 4.8,
-      activeOrders: 3,
-      monthlyEarnings: 87400,
-      monthlyOrders: 28,
-    );
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? AppTheme.error : AppTheme.success,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  void _loadData() {
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    provider.loadRestaurantData();
+    provider.loadRestaurantOrders();
   }
 
   void _onItemTapped(int index) {
@@ -55,7 +39,6 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
     });
   }
 
-  // Dynamic title based on selected tab
   String _getAppBarTitle() {
     switch (_selectedIndex) {
       case 0: return 'Dashboard';
@@ -66,21 +49,12 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
     }
   }
 
-  // Dynamically build screens with current isOpen value
   List<Widget> _getScreens() {
     return [
       const _DashboardContent(),
       const RestaurantOrdersScreen(),
       const MenuManagementScreen(),
-      _SettingsContent(
-        isOpen: _isRestaurantOpen,
-        onToggleOpen: (value) {
-          setState(() {
-            _isRestaurantOpen = value;
-          });
-          _showSnackBar(value ? 'Restaurant is now Open' : 'Restaurant is now Closed');
-        },
-      ),
+      const _SettingsContent(),
     ];
   }
 
@@ -100,9 +74,13 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
           ),
         ),
         centerTitle: true,
-        actions: const [],
       ),
-      body: _getScreens()[_selectedIndex],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _loadData();
+        },
+        child: _getScreens()[_selectedIndex],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -138,21 +116,66 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
   }
 }
 
-// ==================== DASHBOARD CONTENT ====================
+// Dashboard Content with real data
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();
 
-  void _viewAllOrders(BuildContext context) {
-    final state = context.findAncestorStateOfType<_RestaurantDashboardScreenState>();
-    if (state != null) {
-      state.setState(() {
-        state._selectedIndex = 1;
-      });
+  // Safe number formatting helpers
+  String _formatCurrency(dynamic value) {
+    if (value == null) return 'MK0';
+    double numValue;
+    if (value is double) {
+      numValue = value;
+    } else if (value is int) {
+      numValue = value.toDouble();
+    } else if (value is String) {
+      numValue = double.tryParse(value) ?? 0;
+    } else {
+      numValue = 0;
     }
+    return 'MK${numValue.toStringAsFixed(0)}';
+  }
+
+  String _formatNumber(dynamic value) {
+    if (value == null) return '0';
+    if (value is int) return value.toString();
+    if (value is double) return value.toInt().toString();
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      if (parsed != null) {
+        return parsed.toInt().toString();
+      }
+      return value;
+    }
+    return '0';
+  }
+
+  String _formatRating(dynamic value) {
+    if (value == null) return '0.0';
+    double numValue;
+    if (value is double) {
+      numValue = value;
+    } else if (value is int) {
+      numValue = value.toDouble();
+    } else if (value is String) {
+      numValue = double.tryParse(value) ?? 0;
+    } else {
+      numValue = 0;
+    }
+    return numValue.toStringAsFixed(1);
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<RestaurantProvider>(context);
+    final stats = provider.stats;
+    final isLoading = provider.isLoading;
+    final restaurant = provider.restaurant;
+    
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -163,10 +186,10 @@ class _DashboardContent extends StatelessWidget {
                 child: _buildStatCard(
                   context,
                   title: 'Today\'s Earnings',
-                  value: 'MK24,500',
+                  value: _formatCurrency(stats?.todayEarnings),
                   icon: Icons.today,
                   color: AppTheme.primaryRed,
-                  subtitle: '+15% from yesterday',
+                  subtitle: 'From ${_formatNumber(stats?.todayOrders)} orders',
                 ),
               ),
               const SizedBox(width: 12),
@@ -174,10 +197,10 @@ class _DashboardContent extends StatelessWidget {
                 child: _buildStatCard(
                   context,
                   title: 'Today\'s Orders',
-                  value: '8',
+                  value: _formatNumber(stats?.todayOrders),
                   icon: Icons.receipt,
                   color: AppTheme.orange,
-                  subtitle: '3 active orders',
+                  subtitle: '${_formatNumber(stats?.activeOrders)} active',
                 ),
               ),
             ],
@@ -189,7 +212,7 @@ class _DashboardContent extends StatelessWidget {
                 child: _buildStatCard(
                   context,
                   title: 'Total Earnings',
-                  value: 'MK125,000',
+                  value: _formatCurrency(stats?.totalEarnings),
                   icon: Icons.attach_money,
                   color: AppTheme.success,
                   subtitle: 'Lifetime',
@@ -200,10 +223,10 @@ class _DashboardContent extends StatelessWidget {
                 child: _buildStatCard(
                   context,
                   title: 'Rating',
-                  value: '4.8',
+                  value: _formatRating(stats?.averageRating),
                   icon: Icons.star,
                   color: AppTheme.yellow,
-                  subtitle: '★ 124 reviews',
+                  subtitle: '★ ${_formatNumber(stats?.totalOrders)} reviews',
                 ),
               ),
             ],
@@ -214,34 +237,73 @@ class _DashboardContent extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Recent Orders',
+                'Restaurant Status',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.getPrimaryTextColor(context),
                 ),
               ),
-              GestureDetector(
-                onTap: () => _viewAllOrders(context),
-                child: Text(
-                  'View All',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.primaryRed,
-                    fontWeight: FontWeight.w500,
+              Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: restaurant?.isOpen == true ? AppTheme.success : AppTheme.error,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Text(
+                    restaurant?.isOpen == true ? 'Open' : 'Closed',
+                    style: TextStyle(
+                      color: restaurant?.isOpen == true ? AppTheme.success : AppTheme.error,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 3,
-            itemBuilder: (context, index) {
-              return _buildRecentOrderCard(context, index);
-            },
+          const SizedBox(height: 16),
+          
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: AppTheme.cardGlowGradient(context),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  restaurant?.name ?? 'Restaurant Name',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.getPrimaryTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  restaurant?.address ?? 'Address not set',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.getSecondaryTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  restaurant?.phone ?? 'Phone not set',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.getSecondaryTextColor(context),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -266,23 +328,19 @@ class _DashboardContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 20, color: color),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: color),
           ),
           const SizedBox(height: 12),
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppTheme.getPrimaryTextColor(context),
             ),
@@ -307,79 +365,11 @@ class _DashboardContent extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildRecentOrderCard(BuildContext context, int index) {
-    final List<Map<String, String>> orders = [
-      {'customer': 'John Doe', 'items': '2 items', 'total': 'MK8,500', 'time': '10 min ago'},
-      {'customer': 'Jane Smith', 'items': '3 items', 'total': 'MK12,200', 'time': '25 min ago'},
-      {'customer': 'Mike Johnson', 'items': '1 item', 'total': 'MK4,500', 'time': '35 min ago'},
-    ];
-    final order = orders[index];
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.getCardColor(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppTheme.getSurfaceColor(context),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.person, size: 20, color: AppTheme.getMutedTextColor(context)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  order['customer']!,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.getPrimaryTextColor(context),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${order['items']} • ${order['total']}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.getSecondaryTextColor(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            order['time']!,
-            style: TextStyle(
-              fontSize: 11,
-              color: AppTheme.getMutedTextColor(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-// ==================== SETTINGS CONTENT ====================
+// Settings Content
 class _SettingsContent extends StatefulWidget {
-  final bool isOpen;
-  final ValueChanged<bool> onToggleOpen;
-
-  const _SettingsContent({
-    required this.isOpen,
-    required this.onToggleOpen,
-  });
+  const _SettingsContent();
 
   @override
   State<_SettingsContent> createState() => __SettingsContentState();
@@ -441,107 +431,17 @@ class __SettingsContentState extends State<_SettingsContent> {
     );
   }
 
-  void _showLanguageDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.getCardColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
-        ),
-        title: Text('Select Language', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.check, color: AppTheme.primaryRed),
-              title: Text('English', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.check, color: Colors.transparent),
-              title: Text('Chichewa', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingsItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    required VoidCallback onTap,
-    Color? textColor,
-    Color? iconColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.getSurfaceColor(context),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 22, color: iconColor ?? AppTheme.primaryRed),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: textColor ?? AppTheme.getPrimaryTextColor(context),
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.getSecondaryTextColor(context),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: AppTheme.getMutedTextColor(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final restaurant = authProvider.currentUser;
-    final restaurantName = restaurant?.name ?? 'My Restaurant';
-    final restaurantEmail = restaurant?.email ?? 'restaurant@example.com';
-    final restaurantPhone = restaurant?.phone ?? '+265 888 123 456';
-
+    final restaurantProvider = Provider.of<RestaurantProvider>(context);
+    final restaurant = restaurantProvider.restaurant;
+    final isOpen = restaurantProvider.isRestaurantOpen;
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Profile Header (avatar, name, email, phone) – kept as is
+          // Profile Header
           Container(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -565,7 +465,7 @@ class __SettingsContentState extends State<_SettingsContent> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  restaurantName,
+                  restaurant?.name ?? 'My Restaurant',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -574,14 +474,7 @@ class __SettingsContentState extends State<_SettingsContent> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  restaurantEmail,
-                  style: TextStyle(
-                    color: AppTheme.getSecondaryTextColor(context),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  restaurantPhone,
+                  restaurant?.address ?? 'Address not set',
                   style: TextStyle(
                     color: AppTheme.getSecondaryTextColor(context),
                   ),
@@ -590,19 +483,14 @@ class __SettingsContentState extends State<_SettingsContent> {
             ),
           ),
           
-          // ========== RESTAURANT STATUS ROW ==========
+          // Restaurant Status Toggle
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: widget.isOpen 
-                  ? AppTheme.success.withOpacity(0.1) 
-                  : AppTheme.error.withOpacity(0.1),
+              color: isOpen ? AppTheme.success.withOpacity(0.1) : AppTheme.error.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: widget.isOpen ? AppTheme.success : AppTheme.error,
-                width: 1,
-              ),
+              border: Border.all(color: isOpen ? AppTheme.success : AppTheme.error, width: 1),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -615,199 +503,78 @@ class __SettingsContentState extends State<_SettingsContent> {
                     color: AppTheme.getPrimaryTextColor(context),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: widget.isOpen ? AppTheme.success.withOpacity(0.1) : AppTheme.error.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: widget.isOpen ? AppTheme.success : AppTheme.error,
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: widget.isOpen ? AppTheme.success : AppTheme.error,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Transform.scale(
-                        scale: 0.55,
-                        child: Switch(
-                          value: widget.isOpen,
-                          onChanged: widget.onToggleOpen,
-                          activeColor: AppTheme.success,
-                          inactiveThumbColor: AppTheme.error,
-                          inactiveTrackColor: AppTheme.error.withOpacity(0.3),
-                        ),
-                      ),
-                    ],
-                  ),
+                Switch(
+                  value: isOpen,
+                  onChanged: (value) async {
+                    await restaurantProvider.toggleRestaurantStatus(value);
+                  },
+                  activeColor: AppTheme.success,
+                  inactiveThumbColor: AppTheme.error,
                 ),
               ],
             ),
           ),
+          
           const SizedBox(height: 16),
           
-          // Account Section
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'ACCOUNT',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.getMutedTextColor(context),
-                letterSpacing: 1,
-              ),
-            ),
+          // Menu Items
+          ListTile(
+            leading: const Icon(Icons.restaurant_menu, color: AppTheme.primaryRed),
+            title: const Text('Manage Menu'),
+            subtitle: const Text('Add, edit or remove menu items'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              final state = context.findAncestorStateOfType<_RestaurantDashboardScreenState>();
+              if (state != null) {
+                state.setState(() {
+                  state._selectedIndex = 2;
+                });
+              }
+            },
           ),
           
-          // ✅ NEW: Profile button (navigates to RestaurantProfileScreen)
-          _buildSettingsItem(
-            context,
-            icon: Icons.person_outline,
-            title: 'Profile',
-            subtitle: 'View and edit your profile information',
+          const Divider(),
+          
+          // Orders
+          ListTile(
+            leading: const Icon(Icons.receipt, color: AppTheme.primaryRed),
+            title: const Text('View Orders'),
+            subtitle: const Text('Manage incoming orders'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              final state = context.findAncestorStateOfType<_RestaurantDashboardScreenState>();
+              if (state != null) {
+                state.setState(() {
+                  state._selectedIndex = 1;
+                });
+              }
+            },
+          ),
+          
+          const Divider(),
+          
+          // Profile
+          ListTile(
+            leading: const Icon(Icons.person, color: AppTheme.primaryRed),
+            title: const Text('Restaurant Profile'),
+            subtitle: const Text('View and edit profile information'),
+            trailing: const Icon(Icons.chevron_right),
             onTap: () {
               context.push('/restaurant-profile');
             },
           ),
           
-          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+          const Divider(),
           
-          // Preferences Section
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'PREFERENCES',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.getMutedTextColor(context),
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-          
-          _buildSettingsItem(
-            context,
-            icon: Icons.language_outlined,
-            title: 'Language',
-            subtitle: 'English / Chichewa',
-            onTap: () => _showLanguageDialog(context),
-          ),
-          
-          
-          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-          
-          // Support Section
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'SUPPORT',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.getMutedTextColor(context),
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-          
-          _buildSettingsItem(
-            context,
-            icon: Icons.help_outline,
-            title: 'Help & Support',
-            subtitle: 'Get help or contact us',
-            onTap: () {},
-          ),
-          
-          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-          
-          _buildSettingsItem(
-            context,
-            icon: Icons.info_outline,
-            title: 'About',
-            subtitle: 'Version 1.0.0',
-            onTap: () {},
-          ),
-          
-          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-          
-          // Account Actions Section
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'ACCOUNT ACTIONS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.getMutedTextColor(context),
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-          
-          _buildSettingsItem(
-            context,
-            icon: Icons.switch_account_outlined,
-            title: 'Switch to Customer',
-            subtitle: 'Switch to customer mode',
-            onTap: () {
-              context.go('/settings');
-            },
-            iconColor: AppTheme.warning,
-          ),
-          
-          const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-          
-          _buildSettingsItem(
-            context,
-            icon: Icons.logout,
-            title: 'Logout',
-            subtitle: 'Sign out of your account',
+          // Logout
+          ListTile(
+            leading: const Icon(Icons.logout, color: AppTheme.error),
+            title: Text('Logout', style: TextStyle(color: AppTheme.error)),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.error),
             onTap: () => _showLogoutDialog(context),
-            textColor: AppTheme.error,
-            iconColor: AppTheme.error,
           ),
-          
-          const SizedBox(height: 30),
         ],
       ),
     );
   }
-}
-
-// ==================== RESTAURANT STATS MODEL ====================
-class RestaurantStats {
-  final double todayEarnings;
-  final int todayOrders;
-  final double totalEarnings;
-  final int totalOrders;
-  final double averageRating;
-  final int activeOrders;
-  final double monthlyEarnings;
-  final int monthlyOrders;
-
-  RestaurantStats({
-    required this.todayEarnings,
-    required this.todayOrders,
-    required this.totalEarnings,
-    required this.totalOrders,
-    required this.averageRating,
-    required this.activeOrders,
-    required this.monthlyEarnings,
-    required this.monthlyOrders,
-  });
 }

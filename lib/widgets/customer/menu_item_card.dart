@@ -25,18 +25,17 @@ class MenuItemCard extends StatelessWidget {
 
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
-        final cartItem = cartProvider.items.firstWhere(
-          (cartItem) => cartItem.menuItemId == item.id,
-          orElse: () => CartItem(
-            menuItemId: '',
-            name: '',
-            quantity: 0,
-            price: 0,
-            restaurantId: restaurantId,
-            restaurantName: restaurantName,
-          ),
-        );
-        final quantity = cartItem.quantity;
+        // Find the cart item safely
+        CartItem? cartItem;
+        try {
+          cartItem = cartProvider.items.firstWhere(
+            (cartItem) => cartItem.menuItemId == item.id,
+          );
+        } catch (e) {
+          cartItem = null;
+        }
+        
+        final quantity = cartItem?.quantity ?? 0;
 
         return Opacity(
           opacity: isAvailable ? 1.0 : 0.6,
@@ -162,8 +161,8 @@ class MenuItemCard extends StatelessWidget {
                       children: [
                         if (quantity > 0)
                           IconButton(
-                            onPressed: () {
-                              cartProvider.updateQuantity(item.id, quantity - 1);
+                            onPressed: () async {
+                              await cartProvider.updateQuantity(item.id, quantity - 1);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text('${item.name} removed from cart'),
@@ -189,20 +188,22 @@ class MenuItemCard extends StatelessWidget {
                             ),
                           ),
                         IconButton(
-                          onPressed: () {
+                          onPressed: () async {
                             if (isAvailable) {
-                              cartProvider.addItem(
+                              final success = await cartProvider.addItem(
                                 item,
                                 restaurantId: restaurantId,
                                 restaurantName: restaurantName,
                               );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('${item.name} added to cart'),
-                                  duration: const Duration(seconds: 1),
-                                  backgroundColor: AppTheme.success,
-                                ),
-                              );
+                              if (success) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('${item.name} added to cart'),
+                                    duration: const Duration(seconds: 1),
+                                    backgroundColor: AppTheme.success,
+                                  ),
+                                );
+                              }
                             }
                           },
                           icon: Icon(
