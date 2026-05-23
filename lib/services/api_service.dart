@@ -1,233 +1,265 @@
 import 'dart:convert';
-import 'package:dio/dio.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/models.dart';
 
 class ApiService {
-  // Use local Django backend URL
   static const String baseUrl = 'http://127.0.0.1:8000/api';
+  static const String mediaBaseUrl = 'http://127.0.0.1:8000';
   
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: baseUrl,
-    headers: {'Content-Type': 'application/json'},
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
-  ));
-
-  Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token);
-  }
-
+  static const String _accessTokenKey = 'access_token';
+  static const String _refreshTokenKey = 'refresh_token';
+  
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return prefs.getString(_accessTokenKey);
   }
-
-  Future<void> clearToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
-  }
-
-  Future<void> _addAuthHeader() async {
+  
+  Future<Map<String, String>> getHeaders() async {
     final token = await getToken();
-    if (token != null) {
-      _dio.options.headers['Authorization'] = 'Bearer $token';
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+  
+  Future<void> saveTokens(String accessToken, String refreshToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_accessTokenKey, accessToken);
+    await prefs.setString(_refreshTokenKey, refreshToken);
+  }
+  
+  Future<void> clearTokens() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_accessTokenKey);
+    await prefs.remove(_refreshTokenKey);
+  }
+  
+  // ========== AUTH ENDPOINTS ==========
+  
+  Future<Map<String, dynamic>> login(String username, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login/'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'username': username, 'password': password}),
+    );
+    
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = json.decode(response.body);
+      await saveTokens(data['access'], data['refresh']);
+      return data;
+    } else {
+      throw Exception('Login failed: ${response.statusCode}');
     }
   }
-
-  // ============= AUTH ENDPOINTS =============
-
+  
+  Future<User> getCurrentUser() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/auth/me/'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return User(
+        id: data['id'].toString(),
+        name: data['username'],
+        email: data['email'] ?? '',
+        phone: data['phone'] ?? '',
+        role: data['role'] == 'restaurant' ? UserRole.restaurant : UserRole.customer,
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+    } else {
+      throw Exception('Failed to get user');
+    }
+  }
+  
   Future<Map<String, dynamic>> register({
-    required String name,
+    required String username,
     required String email,
-    required String phone,
     required String password,
-    required String role, 
+    required String role,
+    String? phone,
   }) async {
-    try {
-      final response = await _dio.post('/auth/register/', data: {
-        'name': name,
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/register/'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'username': username,
         'email': email,
-        'phone': phone,
         'password': password,
         'role': role,
-      });
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
+        'phone': phone ?? '',
+      }),
+    );
+    
+    if (response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Registration failed: ${response.statusCode}');
     }
   }
-
-  Future<Map<String, dynamic>> login({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final response = await _dio.post('/auth/login/', data: {
-        'email': email,
-        'password': password,
-      });
-      
-      if (response.data['token'] != null) {
-        await saveToken(response.data['token']);
-      }
-      
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // ============= RESTAURANT ENDPOINTS =============
-
+  
+  // ========== RESTAURANT ENDPOINTS ==========
+  
   Future<List<dynamic>> getRestaurants() async {
-    try {
-      final response = await _dio.get('/restaurants/');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
+    final response = await http.get(
+      Uri.parse('$baseUrl/restaurants/'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load restaurants: ${response.statusCode}');
     }
   }
-
-  Future<Map<String, dynamic>> createRestaurant({
-    required String name,
-    required String description,
-    required String address,
-    required List<String> categories,
-    required double deliveryFee,
-    required double minOrderAmount,
-  }) async {
-    try {
-      await _addAuthHeader();
-      final response = await _dio.post('/restaurants/', data: {
-        'name': name,
-        'description': description,
-        'address': address,
-        'categories': categories,
-        'delivery_fee': deliveryFee,
-        'min_order_amount': minOrderAmount,
-      });
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
+  
+  // ========== MENU ENDPOINTS ==========
+  
+  Future<List<dynamic>> getMenuItems() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/menu/available/'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      final fallbackResponse = await http.get(
+        Uri.parse('$baseUrl/menu-items/'),
+        headers: await getHeaders(),
+      );
+      if (fallbackResponse.statusCode == 200) {
+        return json.decode(fallbackResponse.body);
+      }
+      throw Exception('Failed to load menu items: ${response.statusCode}');
     }
   }
-
-  Future<Map<String, dynamic>> addMenuItem({
-    required String restaurantId,
-    required String name,
-    required String description,
-    required double price,
-    required String category,
-    required bool isAvailable,
-  }) async {
-    try {
-      await _addAuthHeader();
-      final response = await _dio.post('/restaurants/menu/', data: {
-        'restaurant_id': restaurantId,
-        'name': name,
-        'description': description,
-        'price': price,
-        'category': category,
-        'is_available': isAvailable,
-      });
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // ============= CART ENDPOINTS =============
-
+  
+  // ========== CART ENDPOINTS ==========
+  
   Future<Map<String, dynamic>> getCart() async {
-    try {
-      await _addAuthHeader();
-      final response = await _dio.get('/orders/cart/');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
+    final response = await http.get(
+      Uri.parse('$baseUrl/orders/cart/'),
+      headers: await getHeaders(),
+    );
+    
+    print('Get cart response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else if (response.statusCode == 404) {
+      // Cart doesn't exist, create one
+      return await createCart();
+    } else {
+      throw Exception('Failed to load cart: ${response.statusCode}');
     }
   }
-
-  Future<Map<String, dynamic>> addToCart({
-    required String menuItemId,
-    required int quantity,
-  }) async {
-    try {
-      await _addAuthHeader();
-      final response = await _dio.post('/orders/cart/add/', data: {
+  
+  Future<Map<String, dynamic>> createCart() async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/orders/cart/'),
+      headers: await getHeaders(),
+      body: json.encode({}),
+    );
+    
+    print('Create cart response: ${response.statusCode}');
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to create cart: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> addToCart(int menuItemId, int quantity) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/orders/cart/add_item/'),
+      headers: await getHeaders(),
+      body: json.encode({
         'menu_item_id': menuItemId,
         'quantity': quantity,
-      });
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<Map<String, dynamic>> placeOrder({
-    required String deliveryAddress,
-    required String phoneNumber,
-    String? specialInstructions,
-  }) async {
-    try {
-      await _addAuthHeader();
-      final response = await _dio.post('/orders/', data: {
-        'delivery_address': deliveryAddress,
-        'phone_number': phoneNumber,
-        'special_instructions': specialInstructions,
-      });
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<List<dynamic>> getMyOrders() async {
-    try {
-      await _addAuthHeader();
-      final response = await _dio.get('/orders/');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<Map<String, dynamic>> updateOrderStatus({
-    required String orderId,
-    required String status,
-  }) async {
-    try {
-      await _addAuthHeader();
-      final response = await _dio.patch('/orders/$orderId/update_status/', data: {
-        'status': status,
-      });
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // ============= ERROR HANDLER =============
-
-  dynamic _handleError(DioException error) {
-    if (error.response != null) {
-      // Server returned an error response
-      final data = error.response?.data;
-      if (data is Map) {
-        return data['error'] ?? data['message'] ?? 'Server error: ${error.response?.statusCode}';
-      }
-      return 'Server error: ${error.response?.statusCode}';
-    } else if (error.type == DioExceptionType.connectionTimeout) {
-      return 'Connection timeout. Please check your internet.';
-    } else if (error.type == DioExceptionType.receiveTimeout) {
-      return 'Receive timeout. Please try again.';
-    } else if (error.type == DioExceptionType.connectionError) {
-      return 'No internet connection. Please check your network.';
-    } else if (error.type == DioExceptionType.cancel) {
-      return 'Request was cancelled.';
+      }),
+    );
+    
+    print('Add to cart response: ${response.statusCode}');
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return json.decode(response.body);
     } else {
-      return 'Something went wrong: ${error.message}';
+      throw Exception('Failed to add to cart: ${response.statusCode}');
+    }
+  }
+  
+  Future<void> clearCart() async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/orders/cart/clear/'),
+      headers: await getHeaders(),
+    );
+    
+    print('Clear cart response: ${response.statusCode}');
+    
+    if (response.statusCode != 200 && response.statusCode != 201 && response.statusCode != 204) {
+      throw Exception('Failed to clear cart: ${response.statusCode}');
+    }
+  }
+  
+  // ========== ORDER ENDPOINTS ==========
+  
+  Future<List<dynamic>> getOrders() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/orders/orders/'),
+      headers: await getHeaders(),
+    );
+    
+    print('Get orders response: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      return [];
+    }
+  }
+  
+  Future<Map<String, dynamic>> createOrder(Map<String, dynamic> data) async {
+    // First, ensure cart exists and has items
+    final cart = await getCart();
+    print('Cart data: $cart');
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/orders/orders/'),
+      headers: await getHeaders(),
+      body: json.encode(data),
+    );
+    
+    print('Create order response: ${response.statusCode}');
+    print('Create order body: ${response.body}');
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      // Clear cart after successful order
+      await clearCart();
+      return json.decode(response.body);
+    } else if (response.statusCode == 400) {
+      throw Exception('Invalid order data: ${response.body}');
+    } else if (response.statusCode == 401) {
+      throw Exception('Please login again');
+    } else {
+      throw Exception('Failed to create order: ${response.statusCode}');
+    }
+  }
+  
+  Future<Map<String, dynamic>> getOrder(String orderId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/orders/orders/$orderId/'),
+      headers: await getHeaders(),
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load order: ${response.statusCode}');
     }
   }
 }

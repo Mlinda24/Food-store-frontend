@@ -20,207 +20,55 @@ class SettingsScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
-        title: Text('Select Theme', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
+        title: Row(
+          children: [
+            Icon(Icons.palette_outlined, color: AppTheme.primaryRed),
+            const SizedBox(width: 10),
+            Text('Select Theme', style: TextStyle(color: AppTheme.getPrimaryTextColor(context), fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.light_mode, color: AppTheme.yellow),
-              title: Text('Light Mode', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-              onTap: () {
-                appProvider.setThemeMode(ThemeMode.light);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.dark_mode, color: AppTheme.primaryRed),
-              title: Text('Dark Mode', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-              onTap: () {
-                appProvider.setThemeMode(ThemeMode.dark);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.smartphone, color: AppTheme.teal),
-              title: Text('System Default', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-              onTap: () {
-                appProvider.setThemeMode(ThemeMode.system);
-                Navigator.pop(context);
-              },
-            ),
+            _buildThemeOption(context, Icons.light_mode, 'Light Mode', AppTheme.yellow, () {
+              appProvider.setThemeMode(ThemeMode.light);
+              Navigator.pop(context);
+            }),
+            _buildThemeOption(context, Icons.dark_mode, 'Dark Mode', AppTheme.primaryRed, () {
+              appProvider.setThemeMode(ThemeMode.dark);
+              Navigator.pop(context);
+            }),
+            _buildThemeOption(context, Icons.smartphone, 'System Default', AppTheme.teal, () {
+              appProvider.setThemeMode(ThemeMode.system);
+              Navigator.pop(context);
+            }),
           ],
         ),
       ),
     );
   }
 
-  void _showRoleSwitchDialog(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentRole = authProvider.currentUser?.role ?? UserRole.customer;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.getCardColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+  Widget _buildThemeOption(BuildContext context, IconData icon, String title, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: AppTheme.getSurfaceColor(context),
+          borderRadius: BorderRadius.circular(12),
         ),
-        title: Text('Switch Role', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                color: currentRole == UserRole.customer ? AppTheme.primaryRed.withOpacity(0.1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                leading: Icon(Icons.person_outline, color: currentRole == UserRole.customer ? AppTheme.primaryRed : AppTheme.getSecondaryTextColor(context)),
-                title: Text('Customer', style: TextStyle(color: currentRole == UserRole.customer ? AppTheme.primaryRed : AppTheme.getPrimaryTextColor(context))),
-                subtitle: Text('Order food from restaurants', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                trailing: currentRole == UserRole.customer ? const Icon(Icons.check_circle, color: AppTheme.primaryRed) : null,
-                onTap: () {
-                  if (currentRole != UserRole.customer) {
-                    Navigator.pop(context);
-                    _switchRole(context, UserRole.customer);
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: currentRole == UserRole.restaurant ? AppTheme.primaryRed.withOpacity(0.1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                leading: Icon(Icons.restaurant_outlined, color: currentRole == UserRole.restaurant ? AppTheme.primaryRed : AppTheme.getSecondaryTextColor(context)),
-                title: Text('Restaurant Owner', style: TextStyle(color: currentRole == UserRole.restaurant ? AppTheme.primaryRed : AppTheme.getPrimaryTextColor(context))),
-                subtitle: Text('Manage your restaurant and orders', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                trailing: currentRole == UserRole.restaurant ? const Icon(Icons.check_circle, color: AppTheme.primaryRed) : null,
-                onTap: () {
-                  if (currentRole != UserRole.restaurant) {
-                    Navigator.pop(context);
-                    _switchRole(context, UserRole.restaurant);
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
-              ),
-            ),
+            Icon(icon, color: color),
+            const SizedBox(width: 16),
+            Text(title, style: TextStyle(color: AppTheme.getPrimaryTextColor(context), fontSize: 16)),
+            const Spacer(),
+            Icon(Icons.chevron_right, color: AppTheme.getMutedTextColor(context)),
           ],
         ),
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
-                    ),
-                  ),
-                  child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryRed,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text('Switch', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ],
-        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
       ),
     );
-  }
-
-  void _switchRole(BuildContext context, UserRole newRole) async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentRole = authProvider.currentUser?.role;
-    
-    if (currentRole == newRole) return;
-
-    bool? confirm = await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.getCardColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
-        ),
-        title: Text('Confirm Switch', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-        content: Text(
-          'Are you sure you want to switch to ${_getRoleName(newRole)}?\n\nYou will be redirected to the ${_getRoleName(newRole)} dashboard.',
-          style: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-        ),
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
-                    ),
-                  ),
-                  child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryRed,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text('Switch', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ],
-        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-      ),
-    );
-
-    if (confirm == true) {
-      await authProvider.switchRole(newRole);
-      String route = newRole == UserRole.restaurant ? '/restaurant' : '/home';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Switched to ${_getRoleName(newRole)} role'), backgroundColor: AppTheme.success, duration: const Duration(seconds: 2)),
-      );
-      context.go(route);
-    }
-  }
-
-  String _getRoleName(UserRole role) {
-    return role == UserRole.restaurant ? 'Restaurant Owner' : 'Customer';
   }
 
   void _showLogoutDialog(BuildContext context) {
@@ -232,51 +80,41 @@ class SettingsScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
-        title: Text('Logout', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
+        title: Row(
+          children: [
+            Icon(Icons.logout, color: AppTheme.error),
+            const SizedBox(width: 10),
+            Text('Logout', style: TextStyle(color: AppTheme.getPrimaryTextColor(context), fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: Text('Are you sure you want to logout?', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
         actions: [
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
-                    ),
-                  ),
-                  child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Provider.of<AuthProvider>(context, listen: false).logout();
-                    context.go('/login');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.error,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.read<AuthProvider>().logout();
+              context.go('/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            ),
+            child: const Text('Logout'),
           ),
         ],
-        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
       ),
     );
   }
 
-  void _showLanguageDialog(BuildContext context) {
+  void _showEditProfileDialog(BuildContext context, User user) {
+    final nameController = TextEditingController(text: user.name);
+    final emailController = TextEditingController(text: user.email);
+    final phoneController = TextEditingController(text: user.phone);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -285,22 +123,76 @@ class SettingsScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
-        title: Text('Select Language', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
+        title: Row(
+          children: [
+            Icon(Icons.edit, color: AppTheme.primaryRed),
+            const SizedBox(width: 10),
+            Text('Edit Profile', style: TextStyle(color: AppTheme.getPrimaryTextColor(context), fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.check, color: AppTheme.primaryRed),
-              title: Text('English', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-              onTap: () => Navigator.pop(context),
+            TextField(
+              controller: nameController,
+              style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+              decoration: InputDecoration(
+                labelText: 'Name',
+                labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                prefixIcon: Icon(Icons.person_outline, color: AppTheme.primaryRed),
+                filled: true,
+                fillColor: AppTheme.getSurfaceColor(context),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.check, color: Colors.transparent),
-              title: Text('Chichewa', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-              onTap: () => Navigator.pop(context),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailController,
+              style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+              decoration: InputDecoration(
+                labelText: 'Email',
+                labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                prefixIcon: Icon(Icons.email_outlined, color: AppTheme.primaryRed),
+                filled: true,
+                fillColor: AppTheme.getSurfaceColor(context),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: phoneController,
+              style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+              decoration: InputDecoration(
+                labelText: 'Phone',
+                labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+                prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.primaryRed),
+                filled: true,
+                fillColor: AppTheme.getSurfaceColor(context),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // TODO: Implement profile update API call
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Profile update coming soon!'), backgroundColor: AppTheme.success),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryRed,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            ),
+            child: const Text('Save Changes'),
+          ),
+        ],
       ),
     );
   }
@@ -311,53 +203,40 @@ class SettingsScreen extends StatelessWidget {
     required String title,
     String? subtitle,
     required VoidCallback onTap,
-    Color? textColor,
     Color? iconColor,
+    Color? textColor,
   }) {
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppTheme.getSurfaceColor(context),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 45,
+              height: 45,
               decoration: BoxDecoration(
-                color: AppTheme.getSurfaceColor(context),
-                borderRadius: BorderRadius.circular(10),
+                color: (iconColor ?? AppTheme.primaryRed).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, size: 22, color: iconColor ?? AppTheme.primaryRed),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: textColor ?? AppTheme.getPrimaryTextColor(context),
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.getSecondaryTextColor(context),
-                      ),
-                    ),
+                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: textColor ?? AppTheme.getPrimaryTextColor(context))),
+                  if (subtitle != null) Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context))),
                 ],
               ),
             ),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: AppTheme.getMutedTextColor(context),
-            ),
+            Icon(Icons.chevron_right, size: 20, color: AppTheme.getMutedTextColor(context)),
           ],
         ),
       ),
@@ -368,7 +247,8 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final appProvider = Provider.of<AppProvider>(context);
-    final currentRole = authProvider.currentUser?.role ?? UserRole.customer;
+    final user = authProvider.currentUser;
+    final currentRole = user?.role ?? UserRole.customer;
     final currentRoleName = currentRole == UserRole.restaurant ? 'Restaurant Owner' : 'Customer';
 
     return Scaffold(
@@ -386,28 +266,32 @@ class SettingsScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Current Role Card
+            // Profile Header Card
             Container(
               margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppTheme.getCardColor(context),
-                borderRadius: BorderRadius.circular(16),
+                gradient: AppTheme.cardGlowGradient(context),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
+                  // Avatar
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    width: 70,
+                    height: 70,
                     decoration: BoxDecoration(
-                      color: AppTheme.getSurfaceColor(context),
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: AppTheme.primaryButtonGradient,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryRed.withOpacity(0.3),
+                          blurRadius: 10,
+                        ),
+                      ],
                     ),
-                    child: Icon(
-                      currentRole == UserRole.restaurant ? Icons.restaurant : Icons.person,
-                      color: AppTheme.primaryRed,
-                      size: 28,
-                    ),
+                    child: const Icon(Icons.person, size: 35, color: Colors.white),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -415,41 +299,78 @@ class SettingsScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Current Role',
+                          user?.name?.split('@')[0] ?? 'User',
                           style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.getSecondaryTextColor(context),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          currentRoleName,
-                          style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.getPrimaryTextColor(context),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryButtonGradient,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: TextButton(
-                      onPressed: () => _showRoleSwitchDialog(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      ),
-                      child: const Text(
-                        'Switch',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                        const SizedBox(height: 4),
+                        Text(
+                          user?.email ?? 'user@example.com',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.getSecondaryTextColor(context),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryRed.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    currentRole == UserRole.restaurant ? Icons.restaurant : Icons.person,
+                                    size: 12,
+                                    color: AppTheme.primaryRed,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    currentRoleName,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.primaryRed,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => _showEditProfileDialog(context, user!),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.getSurfaceColor(context),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.edit, size: 12, color: AppTheme.getSecondaryTextColor(context)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Edit',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppTheme.getSecondaryTextColor(context),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -457,126 +378,132 @@ class SettingsScreen extends StatelessWidget {
             ),
             
             // Account Section
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'ACCOUNT',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.getMutedTextColor(context),
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-            
+            _buildSectionHeader(context, 'ACCOUNT', Icons.person_outline),
             _buildSettingsItem(
               context,
               icon: Icons.person_outline,
-              title: 'Profile',
-              subtitle: 'View and edit your profile information',
-              onTap: () => context.push('/profile'),
+              title: 'Profile Information',
+              subtitle: 'View and edit your personal details',
+              onTap: () => _showEditProfileDialog(context, user!),
             ),
-            
-            const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-            
             _buildSettingsItem(
               context,
-              icon: Icons.switch_account_outlined,
-              title: 'Switch Role',
-              subtitle: currentRole == UserRole.restaurant ? 'Switch to Customer mode' : 'Switch to Restaurant Owner mode',
-              onTap: () => _showRoleSwitchDialog(context),
-              iconColor: AppTheme.warning,
+              icon: Icons.phone_outlined,
+              title: 'Phone Number',
+              subtitle: user?.phone ?? 'Not set',
+              onTap: () => _showEditProfileDialog(context, user!),
+            ),
+            _buildSettingsItem(
+              context,
+              icon: Icons.email_outlined,
+              title: 'Email Address',
+              subtitle: user?.email ?? 'Not set',
+              onTap: () => _showEditProfileDialog(context, user!),
             ),
             
             const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
             
             // Preferences Section
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'PREFERENCES',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.getMutedTextColor(context),
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-            
+            _buildSectionHeader(context, 'PREFERENCES', Icons.settings_outlined),
             _buildSettingsItem(
               context,
               icon: Icons.dark_mode_outlined,
               title: 'Theme',
               subtitle: appProvider.isDarkMode ? 'Dark Mode' : 'Light Mode',
               onTap: () => _showThemeDialog(context),
-              iconColor: AppTheme.primaryRed,
             ),
-            
-            const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-            
             _buildSettingsItem(
               context,
               icon: Icons.language_outlined,
               title: 'Language',
               subtitle: 'English / Chichewa',
-              onTap: () => _showLanguageDialog(context),
+              onTap: () {},
             ),
+            _buildSettingsItem(
+              context,
+              icon: Icons.notifications_outlined,
+              title: 'Notifications',
+              subtitle: 'Push notifications, email alerts',
+              onTap: () {},
+            ),
+            
+            const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+            
+            // Security Section
+            _buildSectionHeader(context, 'SECURITY', Icons.security_outlined),
+            _buildSettingsItem(
+              context,
+              icon: Icons.lock_outline,
+              title: 'Change Password',
+              subtitle: 'Update your password',
+              onTap: () {},
+              iconColor: AppTheme.warning,
+            ),
+            _buildSettingsItem(
+              context,
+              icon: Icons.fingerprint,
+              title: 'Biometric Login',
+              subtitle: 'Enable fingerprint or face recognition',
+              onTap: () {},
+              iconColor: AppTheme.teal,
+            ),
+            
+            const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
             
             // Support Section
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'SUPPORT',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.getMutedTextColor(context),
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-            
+            _buildSectionHeader(context, 'SUPPORT', Icons.support_agent_outlined),
             _buildSettingsItem(
               context,
               icon: Icons.help_outline,
-              title: 'Help & Support',
-              subtitle: 'Get help or contact us',
+              title: 'Help Center',
+              subtitle: 'FAQs, guides, and tutorials',
               onTap: () {},
             ),
-
-            // Account Actions Section
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'ACCOUNT ACTIONS',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.getMutedTextColor(context),
-                  letterSpacing: 1,
-                ),
-              ),
+            _buildSettingsItem(
+              context,
+              icon: Icons.feedback_outlined,
+              title: 'Send Feedback',
+              subtitle: 'Help us improve your experience',
+              onTap: () {},
+            ),
+            _buildSettingsItem(
+              context,
+              icon: Icons.info_outline,
+              title: 'About',
+              subtitle: 'Version 1.0.0 | Terms & Privacy',
+              onTap: () {},
             ),
             
+            const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
+            
+            // Account Actions
+            _buildSectionHeader(context, 'ACCOUNT ACTIONS', Icons.warning_amber_outlined),
             _buildSettingsItem(
               context,
               icon: Icons.logout,
               title: 'Logout',
               subtitle: 'Sign out of your account',
               onTap: () => _showLogoutDialog(context),
-              textColor: AppTheme.error,
               iconColor: AppTheme.error,
+              textColor: AppTheme.error,
             ),
             
             const SizedBox(height: 30),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppTheme.primaryRed),
+          const SizedBox(width: 8),
+          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.getMutedTextColor(context), letterSpacing: 1)),
+        ],
       ),
     );
   }

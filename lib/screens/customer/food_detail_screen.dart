@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../providers/cart_provider.dart';
 import '../../models/models.dart';
@@ -10,58 +11,30 @@ class FoodDetailScreen extends StatelessWidget {
 
   const FoodDetailScreen({super.key, required this.food});
 
-  // Get popular meals from the same restaurant
-  List<Map<String, dynamic>> _getPopularMealsFromSameRestaurant() {
-    // All menu items organized by restaurant
-    final restaurantMenus = {
-      '1': [ // Sushi Master
-        {'id': '101', 'name': 'California Roll', 'description': 'Crab, avocado, cucumber', 'price': 'MK3,500', 'rating': 4.2, 'reviews': 89, 'restaurant': 'Sushi Master', 'restaurantId': '1', 'isPopular': true},
-        {'id': '102', 'name': 'Spicy Tuna Roll', 'description': 'Tuna with spicy mayo', 'price': 'MK4,200', 'rating': 4.5, 'reviews': 156, 'restaurant': 'Sushi Master', 'restaurantId': '1', 'isPopular': true},
-        {'id': '103', 'name': 'Dragon Roll', 'description': 'Eel, avocado, cucumber', 'price': 'MK5,500', 'rating': 4.7, 'reviews': 234, 'restaurant': 'Sushi Master', 'restaurantId': '1', 'isPopular': true},
-        {'id': '105', 'name': 'Tempura Roll', 'description': 'Shrimp tempura with avocado', 'price': 'MK4,800', 'rating': 4.6, 'reviews': 178, 'restaurant': 'Sushi Master', 'restaurantId': '1', 'isPopular': true},
-      ],
-      '2': [ // Luspernando Food Hub
-        {'id': '201', 'name': 'Nsima with Beef', 'description': 'Traditional nsima with beef stew', 'price': 'MK5,000', 'rating': 4.3, 'reviews': 67, 'restaurant': 'Luspernando Food Hub', 'restaurantId': '2', 'isPopular': true},
-        {'id': '202', 'name': 'Chambo Fish', 'description': 'Grilled chambo with vegetables', 'price': 'MK7,500', 'rating': 4.6, 'reviews': 123, 'restaurant': 'Luspernando Food Hub', 'restaurantId': '2', 'isPopular': true},
-        {'id': '204', 'name': 'Chicken Stew', 'description': 'Tender chicken in rich tomato sauce', 'price': 'MK4,500', 'rating': 4.4, 'reviews': 89, 'restaurant': 'Luspernando Food Hub', 'restaurantId': '2', 'isPopular': true},
-      ],
-      '3': [ // BossMan
-        {'id': '301', 'name': 'Double Cheeseburger', 'description': 'Two beef patties with cheese', 'price': 'MK6,500', 'rating': 4.4, 'reviews': 112, 'restaurant': 'BossMan', 'restaurantId': '3', 'isPopular': true},
-        {'id': '302', 'name': 'BBQ Chicken Wings', 'description': 'Grilled wings with BBQ sauce', 'price': 'MK4,500', 'rating': 4.2, 'reviews': 78, 'restaurant': 'BossMan', 'restaurantId': '3', 'isPopular': true},
-        {'id': '304', 'name': 'Milkshake', 'description': 'Creamy vanilla milkshake', 'price': 'MK2,500', 'rating': 4.5, 'reviews': 67, 'restaurant': 'BossMan', 'restaurantId': '3', 'isPopular': true},
-        {'id': '305', 'name': 'Chicken Burger', 'description': 'Grilled chicken with lettuce', 'price': 'MK4,500', 'rating': 4.3, 'reviews': 89, 'restaurant': 'BossMan', 'restaurantId': '3', 'isPopular': true},
-      ],
-    };
-
-    final restaurantId = food['restaurantId'].toString();
-    final allItems = restaurantMenus[restaurantId] ?? [];
-    
-    // Filter popular items and exclude the current food item
-    return allItems.where((item) => 
-      item['isPopular'] == true && 
-      item['id'] != food['id']
-    ).toList();
-  }
-
-  void _addToCart(BuildContext context, Map<String, dynamic> item) {
+  void _addToCart(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final menuItem = MenuItem(
-      id: item['id'],
-      restaurantId: item['restaurantId'],
-      name: item['name'],
-      description: item['description'],
-      price: double.parse(item['price'].replaceAll('MK', '').replaceAll(',', '')),
-      image: '',
-      category: '',
+      id: food['id'],
+      restaurantId: food['restaurantId'],
+      name: food['name'],
+      description: food['description'],
+      price: double.parse(food['price'].replaceAll('MK', '').replaceAll(',', '')),
+      image: food['image'] ?? '',
+      category: food['category'] ?? '',
       isAvailable: true,
     );
-    cartProvider.addItem(menuItem, restaurantId: item['restaurantId'], restaurantName: item['restaurant']);
+    cartProvider.addItem(menuItem, 
+      restaurantId: food['restaurantId'], 
+      restaurantName: food['restaurant']
+    );
     
-    // ❌ Snackbar removed – no message
-  }
-
-  void _navigateToFoodDetail(BuildContext context, Map<String, dynamic> item) {
-    context.push('/food-detail', extra: item);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${food['name']} added to cart'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: AppTheme.success,
+      ),
+    );
   }
 
   void _goToCart(BuildContext context) {
@@ -71,25 +44,8 @@ class FoodDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final popularMeals = _getPopularMealsFromSameRestaurant();
+    final imageUrl = food['image'] ?? '';
     
-    void addCurrentToCart() {
-      final cartProvider = Provider.of<CartProvider>(context, listen: false);
-      final menuItem = MenuItem(
-        id: food['id'],
-        restaurantId: food['restaurantId'],
-        name: food['name'],
-        description: food['description'],
-        price: double.parse(food['price'].replaceAll('MK', '').replaceAll(',', '')),
-        image: '',
-        category: '',
-        isAvailable: true,
-      );
-      cartProvider.addItem(menuItem, restaurantId: food['restaurantId'], restaurantName: food['restaurant']);
-      
-      // ❌ Snackbar removed – no message
-    }
-
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
       appBar: AppBar(
@@ -108,7 +64,6 @@ class FoodDetailScreen extends StatelessWidget {
           ),
         ),
         centerTitle: true,
-        // ✅ Cart icon with badge
         actions: [
           Consumer<CartProvider>(
             builder: (context, cartProvider, child) {
@@ -156,7 +111,7 @@ class FoodDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Food Image Placeholder
+            // Food Image
             Container(
               height: 250,
               width: double.infinity,
@@ -167,13 +122,30 @@ class FoodDetailScreen extends StatelessWidget {
                   bottomRight: Radius.circular(24),
                 ),
               ),
-              child: Center(
-                child: Icon(
-                  Icons.fastfood,
-                  size: 100,
-                  color: AppTheme.getMutedTextColor(context),
-                ),
-              ),
+              child: imageUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: double.infinity,
+                      height: 250,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                      errorWidget: (context, url, error) => Center(
+                        child: Icon(
+                          Icons.fastfood,
+                          size: 80,
+                          color: AppTheme.getMutedTextColor(context),
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: Icon(
+                        Icons.fastfood,
+                        size: 80,
+                        color: AppTheme.getMutedTextColor(context),
+                      ),
+                    ),
             ),
             
             Padding(
@@ -214,14 +186,6 @@ class FoodDetailScreen extends StatelessWidget {
                                 color: AppTheme.getPrimaryTextColor(context),
                               ),
                             ),
-                            if (food.containsKey('reviews'))
-                              Text(
-                                ' (${food['reviews']})',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: AppTheme.getSecondaryTextColor(context),
-                                ),
-                              ),
                           ],
                         ),
                       ),
@@ -319,7 +283,7 @@ class FoodDetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: ElevatedButton(
-                      onPressed: addCurrentToCart,
+                      onPressed: () => _addToCart(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         foregroundColor: Colors.white,
@@ -337,180 +301,6 @@ class FoodDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Popular Items Section - with reduced card sizes
-                  if (popularMeals.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Popular from ${food['restaurant']}',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.getPrimaryTextColor(context),
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                context.pop();
-                              },
-                              child: Text(
-                                'View All',
-                                style: TextStyle(
-                                  color: AppTheme.primaryRed,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 210, // reduced from 260
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: popularMeals.length,
-                            itemBuilder: (context, index) {
-                              final item = popularMeals[index];
-                              return GestureDetector(
-                                onTap: () {
-                                  _navigateToFoodDetail(context, item);
-                                },
-                                child: Container(
-                                  width: 140, // reduced from 160
-                                  margin: const EdgeInsets.only(right: 12),
-                                  decoration: BoxDecoration(
-                                    gradient: AppTheme.cardGlowGradient(context),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: AppTheme.deepCrimson.withOpacity(0.3),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Image Container - smaller
-                                      Container(
-                                        height: 90, // reduced from 110
-                                        width: double.infinity,
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.getSurfaceColor(context),
-                                          borderRadius: const BorderRadius.only(
-                                            topLeft: Radius.circular(16),
-                                            topRight: Radius.circular(16),
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Icon(
-                                            Icons.fastfood,
-                                            size: 35, // reduced from 40
-                                            color: AppTheme.getMutedTextColor(context),
-                                          ),
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.all(8), // reduced from 10
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            // Restaurant Name
-                                            Text(
-                                              item['restaurant'],
-                                              style: TextStyle(
-                                                fontSize: 9, // reduced from 10
-                                                color: AppTheme.getSecondaryTextColor(context),
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 2),
-                                            // Food Name
-                                            Text(
-                                              item['name'],
-                                              style: TextStyle(
-                                                fontSize: 11, // reduced from 12
-                                                fontWeight: FontWeight.bold,
-                                                color: AppTheme.getPrimaryTextColor(context),
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 4),
-                                            // Rating and Price Row
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    const Icon(Icons.star, size: 9, color: AppTheme.yellow), // reduced from 10
-                                                    const SizedBox(width: 2),
-                                                    Text(
-                                                      item['rating'].toString(),
-                                                      style: TextStyle(
-                                                        fontSize: 9, // reduced from 10
-                                                        color: AppTheme.getSecondaryTextColor(context),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                Text(
-                                                  item['price'],
-                                                  style: TextStyle(
-                                                    fontSize: 9, // reduced from 10
-                                                    fontWeight: FontWeight.bold,
-                                                    color: AppTheme.primaryRed,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4), // reduced from 6
-                                            // Add to Cart Button - smaller
-                                            Container(
-                                              width: double.infinity,
-                                              height: 26, // reduced from 28
-                                              decoration: BoxDecoration(
-                                                color: AppTheme.getSurfaceColor(context),
-                                                borderRadius: BorderRadius.circular(20),
-                                              ),
-                                              child: TextButton(
-                                                onPressed: () {
-                                                  _addToCart(context, item);
-                                                },
-                                                style: TextButton.styleFrom(
-                                                  padding: EdgeInsets.zero,
-                                                  minimumSize: const Size(0, 26),
-                                                ),
-                                                child: Text(
-                                                  'Add to Cart',
-                                                  style: TextStyle(
-                                                    fontSize: 9, // reduced from 10
-                                                    fontWeight: FontWeight.w500,
-                                                    color: AppTheme.primaryRed,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
                   
                   const SizedBox(height: 20),
                 ],

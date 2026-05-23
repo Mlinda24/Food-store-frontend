@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
-import '../../utils/theme.dart';
+import '../../config/theme.dart';
 import '../../models/models.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,13 +13,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -27,20 +27,26 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
       );
       return;
     }
 
+    print('Attempting login with username: ${_usernameController.text}');
+    
     final success = await authProvider.login(
-      _emailController.text,
+      _usernameController.text.trim(),
       _passwordController.text,
     );
 
+    print('Login success: $success');
+    print('Auth error: ${authProvider.errorMessage}');
+
     if (success && mounted) {
       final user = authProvider.currentUser;
+      print('User role: ${user?.role}');
       if (user != null) {
         if (user.role == UserRole.admin) {
           context.go('/admin');
@@ -54,7 +60,10 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authProvider.error ?? 'Login failed')),
+        SnackBar(
+          content: Text(authProvider.errorMessage ?? 'Login failed'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -66,63 +75,48 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Container(
-              width: 320, // Fixed width for centered form
+              width: 320,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo
                   Container(
                     height: 70,
                     width: 70,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryButton,
+                      gradient: AppTheme.primaryButtonGradient,
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryRed.withOpacity(0.3),
-                          blurRadius: 15,
-                          spreadRadius: 3,
-                        ),
-                      ],
                     ),
-                    child: const Icon(
-                      Icons.restaurant,
-                      size: 35,
-                      color: Colors.white,
-                    ),
+                    child: const Icon(Icons.restaurant, size: 35, color: Colors.white),
                   ),
                   const SizedBox(height: 24),
-                  // Title
                   Text(
                     'Welcome Back!',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    style: TextStyle(
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primaryText,
-                      fontSize: 24,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
                     'Sign in to continue',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    style: TextStyle(
+                      fontSize: 14,
                       color: AppTheme.secondaryText,
-                      fontSize: 13,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  // Email Field
                   TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: _usernameController,
                     style: const TextStyle(color: AppTheme.primaryText, fontSize: 14),
                     decoration: InputDecoration(
-                      labelText: 'Email',
+                      labelText: 'Username',
                       labelStyle: const TextStyle(color: AppTheme.secondaryText, fontSize: 12),
-                      prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.mutedText, size: 18),
+                      prefixIcon: const Icon(Icons.person_outline, color: AppTheme.primaryRed),
                       filled: true,
                       fillColor: AppTheme.secondaryBackground,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -137,7 +131,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Password Field
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -145,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       labelText: 'Password',
                       labelStyle: const TextStyle(color: AppTheme.secondaryText, fontSize: 12),
-                      prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.mutedText, size: 18),
+                      prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primaryRed),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off : Icons.visibility,
@@ -171,92 +164,45 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Forgot Password
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {},
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 30),
-                      ),
-                      child: Text(
-                        'Forgot Password?',
-                        style: TextStyle(
-                          color: AppTheme.primaryRed,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Login Button
-                  Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryButton,
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(22),
-                        ),
-                      ),
-                      child: Consumer<AuthProvider>(
-                        builder: (context, authProvider, _) {
-                          if (authProvider.isLoading) {
-                            return const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            );
-                          }
-                          return const Text(
-                            'Sign In',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                          );
-                        },
-                      ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: Consumer<AuthProvider>(
+                      builder: (context, authProvider, _) {
+                        return ElevatedButton(
+                          onPressed: authProvider.isLoading ? null : _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryRed,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                          child: authProvider.isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Sign In', style: TextStyle(fontSize: 16)),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Sign Up Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         "Don't have an account? ",
-                        style: TextStyle(
-                          color: AppTheme.secondaryText,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: AppTheme.secondaryText),
                       ),
                       TextButton(
-                        onPressed: () {
-                          context.go('/role-selection');
-                        },
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 30),
-                        ),
-                        child: Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            color: AppTheme.primaryRed,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
+                        onPressed: () => context.go('/role-selection'),
+                        child: const Text('Sign Up', style: TextStyle(color: AppTheme.primaryRed)),
                       ),
                     ],
                   ),

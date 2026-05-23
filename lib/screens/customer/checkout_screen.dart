@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -25,23 +26,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPhoneNumber = '';
   String _newPhoneNumber = '';
   bool _useNewPhone = false;
-  String _selectedPaymentMethod = 'Cash on Delivery';
-
-  final List<String> _paymentMethods = [
-    'Cash on Delivery',
-    'PayChangu',
-    'Airtel Money',
-    'TNM Mpamba',
-    'Mpamba',
-  ];
-
-  Map<String, Map<String, dynamic>> get _paymentIcons => {
-    'Cash on Delivery': {'icon': Icons.money, 'color': AppTheme.success},
-    'PayChangu': {'icon': Icons.qr_code, 'color': AppTheme.primaryRed},
-    'Airtel Money': {'icon': Icons.phone_android, 'color': AppTheme.warning},
-    'TNM Mpamba': {'icon': Icons.phone_iphone, 'color': AppTheme.teal},
-    'Mpamba': {'icon': Icons.phone_iphone, 'color': AppTheme.teal},
-  };
 
   @override
   void initState() {
@@ -95,439 +79,46 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   bool _validateFields() {
     if (_streetNumberController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter street name/number')),
-      );
+      _showError('Please enter street name/number');
       return false;
     }
     
     if (_houseNumberController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter house/apartment number')),
-      );
+      _showError('Please enter house/apartment number');
       return false;
     }
     
     final phoneNumber = _getPhoneNumber();
     if (phoneNumber.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please register a phone number in your profile or enter a different number')),
-      );
+      _showError('Please register a phone number in your profile or enter a different number');
       return false;
     }
     
     if (!_isValidPhoneNumber(phoneNumber)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 10-digit phone number starting with 0')),
-      );
+      _showError('Please enter a valid 10-digit phone number starting with 0');
       return false;
     }
     
     return true;
   }
 
-  Future<void> _showPaymentDetailsDialog() async {
-    if (!_validateFields()) {
-      return;
-    }
-
-    final subtotal = context.read<CartProvider>().subtotal;
-    final discount = 0.0;
-    final deliveryFee = 2.99;
-    final total = subtotal + deliveryFee - discount;
-    final phoneNumber = _getPhoneNumber();
-    final deliveryAddress = _getDeliveryAddress();
-
-    return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.getCardColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.payment, color: AppTheme.primaryRed),
-            const SizedBox(width: 8),
-            const Text(
-              'Payment Details',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Payment Method Header
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppTheme.primaryRed.withOpacity(0.1), AppTheme.deepCrimson.withOpacity(0.05)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.primaryRed.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(_paymentIcons[_selectedPaymentMethod]?['icon'] ?? Icons.payment, 
-                         color: _paymentIcons[_selectedPaymentMethod]?['color'] ?? AppTheme.primaryRed),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Payment Method',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.getSecondaryTextColor(context),
-                            ),
-                          ),
-                          Text(
-                            _selectedPaymentMethod,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Order Summary
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.getCardColor(context),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.2)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Order Summary',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Subtotal:', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                        Text('MK${subtotal.toStringAsFixed(0)}', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Delivery Fee:', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                        Text('MK${deliveryFee.toStringAsFixed(0)}', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Discount:', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                        Text('MK${discount.toStringAsFixed(0)}', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                      ],
-                    ),
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Total Amount:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          'MK${total.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: AppTheme.primaryRed,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Delivery Information
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.getCardColor(context),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.2)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.delivery_dining, size: 18, color: AppTheme.primaryRed),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Delivery Information',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, size: 14, color: AppTheme.getSecondaryTextColor(context)),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            deliveryAddress,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.getSecondaryTextColor(context),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.phone, size: 14, color: AppTheme.getSecondaryTextColor(context)),
-                        const SizedBox(width: 4),
-                        Text(
-                          phoneNumber,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.getSecondaryTextColor(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Payment Instructions based on method
-              if (_selectedPaymentMethod != 'Cash on Delivery')
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.warning.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.warning.withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.info_outline, size: 16, color: AppTheme.warning),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Payment Instructions',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.warning,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _getPaymentInstructions(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.getSecondaryTextColor(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              
-              const SizedBox(height: 8),
-              
-              // Warning message
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryRed.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, size: 16, color: AppTheme.primaryRed),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Please confirm your order details before proceeding',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.primaryRed,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
-                    ),
-                  ),
-                  child: Text('Edit Details', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _showConfirmOrderDialog(total);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryRed,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  ),
-                  child: const Text('Proceed to Pay', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppTheme.error),
     );
   }
 
-  String _getPaymentInstructions() {
-    switch (_selectedPaymentMethod) {
-      case 'PayChangu':
-        return 'You will be redirected to PayChangu payment gateway to complete your payment securely.';
-      case 'Airtel Money':
-        return 'A payment request will be sent to your Airtel Money account. Please check your phone and enter your PIN to complete the payment.';
-      case 'TNM Mpamba':
-        return 'A payment request will be sent to your Mpamba account. Please check your phone and enter your PIN to complete the payment.';
-      default:
-        return '';
-    }
-  }
-
-  Future<void> _showConfirmOrderDialog(double total) async {
-    return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.getCardColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text(
-          'Confirm Order',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.receipt_long, size: 50, color: AppTheme.primaryRed),
-            const SizedBox(height: 16),
-            Text(
-              'Total Amount: MK${total.toStringAsFixed(0)}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-            Text(
-              'Payment Method: $_selectedPaymentMethod',
-              style: TextStyle(fontSize: 14, color: AppTheme.primaryRed),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Order will be confirmed shortly',
-              style: TextStyle(fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
-                    ),
-                  ),
-                  child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _placeOrder();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryRed,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  ),
-                  child: const Text('Confirm Order', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppTheme.success),
     );
   }
 
   Future<void> _placeOrder() async {
+    if (!_validateFields()) {
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -540,52 +131,58 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please login first')),
-      );
+      _showError('Please login first');
       context.go('/login');
       return;
     }
 
     final deliveryAddress = _getDeliveryAddress();
+    final phoneNumber = _getPhoneNumber();
     
-    final order = cartProvider.createOrder(
-      authProvider.currentUser!.id,
-      deliveryAddress,
-      null,
-    );
-
-    final placedOrder = await orderProvider.placeOrder(order);
-    
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (placedOrder != null && mounted) {
-      cartProvider.clearCart();
-      
-      if (_selectedPaymentMethod != 'Cash on Delivery') {
-        _showPaymentProcessingDialog();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Order placed successfully!'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
-        context.go('/my-orders');
+    // Collect special instructions for each item
+    final Map<String, String> instructions = {};
+    _itemInstructions.forEach((key, controller) {
+      if (controller.text.isNotEmpty) {
+        instructions[key] = controller.text;
       }
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to place order. Please try again.'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
+    });
+    
+    final instructionsText = instructions.isNotEmpty 
+        ? 'Item Instructions: ${instructions.entries.map((e) => '${e.key}: ${e.value}').join(', ')}'
+        : '';
+    
+    // Create order data for API
+    final orderData = {
+      'restaurant': int.tryParse(cartProvider.restaurantId ?? '0'),
+      'delivery_address': deliveryAddress,
+      'note': 'Phone: $phoneNumber, Address: $deliveryAddress. $instructionsText',
+    };
+
+    try {
+      final placedOrder = await orderProvider.placeOrder(orderData);
+      
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (placedOrder != null && mounted) {
+        cartProvider.clearCart();
+        _showSuccess('Order placed successfully!');
+        
+        // Show order confirmation dialog
+        _showOrderConfirmationDialog(placedOrder);
+      } else if (mounted) {
+        _showError('Failed to place order. Please try again.');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showError('Error placing order: $e');
     }
   }
 
-  void _showPaymentProcessingDialog() {
+  void _showOrderConfirmationDialog(Order order) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -593,94 +190,129 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         backgroundColor: AppTheme.getCardColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.payment, color: AppTheme.primaryRed),
-            const SizedBox(width: 8),
-            const Text('Processing Payment'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              'Processing your payment via $_selectedPaymentMethod...',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _getPaymentInstructions(),
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.getSecondaryTextColor(context),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-    
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.pop(context);
-        _showPaymentSuccessDialog();
-      }
-    });
-  }
-
-  void _showPaymentSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.getCardColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
         title: Row(
           children: [
             Icon(Icons.check_circle, color: AppTheme.success),
             const SizedBox(width: 8),
-            const Text('Payment Successful'),
+            const Text(
+              'Order Confirmed!',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.verified, size: 60, color: AppTheme.success),
+            const Icon(Icons.receipt_long, size: 60, color: AppTheme.success),
             const SizedBox(height: 16),
-            const Text(
-              'Your order has been placed successfully!',
-              textAlign: TextAlign.center,
+            Text(
+              'Order #${order.id.length > 8 ? order.id.substring(order.id.length - 8) : order.id}',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.getPrimaryTextColor(context),
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Payment of amount via $_selectedPaymentMethod has been processed.',
-              textAlign: TextAlign.center,
+              'Total Amount: MK${order.total.toStringAsFixed(0)}',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryRed,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.getSurfaceColor(context),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, size: 16, color: AppTheme.primaryRed),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          order.deliveryAddress,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.getSecondaryTextColor(context),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time, size: 16, color: AppTheme.primaryRed),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Estimated delivery: 30-45 min',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.getSecondaryTextColor(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'You can track your order status in "My Orders"',
               style: TextStyle(
                 fontSize: 12,
                 color: AppTheme.getSecondaryTextColor(context),
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.go('/my-orders');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryRed,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.go('/home');
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
+                    ),
+                  ),
+                  child: Text('Continue Shopping', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                ),
               ),
-            ),
-            child: const Text('View Orders'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.go('/my-orders');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryRed,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text('View Orders', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -752,9 +384,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
 
         final subtotal = cartProvider.subtotal;
-        final discount = 0.0;
         final deliveryFee = 2.99;
-        final total = subtotal + deliveryFee - discount;
+        final total = subtotal + deliveryFee;
 
         return Scaffold(
           backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
@@ -792,6 +423,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     if (!_itemInstructions.containsKey(item.menuItemId)) {
                       _itemInstructions[item.menuItemId] = instructionController;
                     }
+                    final imageUrl = item.image ?? '';
                     
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -805,14 +437,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         children: [
                           Row(
                             children: [
-                              Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(Icons.fastfood, color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText),
+                              // Item Image
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: imageUrl.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: imageUrl,
+                                        width: 60,
+                                        height: 60,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) => Container(
+                                          width: 60,
+                                          height: 60,
+                                          color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
+                                          child: const Center(
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) => Container(
+                                          width: 60,
+                                          height: 60,
+                                          color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
+                                          child: Icon(Icons.fastfood, size: 30, color: Colors.grey),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 60,
+                                        height: 60,
+                                        color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
+                                        child: Icon(Icons.fastfood, size: 30, color: Colors.grey),
+                                      ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -891,7 +545,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 
                 const SizedBox(height: 24),
                 
-                // Phone Number Section
+                // Contact Information Section
                 const Text(
                   'Contact Information',
                   style: TextStyle(
@@ -942,8 +596,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                             maxLength: 10,
                             decoration: InputDecoration(
-                              hintText: 'Enter phone number (10 digits) - Optional',
-                              helperText: 'Leave empty to use your registered number',
+                              hintText: 'Enter phone number (10 digits)',
                               prefixIcon: Icon(Icons.phone, color: AppTheme.primaryRed),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -1007,43 +660,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                 ),
                 
-                const SizedBox(height: 16),
-                
-                // Payment Method Section
-                const Text(
-                  'Payment Method',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  color: AppTheme.getCardColor(context),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    children: _paymentMethods.map((method) {
-                      final iconData = _paymentIcons[method]?['icon'] as IconData? ?? Icons.payment;
-                      final iconColor = _paymentIcons[method]?['color'] as Color? ?? AppTheme.primaryRed;
-                      return RadioListTile<String>(
-                        value: method,
-                        groupValue: _selectedPaymentMethod,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedPaymentMethod = value!;
-                          });
-                        },
-                        title: Text(method),
-                        secondary: Icon(iconData, color: iconColor),
-                        activeColor: AppTheme.primaryRed,
-                      );
-                    }).toList(),
-                  ),
-                ),
-                
                 const SizedBox(height: 24),
                 
                 // Order Summary
@@ -1069,14 +685,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         children: [
                           Text('Delivery Fee:', style: TextStyle(color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText)),
                           Text('MK${deliveryFee.toStringAsFixed(0)}', style: TextStyle(color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Discount:', style: TextStyle(color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText)),
-                          Text('MK${discount.toStringAsFixed(0)}', style: TextStyle(color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText)),
                         ],
                       ),
                       const Divider(height: 24, color: AppTheme.deepCrimson),
@@ -1110,7 +718,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _showPaymentDetailsDialog,
+                    onPressed: _isLoading ? null : _placeOrder,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryRed,
                       padding: const EdgeInsets.symmetric(vertical: 16),

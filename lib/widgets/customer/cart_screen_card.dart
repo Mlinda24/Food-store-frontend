@@ -311,10 +311,11 @@ class ShoppingCartScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'MK${item.price.toStringAsFixed(0)} each',
+                                  'MK${item.price.toStringAsFixed(0)}',
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.getSecondaryTextColor(context),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppTheme.primaryRed,
                                   ),
                                 ),
                               ],
@@ -388,7 +389,7 @@ class ShoppingCartScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Subtotal (${cartProvider.itemCount} items)',
+                          'Subtotal',
                           style: TextStyle(
                             fontSize: 14,
                             color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,

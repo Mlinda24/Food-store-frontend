@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Main Brand Reds
@@ -18,12 +19,12 @@ class AppTheme {
   static const Color teal = Color(0xFF14B8A6);
   
   // Light Theme Colors
-  static const Color lightBackground = Color(0xFFF8F8F8);
+  static const Color lightBackground = Color(0xFFF8F9FA);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightPrimaryText = Color(0xFF1A1A1A);
-  static const Color lightSecondaryText = Color(0xFF4A4A4A);
-  static const Color lightMutedText = Color(0xFF8A8A8A);
+  static const Color lightPrimaryText = Color(0xFF1A1A2E);
+  static const Color lightSecondaryText = Color(0xFF6B7280);
+  static const Color lightMutedText = Color(0xFF9CA3AF);
   static const Color lightElevatedPanel = Color(0xFFFAFAFA);
   
   // Dark Theme Colors
@@ -35,34 +36,14 @@ class AppTheme {
   static const Color darkMutedText = Color(0xFF8A8A8A);
   static const Color darkElevatedPanel = Color(0xFF331313);
   
-  // Helper methods to get theme-aware colors
-  static Color getBackgroundColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark ? darkBackground : lightBackground;
-  }
-  
-  static Color getCardColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark ? darkCard : lightCard;
-  }
-  
-  static Color getPrimaryTextColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark ? darkPrimaryText : lightPrimaryText;
-  }
-  
-  static Color getSecondaryTextColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark ? darkSecondaryText : lightSecondaryText;
-  }
-  
-  static Color getMutedTextColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark ? darkMutedText : lightMutedText;
-  }
-  
-  static Color getSurfaceColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark ? darkSurface : lightSurface;
-  }
-  
-  static Color getElevatedPanelColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark ? darkElevatedPanel : lightElevatedPanel;
-  }
+  // Legacy colors for backward compatibility
+  static const Color mainBackground = darkBackground;
+  static const Color secondaryBackground = darkSurface;
+  static const Color cardBackground = darkCard;
+  static const Color elevatedPanel = darkElevatedPanel;
+  static const Color primaryText = darkPrimaryText;
+  static const Color secondaryText = darkSecondaryText;
+  static const Color mutedText = darkMutedText;
   
   // Gradients
   static const LinearGradient primaryButtonGradient = LinearGradient(
@@ -88,16 +69,12 @@ class AppTheme {
     }
   }
   
-  // Local Poppins font family
-  static const String fontFamily = 'Poppins';
-  static const List<String> fontFamilyFallback = ['Segoe UI', 'Roboto', 'sans-serif']; // fallback only if Poppins fails to load
-  
+  // ==================== LIGHT THEME ====================
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     primaryColor: primaryRed,
-    fontFamily: fontFamily,
-    fontFamilyFallback: fontFamilyFallback,
+    fontFamily: GoogleFonts.poppins().fontFamily,
     colorScheme: const ColorScheme.light(
       primary: primaryRed,
       secondary: brightAccentRed,
@@ -115,7 +92,6 @@ class AppTheme {
         fontSize: 18,
         fontWeight: FontWeight.bold,
         color: lightPrimaryText,
-        fontFamily: fontFamily,
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -126,7 +102,6 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        textStyle: const TextStyle(fontFamily: fontFamily),
       ),
     ),
     cardTheme: const CardThemeData(
@@ -153,35 +128,47 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: primaryRed, width: 2),
       ),
-      hintStyle: const TextStyle(color: lightMutedText, fontFamily: fontFamily),
-      labelStyle: const TextStyle(color: lightSecondaryText, fontFamily: fontFamily),
+      hintStyle: const TextStyle(color: lightMutedText),
+      labelStyle: const TextStyle(color: lightSecondaryText),
     ),
     textTheme: const TextTheme(
-      headlineLarge: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
-      headlineMedium: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
-      headlineSmall: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
-      titleLarge: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
-      titleMedium: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
-      titleSmall: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
-      bodyLarge: TextStyle(fontFamily: fontFamily, color: lightSecondaryText, fontSize: 16),
-      bodyMedium: TextStyle(fontFamily: fontFamily, color: lightSecondaryText, fontSize: 14),
-      bodySmall: TextStyle(fontFamily: fontFamily, color: lightMutedText, fontSize: 12),
-      labelLarge: TextStyle(fontFamily: fontFamily, color: lightPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
+      headlineLarge: TextStyle(color: lightPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
+      headlineMedium: TextStyle(color: lightPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
+      headlineSmall: TextStyle(color: lightPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(color: lightPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
+      titleMedium: TextStyle(color: lightPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
+      titleSmall: TextStyle(color: lightPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
+      bodyLarge: TextStyle(color: lightSecondaryText, fontSize: 16),
+      bodyMedium: TextStyle(color: lightSecondaryText, fontSize: 14),
+      bodySmall: TextStyle(color: lightMutedText, fontSize: 12),
+      labelLarge: TextStyle(color: lightPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: lightCard,
+      selectedItemColor: primaryRed,
+      unselectedItemColor: lightMutedText,
+      type: BottomNavigationBarType.fixed,
+      elevation: 8,
     ),
   );
   
+  // ==================== DARK THEME ====================
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     primaryColor: primaryRed,
-    fontFamily: fontFamily,
-    fontFamilyFallback: fontFamilyFallback,
+    fontFamily: GoogleFonts.poppins().fontFamily,
     colorScheme: const ColorScheme.dark(
       primary: primaryRed,
       secondary: brightAccentRed,
       surface: darkSurface,
       background: darkBackground,
       error: error,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: darkPrimaryText,
+      onBackground: darkPrimaryText,
+      onError: Colors.white,
     ),
     scaffoldBackgroundColor: darkBackground,
     appBarTheme: const AppBarTheme(
@@ -193,7 +180,6 @@ class AppTheme {
         fontSize: 18,
         fontWeight: FontWeight.bold,
         color: darkPrimaryText,
-        fontFamily: fontFamily,
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -204,7 +190,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        textStyle: const TextStyle(fontFamily: fontFamily),
+        elevation: 0,
       ),
     ),
     cardTheme: const CardThemeData(
@@ -231,20 +217,74 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: primaryRed, width: 2),
       ),
-      hintStyle: const TextStyle(color: darkMutedText, fontFamily: fontFamily),
-      labelStyle: const TextStyle(color: darkSecondaryText, fontFamily: fontFamily),
+      hintStyle: const TextStyle(color: darkMutedText),
+      labelStyle: const TextStyle(color: darkSecondaryText),
     ),
     textTheme: const TextTheme(
-      headlineLarge: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
-      headlineMedium: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
-      headlineSmall: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
-      titleLarge: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
-      titleMedium: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
-      titleSmall: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
-      bodyLarge: TextStyle(fontFamily: fontFamily, color: darkSecondaryText, fontSize: 16),
-      bodyMedium: TextStyle(fontFamily: fontFamily, color: darkSecondaryText, fontSize: 14),
-      bodySmall: TextStyle(fontFamily: fontFamily, color: darkMutedText, fontSize: 12),
-      labelLarge: TextStyle(fontFamily: fontFamily, color: darkPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
+      headlineLarge: TextStyle(color: darkPrimaryText, fontSize: 32, fontWeight: FontWeight.bold),
+      headlineMedium: TextStyle(color: darkPrimaryText, fontSize: 28, fontWeight: FontWeight.bold),
+      headlineSmall: TextStyle(color: darkPrimaryText, fontSize: 24, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(color: darkPrimaryText, fontSize: 20, fontWeight: FontWeight.w600),
+      titleMedium: TextStyle(color: darkPrimaryText, fontSize: 18, fontWeight: FontWeight.w600),
+      titleSmall: TextStyle(color: darkPrimaryText, fontSize: 16, fontWeight: FontWeight.w600),
+      bodyLarge: TextStyle(color: darkSecondaryText, fontSize: 16),
+      bodyMedium: TextStyle(color: darkSecondaryText, fontSize: 14),
+      bodySmall: TextStyle(color: darkMutedText, fontSize: 12),
+      labelLarge: TextStyle(color: darkPrimaryText, fontSize: 14, fontWeight: FontWeight.w500),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: darkCard,
+      selectedItemColor: primaryRed,
+      unselectedItemColor: darkMutedText,
+      type: BottomNavigationBarType.fixed,
+      elevation: 8,
     ),
   );
+  
+  // ==================== DEFAULT THEME ====================
+  static ThemeData get defaultTheme => darkTheme;
+  
+  // Helper methods for dynamic theming
+  static Color getBackgroundColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkBackground : lightBackground;
+  }
+  
+  static Color getPrimaryTextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkPrimaryText : lightPrimaryText;
+  }
+  
+  static Color getSecondaryTextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkSecondaryText : lightSecondaryText;
+  }
+  
+  static Color getMutedTextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkMutedText : lightMutedText;
+  }
+  
+  static Color getCardColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkCard : lightCard;
+  }
+  
+  static Color getSurfaceColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkSurface : lightSurface;
+  }
+  
+  static Color getElevatedPanelColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkElevatedPanel : lightElevatedPanel;
+  }
+  
+  static LinearGradient getCardGlowGradient(BuildContext context) {
+    return cardGlowGradient(context);
+  }
+  
+  static LinearGradient getPrimaryButtonGradient() {
+    return primaryButtonGradient;
+  }
 }

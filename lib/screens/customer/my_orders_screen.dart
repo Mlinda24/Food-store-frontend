@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/order_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 
@@ -21,9 +20,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   Future<void> _loadOrders() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-    await orderProvider.fetchOrders(authProvider.currentUser!.id);
+    await orderProvider.fetchOrders();
   }
 
   String _getStatusText(OrderStatus status) {
@@ -68,7 +66,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
   }
 
-  // Build a detailed item row (no instructions field)
   Widget _buildItemRow(OrderItemModel item, bool isDark) {
     final itemTotal = item.price * item.quantity;
     return Padding(
@@ -225,7 +222,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Order Header
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
@@ -241,7 +237,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          'Order #${order.id.substring(order.id.length - 6)}',
+                                          'Order #${order.id.length > 6 ? order.id.substring(order.id.length - 6) : order.id}',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w500,
@@ -273,7 +269,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                 
                                 const SizedBox(height: 12),
                                 
-                                // Restaurant placeholder (no restaurantName field)
                                 Row(
                                   children: [
                                     Container(
@@ -304,7 +299,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                 
                                 const SizedBox(height: 12),
                                 
-                                // Items Section - Detailed List (no instructions)
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
@@ -324,7 +318,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                       const SizedBox(height: 8),
                                       ...order.items.map((item) => _buildItemRow(item, isDark)),
                                       const Divider(height: 16),
-                                      // Subtotal and total
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
@@ -392,7 +385,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                 
                                 const SizedBox(height: 12),
                                 
-                                // Delivery Address (if available)
                                 if (order.deliveryAddress != null && order.deliveryAddress!.isNotEmpty)
                                   Container(
                                     padding: const EdgeInsets.all(8),
@@ -419,7 +411,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                 
                                 const SizedBox(height: 12),
                                 
-                                // Order Date
                                 Row(
                                   children: [
                                     Icon(
@@ -440,7 +431,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                 
                                 const SizedBox(height: 12),
                                 
-                                // View Details / Track Order Button
                                 Container(
                                   width: double.infinity,
                                   height: 40,

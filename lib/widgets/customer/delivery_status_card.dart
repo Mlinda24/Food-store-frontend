@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../utils/theme.dart';
+import '../../config/theme.dart';
 
 class DeliveryStatusCard extends StatelessWidget {
   const DeliveryStatusCard({super.key});
@@ -12,18 +12,21 @@ class DeliveryStatusCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(12),
+        gradient: AppTheme.cardGlowGradient(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.deepCrimson.withOpacity(0.3),
+        ),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppTheme.primaryRed.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
+              color: AppTheme.primaryRed.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.delivery_dining, color: AppTheme.primaryRed, size: 22),
+            child: const Icon(Icons.delivery_dining, color: AppTheme.primaryRed, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -31,12 +34,16 @@ class DeliveryStatusCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Your order is nearby!',
-                  style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  'Fast Delivery Service',
+                  style: TextStyle(
+                    color: AppTheme.primaryText,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "Chef Luigi's Kitchen is a few blocks away.",
+                  'Get your favorite food delivered in 30-45 minutes',
                   style: TextStyle(
                     color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
                     fontSize: 11,
@@ -46,13 +53,13 @@ class DeliveryStatusCard extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
               color: AppTheme.primaryRed,
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
-              'Received',
+              'Active',
               style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ),
