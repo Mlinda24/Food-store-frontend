@@ -9,7 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.137.1:8000';
+  static const String baseUrl = 'http://192.168.1.173:8000';
   static const String mediaBaseUrl = 'http://192.168.137.1:8000';
   
   static const String _accessTokenKey = 'access_token';

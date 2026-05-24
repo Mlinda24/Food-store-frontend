@@ -28,7 +28,8 @@ class ShoppingCartScreen extends StatelessWidget {
           side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
         title: Text('Remove Item', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-        content: Text('Are you sure you want to remove ${item.name}?', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+        content: Text('Are you sure you want to remove ${item.name}?',
+            style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -67,7 +68,8 @@ class ShoppingCartScreen extends StatelessWidget {
           side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
         title: Text('Clear Cart', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-        content: Text('Are you sure you want to clear your entire cart?', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+        content: Text('Are you sure you want to clear your entire cart?',
+            style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -79,10 +81,7 @@ class ShoppingCartScreen extends StatelessWidget {
               cartProvider.clearCart();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Cart cleared'),
-                  backgroundColor: AppTheme.warning,
-                ),
+                const SnackBar(content: Text('Cart cleared'), backgroundColor: AppTheme.warning),
               );
             },
             style: ElevatedButton.styleFrom(
@@ -99,7 +98,7 @@ class ShoppingCartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
         if (!cartProvider.hasItems) {
@@ -111,8 +110,10 @@ class ShoppingCartScreen extends StatelessWidget {
               foregroundColor: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
               elevation: 0,
               leading: IconButton(
-                icon: Icon(Icons.arrow_back, color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
-                onPressed: () => context.pop(),
+                icon: Icon(Icons.arrow_back,
+                    color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
+                // FIX: go() — no stack to pop when arriving via bottom nav
+                onPressed: () => context.go('/home'),
               ),
             ),
             body: Center(
@@ -149,15 +150,14 @@ class ShoppingCartScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: ElevatedButton(
+                      // FIX: correct home route
                       onPressed: () => context.go('/home'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         foregroundColor: Colors.white,
                         shadowColor: Colors.transparent,
                         padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(22),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                       ),
                       child: const Text('Browse Restaurants'),
                     ),
@@ -176,8 +176,10 @@ class ShoppingCartScreen extends StatelessWidget {
             foregroundColor: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
             elevation: 0,
             leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
-              onPressed: () => context.pop(),
+              icon: Icon(Icons.arrow_back,
+                  color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
+              // FIX: go() — no stack to pop when arriving via bottom nav
+              onPressed: () => context.go('/home'),
             ),
             actions: [
               IconButton(
@@ -207,7 +209,8 @@ class ShoppingCartScreen extends StatelessWidget {
                         color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(Icons.restaurant, color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText),
+                      child: Icon(Icons.restaurant,
+                          color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -227,7 +230,8 @@ class ShoppingCartScreen extends StatelessWidget {
                             'Delivery: MK${cartProvider.deliveryFee.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                              color:
+                                  isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
                             ),
                           ),
                         ],
@@ -236,7 +240,7 @@ class ShoppingCartScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Cart Items List
               Expanded(
                 child: ListView.builder(
@@ -245,7 +249,7 @@ class ShoppingCartScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final item = cartProvider.items[index];
                     final imageUrl = item.image ?? '';
-                    
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
@@ -270,29 +274,28 @@ class ShoppingCartScreen extends StatelessWidget {
                                       height: 60,
                                       color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
                                       child: const Center(
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      ),
+                                          child: CircularProgressIndicator(strokeWidth: 2)),
                                     ),
                                     errorWidget: (context, url, error) => Container(
                                       width: 60,
                                       height: 60,
                                       color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                                      child: Icon(
-                                        Icons.fastfood,
-                                        size: 30,
-                                        color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText,
-                                      ),
+                                      child: Icon(Icons.fastfood,
+                                          size: 30,
+                                          color: isDark
+                                              ? AppTheme.darkMutedText
+                                              : AppTheme.lightMutedText),
                                     ),
                                   )
                                 : Container(
                                     width: 60,
                                     height: 60,
                                     color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                                    child: Icon(
-                                      Icons.fastfood,
-                                      size: 30,
-                                      color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText,
-                                    ),
+                                    child: Icon(Icons.fastfood,
+                                        size: 30,
+                                        color: isDark
+                                            ? AppTheme.darkMutedText
+                                            : AppTheme.lightMutedText),
                                   ),
                           ),
                           const SizedBox(width: 12),
@@ -306,7 +309,8 @@ class ShoppingCartScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
-                                    color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+                                    color:
+                                        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -329,7 +333,8 @@ class ShoppingCartScreen extends StatelessWidget {
                             child: Row(
                               children: [
                                 IconButton(
-                                  onPressed: () => _updateQuantity(context, item, item.quantity - 1),
+                                  onPressed: () =>
+                                      _updateQuantity(context, item, item.quantity - 1),
                                   icon: const Icon(Icons.remove, size: 18),
                                   color: AppTheme.primaryRed,
                                   padding: EdgeInsets.zero,
@@ -342,12 +347,15 @@ class ShoppingCartScreen extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+                                      color: isDark
+                                          ? AppTheme.darkPrimaryText
+                                          : AppTheme.lightPrimaryText,
                                     ),
                                   ),
                                 ),
                                 IconButton(
-                                  onPressed: () => _updateQuantity(context, item, item.quantity + 1),
+                                  onPressed: () =>
+                                      _updateQuantity(context, item, item.quantity + 1),
                                   icon: const Icon(Icons.add, size: 18),
                                   color: AppTheme.primaryRed,
                                   padding: EdgeInsets.zero,
@@ -368,7 +376,7 @@ class ShoppingCartScreen extends StatelessWidget {
                   },
                 ),
               ),
-              
+
               // Order Summary
               Container(
                 padding: const EdgeInsets.all(16),
@@ -391,14 +399,16 @@ class ShoppingCartScreen extends StatelessWidget {
                           'Subtotal (${cartProvider.itemCount} items)',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                            color:
+                                isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
                           ),
                         ),
                         Text(
                           'MK${cartProvider.subtotal.toStringAsFixed(0)}',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                            color:
+                                isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
                           ),
                         ),
                       ],
@@ -411,14 +421,16 @@ class ShoppingCartScreen extends StatelessWidget {
                           'Delivery Fee',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                            color:
+                                isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
                           ),
                         ),
                         Text(
                           'MK${cartProvider.deliveryFee.toStringAsFixed(0)}',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                            color:
+                                isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
                           ),
                         ),
                       ],
@@ -437,7 +449,7 @@ class ShoppingCartScreen extends StatelessWidget {
                         ),
                         Text(
                           'MK${cartProvider.total.toStringAsFixed(0)}',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.primaryRed,
@@ -453,16 +465,11 @@ class ShoppingCartScreen extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryRed,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
                         child: const Text(
                           'Proceed to Checkout',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),

@@ -67,26 +67,19 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   double _calculateSubtotal(Order order) {
-    // Calculate total from all items (meals only)
     return order.items.fold<double>(0, (sum, item) => sum + (item.price * item.quantity));
   }
 
   double _getDeliveryFee(Order order) {
-    // Get delivery fee from order, default to 2000 if not present
     return order.deliveryFee ?? 2000.00;
   }
 
   double _calculateTotal(Order order) {
-    // Total = subtotal (meals) + delivery fee
     return _calculateSubtotal(order) + _getDeliveryFee(order);
   }
 
   String _getRestaurantName(Order order) {
-    // Try to get restaurant name from order, or use a default
-    // You can also fetch from a restaurant provider if needed
     try {
-      // If order has a restaurantId, you could map it to a name
-      // For now, return a default name
       return 'Foodie Express';
     } catch (e) {
       return 'Foodie Express';
@@ -108,11 +101,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.2)),
             ),
-            child: Icon(
-              Icons.fastfood,
-              size: 20,
-              color: AppTheme.primaryRed,
-            ),
+            child: Icon(Icons.fastfood, size: 20, color: AppTheme.primaryRed),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -140,11 +129,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           ),
           Text(
             'MK${itemTotal.toStringAsFixed(0)}',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryRed,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryRed),
           ),
         ],
       ),
@@ -165,7 +150,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
-          onPressed: () => context.pop(),
+          // FIX: go() replaces route — no stack to pop when arriving via bottom nav
+          onPressed: () => context.go('/home'),
         ),
       ),
       body: orderProvider.isLoading
@@ -206,15 +192,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                           borderRadius: BorderRadius.circular(22),
                         ),
                         child: ElevatedButton(
+                          // FIX: correct home route
                           onPressed: () => context.go('/home'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             foregroundColor: Colors.white,
                             shadowColor: Colors.transparent,
                             padding: EdgeInsets.zero,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(22),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                           ),
                           child: const Text('Browse Restaurants'),
                         ),
@@ -231,22 +216,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     final deliveryFee = _getDeliveryFee(order);
                     final total = _calculateTotal(order);
                     final restaurantName = _getRestaurantName(order);
-                    
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
                         gradient: AppTheme.cardGlowGradient(context),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppTheme.deepCrimson.withOpacity(0.3),
-                        ),
+                        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () {
-                            context.go('/order-tracking', extra: order);
-                          },
+                          onTap: () => context.push('/order-tracking', extra: order),
                           borderRadius: BorderRadius.circular(16),
                           child: Padding(
                             padding: const EdgeInsets.all(16),
@@ -278,10 +259,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                       ],
                                     ),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
                                         color: _getStatusColor(order.status).withOpacity(0.15),
                                         borderRadius: BorderRadius.circular(20),
@@ -297,9 +275,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                     ),
                                   ],
                                 ),
-                                
+
                                 const SizedBox(height: 12),
-                                
+
                                 Row(
                                   children: [
                                     Container(
@@ -308,11 +286,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                         color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: Icon(
-                                        Icons.restaurant,
-                                        size: 16,
-                                        color: AppTheme.primaryRed,
-                                      ),
+                                      child: Icon(Icons.restaurant, size: 16, color: AppTheme.primaryRed),
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
@@ -327,9 +301,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                     ),
                                   ],
                                 ),
-                                
+
                                 const SizedBox(height: 12),
-                                
+
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
@@ -339,53 +313,44 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text(
-                                        'Ordered Items',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                                      const Text('Ordered Items',
+                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                                       const SizedBox(height: 8),
                                       ...order.items.map((item) => _buildItemRow(item, isDark)),
                                       const Divider(height: 16),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            'Subtotal (Meals)',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                                            ),
-                                          ),
-                                          Text(
-                                            'MK${subtotal.toStringAsFixed(0)}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                                            ),
-                                          ),
+                                          Text('Subtotal (Meals)',
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDark
+                                                      ? AppTheme.darkSecondaryText
+                                                      : AppTheme.lightSecondaryText)),
+                                          Text('MK${subtotal.toStringAsFixed(0)}',
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDark
+                                                      ? AppTheme.darkSecondaryText
+                                                      : AppTheme.lightSecondaryText)),
                                         ],
                                       ),
                                       const SizedBox(height: 4),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            'Delivery Fee',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                                            ),
-                                          ),
-                                          Text(
-                                            'MK${deliveryFee.toStringAsFixed(0)}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                                            ),
-                                          ),
+                                          Text('Delivery Fee',
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDark
+                                                      ? AppTheme.darkSecondaryText
+                                                      : AppTheme.lightSecondaryText)),
+                                          Text('MK${deliveryFee.toStringAsFixed(0)}',
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDark
+                                                      ? AppTheme.darkSecondaryText
+                                                      : AppTheme.lightSecondaryText)),
                                         ],
                                       ),
                                       const SizedBox(height: 8),
@@ -394,35 +359,33 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            'Total',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
-                                            ),
-                                          ),
-                                          Text(
-                                            'MK${total.toStringAsFixed(0)}',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppTheme.primaryRed,
-                                            ),
-                                          ),
+                                          Text('Total',
+                                              style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isDark
+                                                      ? AppTheme.darkPrimaryText
+                                                      : AppTheme.lightPrimaryText)),
+                                          Text('MK${total.toStringAsFixed(0)}',
+                                              style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppTheme.primaryRed)),
                                         ],
                                       ),
                                     ],
                                   ),
                                 ),
-                                
+
                                 const SizedBox(height: 12),
-                                
+
                                 if (order.deliveryAddress != null && order.deliveryAddress!.isNotEmpty)
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: isDark ? AppTheme.darkSurface.withOpacity(0.5) : AppTheme.lightBackground.withOpacity(0.5),
+                                      color: isDark
+                                          ? AppTheme.darkSurface.withOpacity(0.5)
+                                          : AppTheme.lightBackground.withOpacity(0.5),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Row(
@@ -434,23 +397,23 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                             order.deliveryAddress!,
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                                              color: isDark
+                                                  ? AppTheme.darkSecondaryText
+                                                  : AppTheme.lightSecondaryText,
                                             ),
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                
+
                                 const SizedBox(height: 12),
-                                
+
                                 Row(
                                   children: [
-                                    Icon(
-                                      Icons.access_time,
-                                      size: 14,
-                                      color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText,
-                                    ),
+                                    Icon(Icons.access_time,
+                                        size: 14,
+                                        color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText),
                                     const SizedBox(width: 4),
                                     Text(
                                       '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year} • ${order.createdAt.hour}:${order.createdAt.minute.toString().padLeft(2, '0')}',
@@ -461,9 +424,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                     ),
                                   ],
                                 ),
-                                
+
                                 const SizedBox(height: 12),
-                                
+
                                 Container(
                                   width: double.infinity,
                                   height: 40,
@@ -472,25 +435,16 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: ElevatedButton(
-                                    onPressed: () {
-                                      context.go('/order-tracking', extra: order);
-                                    },
+                                    onPressed: () => context.push('/order-tracking', extra: order),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.transparent,
                                       foregroundColor: Colors.white,
                                       shadowColor: Colors.transparent,
                                       padding: EdgeInsets.zero,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                     ),
-                                    child: const Text(
-                                      'Track Order',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                                    child: const Text('Track Order',
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                                   ),
                                 ),
                               ],

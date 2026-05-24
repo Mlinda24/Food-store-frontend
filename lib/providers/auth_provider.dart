@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
-import 'package:provider/provider.dart'; // Add this import
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import 'cart_provider.dart';
 
@@ -17,6 +17,37 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   bool get isRestaurant => _currentUser?.role == UserRole.restaurant;
   bool get isCustomer => _currentUser?.role == UserRole.customer;
+
+  // ✅ Constructor - checks for existing session when app starts
+  AuthProvider() {
+    checkAuthStatus();
+  }
+
+  // ✅ Check if user is already logged in (restores session)
+  Future<void> checkAuthStatus() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final token = await _apiService.getToken();
+      if (token != null && token.isNotEmpty) {
+        // Token exists, try to get user info
+        _currentUser = await _apiService.getCurrentUser();
+        print('✅ Session restored for: ${_currentUser?.name}');
+      } else {
+        print('⚠️ No saved session found');
+        _currentUser = null;
+      }
+    } catch (e) {
+      print('❌ Session restoration failed: $e');
+      _currentUser = null;
+      // Clear invalid tokens
+      await _apiService.clearTokens();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<bool> login(String username, String password,
       {BuildContext? context}) async {

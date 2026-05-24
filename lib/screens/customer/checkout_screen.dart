@@ -148,9 +148,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           canDeliver: canDeliver,
           tier: tier,
         );
-
-        print('✅ Delivery fee: MK${_calculatedDeliveryFee!.toStringAsFixed(0)} '
-            'for ${DeliveryFeeCalculator.formatDistance(distanceInMeters)}');
       } else {
         setState(() {
           _calculatedDeliveryFee = cartProvider.deliveryFee;
@@ -210,11 +207,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final street = _streetNumberController.text.trim();
     final house = _houseNumberController.text.trim();
     final floor = _floorNumberController.text.trim();
-
     if (street.isEmpty && house.isEmpty) return '';
-    return floor.isNotEmpty
-        ? '$street, $house, Floor $floor'
-        : '$street, $house';
+    return floor.isNotEmpty ? '$street, $house, Floor $floor' : '$street, $house';
   }
 
   String _getPhoneNumber() {
@@ -226,8 +220,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   String _getPaymentPhoneNumber() {
     if (_selectedPaymentMethod == PaymentMethod.mpamba) return _mpambaNumber;
-    if (_selectedPaymentMethod == PaymentMethod.airtel_money)
-      return _airtelNumber;
+    if (_selectedPaymentMethod == PaymentMethod.airtel_money) return _airtelNumber;
     return '';
   }
 
@@ -240,37 +233,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _showError('Please enter house/apartment number');
       return false;
     }
-
     final phoneNumber = _getPhoneNumber();
     if (phoneNumber.isEmpty) {
-      _showError(
-          'Please register a phone number in your profile or enter a different number');
+      _showError('Please register a phone number in your profile or enter a different number');
       return false;
     }
     if (!_isValidPhoneNumber(phoneNumber)) {
       _showError('Please enter a valid 10-digit phone number starting with 0');
       return false;
     }
-
-    if (_selectedPaymentMethod != PaymentMethod.cash_on_delivery) {
-      final paymentPhone = _getPaymentPhoneNumber();
-      if (paymentPhone.isEmpty) {
-        _showError('Please enter your mobile money phone number');
-        return false;
-      }
-      if (!_isValidPhoneNumber(paymentPhone)) {
-        _showError(
-            'Please enter a valid 10-digit phone number starting with 0');
-        return false;
-      }
-    }
-
     if (!_canDeliver) {
-      _showError(
-          'Sorry, we do not deliver to your location. Maximum delivery radius is 2.5 km.');
+      _showError('Sorry, we do not deliver to your location. Maximum delivery radius is 2.5 km.');
       return false;
     }
-
     return true;
   }
 
@@ -286,9 +261,168 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // ─── Payment Popup ────────────────────────────────────────────
+
+  Future<void> _showPaymentMethodPopup() async {
+    if (!_validateFields()) return;
+
+    PaymentMethod tempMethod = _selectedPaymentMethod;
+    String tempMpamba = _mpambaNumber;
+    String tempAirtel = _airtelNumber;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select Payment Method',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Cash on Delivery
+                    _paymentOption(
+                      icon: Icons.money,
+                      title: 'Cash on Delivery',
+                      subtitle: 'Pay when you receive your order',
+                      value: PaymentMethod.cash_on_delivery,
+                      groupValue: tempMethod,
+                      onChanged: (v) => setModalState(() => tempMethod = v!),
+                    ),
+
+                    // Mpamba
+                    _paymentOption(
+                      icon: Icons.phone_android,
+                      title: 'Mpamba',
+                      subtitle: 'Pay using Mpamba mobile money',
+                      value: PaymentMethod.mpamba,
+                      groupValue: tempMethod,
+                      onChanged: (v) => setModalState(() => tempMethod = v!),
+                    ),
+                    if (tempMethod == PaymentMethod.mpamba)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                        child: TextField(
+                          onChanged: (v) => tempMpamba = v,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          maxLength: 10,
+                          decoration: InputDecoration(
+                            labelText: 'Mpamba Phone Number',
+                            hintText: '0XXX XXX XXX',
+                            prefixIcon: const Icon(Icons.phone_android, color: AppTheme.primaryRed),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+
+                    // Airtel Money
+                    _paymentOption(
+                      icon: Icons.phone_iphone,
+                      title: 'Airtel Money',
+                      subtitle: 'Pay using Airtel Money',
+                      value: PaymentMethod.airtel_money,
+                      groupValue: tempMethod,
+                      onChanged: (v) => setModalState(() => tempMethod = v!),
+                    ),
+                    if (tempMethod == PaymentMethod.airtel_money)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                        child: TextField(
+                          onChanged: (v) => tempAirtel = v,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          maxLength: 10,
+                          decoration: InputDecoration(
+                            labelText: 'Airtel Money Phone Number',
+                            hintText: '0XXX XXX XXX',
+                            prefixIcon: const Icon(Icons.phone_iphone, color: AppTheme.primaryRed),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedPaymentMethod = tempMethod;
+                            _mpambaNumber = tempMpamba;
+                            _airtelNumber = tempAirtel;
+                          });
+                          Navigator.pop(ctx, true);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryRed,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25)),
+                        ),
+                        child: const Text(
+                          'Place Order',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _placeOrder();
+    }
+  }
+
+  Widget _paymentOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required PaymentMethod value,
+    required PaymentMethod groupValue,
+    required ValueChanged<PaymentMethod?> onChanged,
+  }) {
+    return RadioListTile<PaymentMethod>(
+      value: value,
+      groupValue: groupValue,
+      onChanged: onChanged,
+      activeColor: AppTheme.primaryRed,
+      contentPadding: EdgeInsets.zero,
+      title: Row(
+        children: [
+          Icon(icon, size: 16, color: AppTheme.primaryRed),
+          const SizedBox(width: 6),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
+        ],
+      ),
+      subtitle: Text(subtitle,
+          style: const TextStyle(fontSize: 11, color: Colors.black54)),
+    );
+  }
+
   // ─── Payment flow ─────────────────────────────────────────────
 
-  /// Main entry point after order is created on backend.
   Future<void> _processPaymentAndPlaceOrder(Order order) async {
     if (_selectedPaymentMethod == PaymentMethod.cash_on_delivery) {
       await _completeOrder(order.id);
@@ -304,8 +438,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _isProcessingPayment = true);
 
     try {
-      // Step 1: Ask backend to initiate payment with PayChangu.
-      // Backend returns checkout_url pointing to PayChangu hosted page.
       final result = await _paymentProvider.initiatePayment(
         amount: order.total,
         phoneNumber: paymentPhone,
@@ -317,18 +449,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final reference = result['reference'] as String?;
 
       if (checkoutUrl == null || checkoutUrl.isEmpty) {
-        _showError(
-            'Payment service did not return a checkout URL. Please try again.');
+        _showError('Payment service did not return a checkout URL. Please try again.');
         setState(() => _isProcessingPayment = false);
         return;
       }
 
       setState(() => _isProcessingPayment = false);
 
-      // Step 2: Open PayChangu checkout in a WebView.
-      // Screen pops with {'status': 'submitted'|'cancelled', 'reference': ...}
-      final webViewResult =
-          await Navigator.of(context).push<Map<String, dynamic>>(
+      final webViewResult = await Navigator.of(context).push<Map<String, dynamic>>(
         MaterialPageRoute(
           builder: (_) => PaychanguWebViewScreen(
             checkoutUrl: checkoutUrl,
@@ -338,15 +466,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       );
 
-      // Step 3: Handle result.
       if (webViewResult == null || webViewResult['status'] == 'cancelled') {
         _showError('Payment was cancelled. Your order has not been confirmed.');
         return;
       }
 
       if (webViewResult['status'] == 'submitted') {
-        // User completed the mobile money prompt.
-        // Poll backend until payment is confirmed or timeout.
         setState(() => _isProcessingPayment = true);
         final ref = webViewResult['reference'] as String;
         final confirmed = await _pollPaymentStatus(ref);
@@ -355,7 +480,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         if (confirmed) {
           await _completeOrder(order.id);
         } else {
-          // Payment may still process asynchronously via webhook.
           _showPaymentPendingDialog(order.id, ref);
         }
       }
@@ -366,39 +490,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  /// Polls /api/payments/status_by_reference/?reference=xxx every 3 s.
-  /// Returns true if backend confirms payment completed.
   Future<bool> _pollPaymentStatus(String reference) async {
-    print('⏳ Polling payment status for reference: $reference');
-
     for (int attempt = 1; attempt <= 10; attempt++) {
       await Future.delayed(const Duration(seconds: 3));
       if (!mounted) return false;
-
       try {
-        final statusData =
-            await _paymentProvider.getPaymentStatusByReference(reference);
+        final statusData = await _paymentProvider.getPaymentStatusByReference(reference);
         final status = statusData?['status'] as String?;
-        print('  Attempt $attempt: status = $status');
-
-        if (status == 'completed') {
-          print('✅ Payment confirmed!');
-          return true;
-        } else if (status == 'failed') {
-          print('❌ Payment failed');
-          return false;
-        }
-        // 'processing' or 'pending' — keep polling
+        if (status == 'completed') return true;
+        if (status == 'failed') return false;
       } catch (e) {
-        print('  Poll attempt $attempt error: $e');
+        print('Poll attempt $attempt error: $e');
       }
     }
-
-    print('⏰ Polling timed out — payment still pending');
     return false;
   }
 
-  /// Shown when payment is submitted but not yet confirmed (still processing).
   void _showPaymentPendingDialog(String orderId, String reference) {
     showDialog(
       context: context,
@@ -417,10 +524,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            Text(
-              'Ref: $reference',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+            Text('Ref: $reference',
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
         actions: [
@@ -433,16 +538,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               if (confirmed && mounted) {
                 await _completeOrder(orderId);
               } else if (mounted) {
-                _showError(
-                    'Payment not yet confirmed. Check your orders for updates.');
+                _showError('Payment not yet confirmed. Check your orders for updates.');
               }
             },
             child: const Text('Check Again'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryRed,
-                foregroundColor: Colors.white),
+                backgroundColor: AppTheme.primaryRed, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
               context.go('/orders');
@@ -472,11 +575,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // ─── Place order ──────────────────────────────────────────────
 
   Future<void> _placeOrder() async {
-    if (!_validateFields()) return;
-
     final cartProvider = context.read<CartProvider>();
-
-    print('Cart items: ${cartProvider.items.map((i) => i.name).toList()}');
 
     if (cartProvider.items.isEmpty) {
       _showError('Your cart is empty. Please add items first.');
@@ -500,9 +599,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final Map<String, String> instructions = {};
     _itemInstructions.forEach((key, controller) {
-      if (controller.text.isNotEmpty) {
-        instructions[key] = controller.text;
-      }
+      if (controller.text.isNotEmpty) instructions[key] = controller.text;
     });
 
     final instructionsText = instructions.isNotEmpty
@@ -514,19 +611,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final orderData = {
       'restaurant_id': int.parse(restaurantId),
       'delivery_address': deliveryAddress,
-      'note':
-          'Phone: $phoneNumber. Payment: ${_selectedPaymentMethod.displayName}. $instructionsText',
+      'note': 'Phone: $phoneNumber. Payment: ${_selectedPaymentMethod.displayName}. $instructionsText',
       'latitude': _currentLocation?.latitude,
       'longitude': _currentLocation?.longitude,
       'payment_method': _selectedPaymentMethod.value,
     };
-
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('📤 Placing Order');
-    print('   Order Data: $orderData');
-    print(
-        '   Delivery Fee: MK${(_calculatedDeliveryFee ?? cartProvider.deliveryFee).toStringAsFixed(0)}');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     try {
       final placedOrder = await orderProvider.placeOrder(orderData);
@@ -563,10 +652,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
         child: const Row(
           children: [
-            SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
             SizedBox(width: 12),
             Text('Calculating delivery fee...'),
           ],
@@ -622,16 +708,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Outside Delivery Zone',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: AppTheme.error)),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.error)),
                   const SizedBox(height: 4),
                   Text('Maximum delivery radius is 2.5 km',
                       style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.getSecondaryTextColor(context))),
+                          fontSize: 12, color: AppTheme.getSecondaryTextColor(context))),
                   if (distance != null)
-                    Text(
-                        'Your distance: ${DeliveryFeeCalculator.formatDistance(distance)}',
+                    Text('Your distance: ${DeliveryFeeCalculator.formatDistance(distance)}',
                         style: const TextStyle(fontSize: 11)),
                 ],
               ),
@@ -664,8 +747,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       'Distance: ${DeliveryFeeCalculator.formatDistance(distance)}'
                       '${tier != null ? " - $tier" : ""}',
                       style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.getSecondaryTextColor(context))),
+                          fontSize: 12, color: AppTheme.getSecondaryTextColor(context))),
               ],
             ),
           ),
@@ -675,102 +757,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Text(
                 'MK${deliveryFee.toStringAsFixed(0)}',
                 style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryRed),
+                    fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryRed),
               ),
               if (tier != null)
                 Text(tier,
                     style: TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.getSecondaryTextColor(context))),
+                        fontSize: 10, color: AppTheme.getSecondaryTextColor(context))),
             ],
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPaymentSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Payment Method',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        Card(
-          color: AppTheme.getCardColor(context),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side:
-                BorderSide(color: AppTheme.deepCrimson.withValues(alpha: 0.3)),
-          ),
-          child: Column(
-            children: [
-              RadioListTile<PaymentMethod>(
-                value: PaymentMethod.cash_on_delivery,
-                groupValue: _selectedPaymentMethod,
-                onChanged: (v) => setState(() => _selectedPaymentMethod = v!),
-                title: const Text('Cash on Delivery'),
-                subtitle: const Text('Pay when you receive your order'),
-                activeColor: AppTheme.primaryRed,
-              ),
-              RadioListTile<PaymentMethod>(
-                value: PaymentMethod.mpamba,
-                groupValue: _selectedPaymentMethod,
-                onChanged: (v) => setState(() => _selectedPaymentMethod = v!),
-                title: const Text('Mpamba'),
-                subtitle: const Text('Pay using Mpamba mobile money'),
-                activeColor: AppTheme.primaryRed,
-              ),
-              if (_selectedPaymentMethod == PaymentMethod.mpamba)
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    onChanged: (v) => _mpambaNumber = v,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    maxLength: 10,
-                    decoration: InputDecoration(
-                      labelText: 'Mpamba Phone Number',
-                      hintText: '0XXX XXX XXX',
-                      prefixIcon: const Icon(Icons.phone_android,
-                          color: AppTheme.primaryRed),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              RadioListTile<PaymentMethod>(
-                value: PaymentMethod.airtel_money,
-                groupValue: _selectedPaymentMethod,
-                onChanged: (v) => setState(() => _selectedPaymentMethod = v!),
-                title: const Text('Airtel Money'),
-                subtitle: const Text('Pay using Airtel Money'),
-                activeColor: AppTheme.primaryRed,
-              ),
-              if (_selectedPaymentMethod == PaymentMethod.airtel_money)
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    onChanged: (v) => _airtelNumber = v,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    maxLength: 10,
-                    decoration: InputDecoration(
-                      labelText: 'Airtel Money Phone Number',
-                      hintText: '0XXX XXX XXX',
-                      prefixIcon: const Icon(Icons.phone_iphone,
-                          color: AppTheme.primaryRed),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -784,20 +780,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       builder: (context, cartProvider, child) {
         if (cartProvider.isLoading) {
           return Scaffold(
-            backgroundColor:
-                isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+            backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
             appBar: AppBar(
               title: const Text('Checkout'),
-              backgroundColor:
-                  isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
-              foregroundColor:
-                  isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+              backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+              foregroundColor: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
               elevation: 0,
               leading: IconButton(
                 icon: Icon(Icons.arrow_back,
-                    color: isDark
-                        ? AppTheme.darkPrimaryText
-                        : AppTheme.lightPrimaryText),
+                    color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
@@ -807,20 +798,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
         if (!cartProvider.hasItems) {
           return Scaffold(
-            backgroundColor:
-                isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+            backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
             appBar: AppBar(
               title: const Text('My Cart'),
-              backgroundColor:
-                  isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
-              foregroundColor:
-                  isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+              backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+              foregroundColor: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
               elevation: 0,
               leading: IconButton(
                 icon: Icon(Icons.arrow_back,
-                    color: isDark
-                        ? AppTheme.darkPrimaryText
-                        : AppTheme.lightPrimaryText),
+                    color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
@@ -830,9 +816,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 children: [
                   Icon(Icons.shopping_cart_outlined,
                       size: 80,
-                      color: isDark
-                          ? AppTheme.darkMutedText
-                          : AppTheme.lightMutedText),
+                      color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText),
                   const SizedBox(height: 16),
                   Text('Your cart is empty',
                       style: TextStyle(
@@ -871,20 +855,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final total = subtotal + (deliveryFee > 0 ? deliveryFee : 0);
 
         return Scaffold(
-          backgroundColor:
-              isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+          backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
           appBar: AppBar(
             title: const Text('Checkout'),
-            backgroundColor:
-                isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
-            foregroundColor:
-                isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+            backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+            foregroundColor: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
             elevation: 0,
             leading: IconButton(
               icon: Icon(Icons.arrow_back,
-                  color: isDark
-                      ? AppTheme.darkPrimaryText
-                      : AppTheme.lightPrimaryText),
+                  color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -896,11 +875,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildDeliveryInfoCard(),
-                    _buildPaymentSection(),
-                    const SizedBox(height: 24),
                     const Text('Order Items',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     ListView.builder(
                       shrinkWrap: true,
@@ -909,11 +885,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       itemBuilder: (context, index) {
                         final item = cartProvider.items[index];
                         if (!_itemInstructions.containsKey(item.menuItemId)) {
-                          _itemInstructions[item.menuItemId] =
-                              TextEditingController();
+                          _itemInstructions[item.menuItemId] = TextEditingController();
                         }
-                        final instructionController =
-                            _itemInstructions[item.menuItemId]!;
+                        final instructionController = _itemInstructions[item.menuItemId]!;
                         final imageUrl = item.image ?? '';
 
                         return Container(
@@ -923,8 +897,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             gradient: AppTheme.cardGlowGradient(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: AppTheme.deepCrimson
-                                    .withValues(alpha: 0.3)),
+                                color: AppTheme.deepCrimson.withValues(alpha: 0.3)),
                           ),
                           child: Column(
                             children: [
@@ -939,20 +912,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                             width: 50,
                                             height: 50,
                                             fit: BoxFit.cover,
-                                            placeholder: (ctx, url) =>
-                                                Container(
+                                            placeholder: (ctx, url) => Container(
                                               width: 50,
                                               height: 50,
                                               color: isDark
                                                   ? AppTheme.darkSurface
                                                   : AppTheme.lightBackground,
                                               child: const Center(
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                          strokeWidth: 2)),
+                                                  child: CircularProgressIndicator(strokeWidth: 2)),
                                             ),
-                                            errorWidget: (ctx, url, error) =>
-                                                Container(
+                                            errorWidget: (ctx, url, error) => Container(
                                               width: 50,
                                               height: 50,
                                               color: isDark
@@ -976,8 +945,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   Expanded(
                                     flex: 2,
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(item.name,
                                             style: TextStyle(
@@ -985,8 +953,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                                 fontSize: 13,
                                                 color: isDark
                                                     ? AppTheme.darkPrimaryText
-                                                    : AppTheme
-                                                        .lightPrimaryText),
+                                                    : AppTheme.lightPrimaryText),
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis),
                                         const SizedBox(height: 2),
@@ -995,10 +962,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                                 fontSize: 11,
                                                 color: isDark
                                                     ? AppTheme.darkSecondaryText
-                                                    : AppTheme
-                                                        .lightSecondaryText)),
-                                        Text(
-                                            'MK${item.price.toStringAsFixed(0)}',
+                                                    : AppTheme.lightSecondaryText)),
+                                        Text('MK${item.price.toStringAsFixed(0)}',
                                             style: TextStyle(
                                                 fontSize: 10,
                                                 color: isDark
@@ -1020,13 +985,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? AppTheme.darkSurface
-                                      : AppTheme.lightBackground,
+                                  color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                      color: AppTheme.deepCrimson
-                                          .withValues(alpha: 0.3)),
+                                      color: AppTheme.deepCrimson.withValues(alpha: 0.3)),
                                 ),
                                 child: Row(
                                   children: [
@@ -1065,23 +1027,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     const SizedBox(height: 24),
                     const Text('Contact Information',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     Card(
                       color: AppTheme.getCardColor(context),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: BorderSide(
-                              color:
-                                  AppTheme.deepCrimson.withValues(alpha: 0.3))),
+                              color: AppTheme.deepCrimson.withValues(alpha: 0.3))),
                       child: Column(
                         children: [
                           RadioListTile<bool>(
                             value: false,
                             groupValue: _useNewPhone,
-                            onChanged: (v) =>
-                                setState(() => _useNewPhone = false),
+                            onChanged: (v) => setState(() => _useNewPhone = false),
                             title: const Text('Use registered number'),
                             subtitle: Text(_selectedPhoneNumber.isNotEmpty
                                 ? _selectedPhoneNumber
@@ -1091,8 +1050,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           RadioListTile<bool>(
                             value: true,
                             groupValue: _useNewPhone,
-                            onChanged: (v) =>
-                                setState(() => _useNewPhone = true),
+                            onChanged: (v) => setState(() => _useNewPhone = true),
                             title: const Text('Use a different number'),
                             activeColor: AppTheme.primaryRed,
                           ),
@@ -1102,14 +1060,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               child: TextField(
                                 onChanged: (v) => _newPhoneNumber = v,
                                 keyboardType: TextInputType.phone,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly
-                                ],
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                 maxLength: 10,
                                 decoration: InputDecoration(
                                   hintText: 'Enter phone number (10 digits)',
-                                  prefixIcon: const Icon(Icons.phone,
-                                      color: AppTheme.primaryRed),
+                                  prefixIcon: const Icon(Icons.phone, color: AppTheme.primaryRed),
                                   border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12)),
                                 ),
@@ -1120,16 +1075,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     const SizedBox(height: 16),
                     const Text('Delivery Address',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     Card(
                       color: AppTheme.getCardColor(context),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: BorderSide(
-                              color:
-                                  AppTheme.deepCrimson.withValues(alpha: 0.3))),
+                              color: AppTheme.deepCrimson.withValues(alpha: 0.3))),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -1198,15 +1151,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                             ? AppTheme.darkSecondaryText
                                             : AppTheme.lightSecondaryText)),
                               ]),
-                          const Divider(
-                              height: 24, color: AppTheme.deepCrimson),
+                          const Divider(height: 24, color: AppTheme.deepCrimson),
                           Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Text('Total:',
                                     style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18)),
+                                        fontWeight: FontWeight.bold, fontSize: 18)),
                                 Text('MK${total.toStringAsFixed(0)}',
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold,
@@ -1223,7 +1174,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         onPressed:
                             (_isLoading || !_canDeliver || _isProcessingPayment)
                                 ? null
-                                : _placeOrder,
+                                : _showPaymentMethodPopup,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryRed,
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1236,7 +1187,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: Colors.white))
-                            : const Text('Place Order',
+                            : const Text('Make Payment',
                                 style: TextStyle(
                                     fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
@@ -1246,7 +1197,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
               ),
 
-              // Full-screen overlay while processing payment
               if (_isProcessingPayment)
                 Container(
                   color: Colors.black54,
@@ -1260,8 +1210,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const CircularProgressIndicator(
-                                color: AppTheme.primaryRed),
+                            const CircularProgressIndicator(color: AppTheme.primaryRed),
                             const SizedBox(height: 16),
                             const Text('Processing Payment...',
                                 style: TextStyle(

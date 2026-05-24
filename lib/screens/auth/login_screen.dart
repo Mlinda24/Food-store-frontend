@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.mainBackground,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -91,34 +91,34 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Icon(Icons.restaurant, size: 35, color: Colors.white),
                   ),
                   const SizedBox(height: 24),
-                  Text(
+                  const Text(
                     'Welcome Back!',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryText,
+                      color: Colors.black87,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                  const Text(
                     'Sign in to continue',
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.secondaryText,
+                      color: Colors.black54,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
                   TextField(
                     controller: _usernameController,
-                    style: const TextStyle(color: AppTheme.primaryText, fontSize: 14),
+                    style: const TextStyle(color: Colors.black87, fontSize: 14),
                     decoration: InputDecoration(
                       labelText: 'Username',
-                      labelStyle: const TextStyle(color: AppTheme.secondaryText, fontSize: 12),
+                      labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
                       prefixIcon: const Icon(Icons.person_outline, color: AppTheme.primaryRed),
                       filled: true,
-                      fillColor: AppTheme.secondaryBackground,
+                      fillColor: Colors.grey.shade100,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -134,15 +134,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    style: const TextStyle(color: AppTheme.primaryText, fontSize: 14),
+                    style: const TextStyle(color: Colors.black87, fontSize: 14),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      labelStyle: const TextStyle(color: AppTheme.secondaryText, fontSize: 12),
+                      labelStyle: const TextStyle(color: Colors.black54, fontSize: 12),
                       prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.primaryRed),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          color: AppTheme.mutedText,
+                          color: Colors.black45,
                           size: 18,
                         ),
                         onPressed: () {
@@ -152,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
                       filled: true,
-                      fillColor: AppTheme.secondaryBackground,
+                      fillColor: Colors.grey.shade100,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -187,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Sign In', style: TextStyle(fontSize: 16)),
+                              : const Text('Sign In', style: TextStyle(fontSize: 16, color: Colors.white)),
                         );
                       },
                     ),
@@ -196,9 +196,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         "Don't have an account? ",
-                        style: TextStyle(color: AppTheme.secondaryText),
+                        style: TextStyle(color: Colors.black54),
                       ),
                       TextButton(
                         onPressed: () => context.go('/role-selection'),

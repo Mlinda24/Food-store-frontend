@@ -42,32 +42,32 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
   Future<void> _refreshOrder() async {
     if (_order.id.isEmpty) return;
-    
+
     if (!_isRefreshing) {
       setState(() {
         _isRefreshing = true;
       });
     }
-    
+
     try {
       final orderProvider = Provider.of<OrderProvider>(context, listen: false);
       final updatedOrder = await orderProvider.getOrder(_order.id);
-      
+
       if (updatedOrder != null && mounted) {
         final oldStatus = _order.status;
         final newStatus = updatedOrder.status;
-        
+
         setState(() {
           _order = updatedOrder;
           _isRefreshing = false;
           _isLoading = false;
           _refreshCount++;
         });
-        
+
         if (oldStatus != newStatus) {
           _showStatusNotification(newStatus);
         }
-        
+
         print('🔄 Order refreshed #${_order.id}: Status = ${_getStatusText(newStatus)}');
       } else {
         setState(() {
@@ -88,7 +88,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   void _showStatusNotification(OrderStatus status) {
     String message = '';
     Color color = AppTheme.success;
-    
+
     switch (status) {
       case OrderStatus.confirmed:
         message = '✅ Your order has been confirmed!';
@@ -117,7 +117,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       default:
         return;
     }
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -265,7 +265,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.primaryText),
-          onPressed: () => context.pop(),
+          // FIX: go back to orders list — use go() since this was reached via push from orders screen
+          onPressed: () => context.canPop() ? context.pop() : context.go('/my-orders'),
         ),
         actions: [
           Stack(
@@ -308,18 +309,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       children: [
                         Icon(Icons.error_outline, size: 64, color: AppTheme.error),
                         const SizedBox(height: 16),
-                        Text(
-                          'Error loading order',
-                          style: TextStyle(color: AppTheme.error),
-                        ),
+                        Text('Error loading order', style: TextStyle(color: AppTheme.error)),
                         const SizedBox(height: 8),
                         Text(_error!),
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _refreshOrder,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryRed,
-                          ),
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed),
                           child: const Text('Retry'),
                         ),
                       ],
@@ -337,24 +333,19 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             const SizedBox(width: 4),
                             Text(
                               'Updated just now',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: AppTheme.secondaryText,
-                              ),
+                              style: TextStyle(fontSize: 10, color: AppTheme.secondaryText),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        
+
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: AppTheme.primaryRed.withOpacity(0.3),
-                            ),
+                            border: Border.all(color: AppTheme.primaryRed.withOpacity(0.3)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,13 +362,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: _getStatusColor(currentStatus)
-                                          .withOpacity(0.15),
+                                      color: _getStatusColor(currentStatus).withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
@@ -403,19 +390,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 'Placed on: ${_formatDate(_order.createdAt)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.secondaryText,
-                                ),
+                                style: TextStyle(fontSize: 12, color: AppTheme.secondaryText),
                               ),
                               if (_order.deliveryAddress.isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   'Delivery: ${_order.deliveryAddress}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.secondaryText,
-                                  ),
+                                  style: TextStyle(fontSize: 12, color: AppTheme.secondaryText),
                                 ),
                               ],
                             ],
@@ -438,8 +419,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: statusSteps.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(width: 8),
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
                             itemBuilder: (context, index) {
                               final step = statusSteps[index];
                               final isCompleted = index < currentStepIndex;
@@ -451,8 +431,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                               } else if (isActive) {
                                 stepColor = AppTheme.primaryRed;
                               } else {
-                                stepColor = AppTheme.secondaryText
-                                    .withOpacity(0.4);
+                                stepColor = AppTheme.secondaryText.withOpacity(0.4);
                               }
 
                               return Column(
@@ -463,16 +442,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: stepColor.withOpacity(0.2),
-                                      border: Border.all(
-                                        color: stepColor,
-                                        width: 2,
-                                      ),
+                                      border: Border.all(color: stepColor, width: 2),
                                     ),
-                                    child: Icon(
-                                      step.icon,
-                                      color: stepColor,
-                                      size: 28,
-                                    ),
+                                    child: Icon(step.icon, color: stepColor, size: 28),
                                   ),
                                   const SizedBox(height: 8),
                                   SizedBox(
@@ -482,9 +454,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        fontWeight: isActive
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
+                                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                                         color: stepColor,
                                       ),
                                     ),
@@ -507,22 +477,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                               ],
                             ),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppTheme.primaryRed.withOpacity(0.3),
-                            ),
+                            border: Border.all(color: AppTheme.primaryRed.withOpacity(0.3)),
                           ),
                           child: Row(
                             children: [
-                              Icon(
-                                _getStatusIcon(currentStatus),
-                                size: 32,
-                                color: AppTheme.primaryRed,
-                              ),
+                              Icon(_getStatusIcon(currentStatus), size: 32, color: AppTheme.primaryRed),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'Current Status: ${_getStatusText(currentStatus)}',
@@ -535,10 +498,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       _getDetailedStatusMessage(currentStatus),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.secondaryText,
-                                      ),
+                                      style: TextStyle(fontSize: 12, color: AppTheme.secondaryText),
                                     ),
                                   ],
                                 ),
@@ -565,25 +525,18 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppTheme.primaryRed.withOpacity(0.3),
-                              ),
+                              border: Border.all(color: AppTheme.primaryRed.withOpacity(0.3)),
                             ),
                             child: Column(
                               children: _order.items.map((item) {
                                 return Padding(
-                                  padding:
-                                      const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.only(bottom: 8),
                                   child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         '${item.quantity}x ${item.name}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: AppTheme.primaryText,
-                                        ),
+                                        style: const TextStyle(fontSize: 14, color: AppTheme.primaryText),
                                       ),
                                       Text(
                                         'MK${(item.price * item.quantity).toStringAsFixed(0)}',

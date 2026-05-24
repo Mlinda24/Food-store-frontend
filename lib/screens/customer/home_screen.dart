@@ -73,11 +73,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
-  
+
   String _selectedCategory = 'All';
   final TextEditingController _searchController = TextEditingController();
-  int _selectedIndex = 0;
-  
+
   // Data from API
   List<Map<String, dynamic>> _featuredMeals = [];
   List<Map<String, dynamic>> _topRestaurants = [];
@@ -85,10 +84,19 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> _categories = ['All'];
   bool _isLoading = true;
   String? _error;
-  
+
   // Search results state
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
+
+  /// Derives the correct bottom nav index from the current route.
+  int _getNavIndex(BuildContext context) {
+    final location = GoRouterState.of(context).uri.toString();
+    if (location.startsWith('/cart')) return 1;
+    if (location.startsWith('/my-orders')) return 2;
+    if (location.startsWith('/settings')) return 3;
+    return 0;
+  }
 
   @override
   void initState() {
@@ -111,13 +119,13 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // Load cart from backend
       await context.read<CartProvider>().loadCart();
-      
+
       // Fetch restaurants from API
       final restaurantsData = await _apiService.getRestaurants();
       final List<Map<String, dynamic>> restaurants = [];
       for (var rest in restaurantsData) {
         final imageUrl = _getImageUrl(rest['image']);
-        
+
         restaurants.add({
           'id': rest['id'].toString(),
           'name': rest['name'] ?? 'Restaurant',
@@ -135,13 +143,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final menuItemsData = await _apiService.getMenuItems();
       _allMenuItems = [];
       final Set<String> categorySet = {'All'};
-      
+
       for (var item in menuItemsData) {
         String itemCategory = _getCategoryName(item['category']);
         categorySet.add(itemCategory);
-        
+
         final imageUrl = _getImageUrl(item['image']);
-        
+
         final menuItem = {
           'id': item['id'].toString(),
           'name': item['name'] ?? 'Menu Item',
@@ -157,12 +165,12 @@ class _HomeScreenState extends State<HomeScreen> {
         };
         _allMenuItems.add(menuItem);
       }
-      
+
       _categories = categorySet.toList();
-      
+
       // Get featured meals (first 6 available items)
       _featuredMeals = _allMenuItems.where((item) => item['is_available'] == true).take(6).toList();
-      
+
       setState(() {
         _isLoading = false;
       });
@@ -266,20 +274,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Use context.go() so routes REPLACE instead of stacking.
+  /// This means pressing back won't leave a stale nav index.
   void _onItemTapped(int index) async {
-    setState(() => _selectedIndex = index);
     switch (index) {
       case 0:
+        context.go('/home');
         break;
       case 1:
         await context.read<CartProvider>().loadCart();
-        context.push('/cart');
+        context.go('/cart');
         break;
       case 2:
-        context.push('/my-orders');
+        context.go('/my-orders');
         break;
       case 3:
-        context.push('/settings');
+        context.go('/settings');
         break;
     }
   }
@@ -289,9 +299,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final filteredMeals = _filteredMeals;
     final authProvider = Provider.of<AuthProvider>(context);
-    // FIXED: Use 'name' instead of 'username'
-    final userName = authProvider.currentUser?.name?.split('@')[0] ?? 
-                     'Guest';
+    final userName = authProvider.currentUser?.name?.split('@')[0] ?? 'Guest';
+
+    // Derive nav index from the actual current route — never from stale state.
+    final currentNavIndex = _getNavIndex(context);
 
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
@@ -324,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text('What would you like to eat today?',
-                            style: TextStyle(fontSize: 13, color: AppTheme.getSecondaryTextColor(context))),
+                              style: TextStyle(fontSize: 13, color: AppTheme.getSecondaryTextColor(context))),
                         ],
                       ),
                     ),
@@ -387,9 +398,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text(_error!, style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
                               const SizedBox(height: 16),
                               ElevatedButton(
-                                onPressed: _loadData, 
-                                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed), 
-                                child: const Text('Try Again')
+                                onPressed: _loadData,
+                                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed),
+                                child: const Text('Try Again'),
                               ),
                             ],
                           ),
@@ -400,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: Column(
                                 children: [
                                   const DeliveryStatusCard(),
-                                  
+
                                   // Categories Section
                                   if (_categories.length > 1)
                                     FadeInUp(
@@ -408,7 +419,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                         padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
                                         child: Row(
                                           children: [
-                                            Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
+                                            Text('Categories',
+                                                style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: AppTheme.getPrimaryTextColor(context))),
                                           ],
                                         ),
                                       ),
@@ -432,7 +447,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ),
                                     ),
-                                  
+
                                   // Featured Meals Section (Horizontal)
                                   if (filteredMeals.isNotEmpty)
                                     FadeInUp(
@@ -444,7 +459,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                               children: [
                                                 Icon(Icons.local_fire_department, color: AppTheme.primaryRed, size: 20),
                                                 const SizedBox(width: 8),
-                                                Text('Featured Meals', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
+                                                Text('Featured Meals',
+                                                    style: TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: AppTheme.getPrimaryTextColor(context))),
                                               ],
                                             ),
                                           ),
@@ -466,7 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ],
                                       ),
                                     ),
-                                  
+
                                   // Featured Restaurants Section
                                   if (_topRestaurants.isNotEmpty)
                                     FadeInUp(
@@ -478,7 +497,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                               children: [
                                                 Icon(Icons.star, color: AppTheme.yellow, size: 20),
                                                 const SizedBox(width: 8),
-                                                Text('Featured Restaurants', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
+                                                Text('Featured Restaurants',
+                                                    style: TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: AppTheme.getPrimaryTextColor(context))),
                                               ],
                                             ),
                                           ),
@@ -498,7 +521,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ],
                                       ),
                                     ),
-                                  
+
                                   const SizedBox(height: 30),
                                 ],
                               ),
@@ -511,9 +534,11 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, cartProvider, child) {
           final itemCount = cartProvider.itemCount;
           return Container(
-            decoration: BoxDecoration(boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -2))]),
+            decoration: BoxDecoration(
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -2))]),
             child: BottomNavigationBar(
-              currentIndex: _selectedIndex,
+              // KEY FIX: currentIndex is derived from the actual route, not local state.
+              currentIndex: currentNavIndex,
               onTap: _onItemTapped,
               type: BottomNavigationBarType.fixed,
               backgroundColor: AppTheme.getCardColor(context),
@@ -527,10 +552,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(Icons.shopping_cart_outlined),
                     if (itemCount > 0)
                       Positioned(
-                        right: -6, top: -6,
-                        child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: AppTheme.primaryRed, borderRadius: BorderRadius.circular(12)),
+                        right: -6,
+                        top: -6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(color: AppTheme.primaryRed, borderRadius: BorderRadius.circular(12)),
                           constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                          child: Text('$itemCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                          child: Text('$itemCount',
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center),
                         ),
                       ),
                   ]),
@@ -538,17 +568,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(Icons.shopping_cart),
                     if (itemCount > 0)
                       Positioned(
-                        right: -6, top: -6,
-                        child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: AppTheme.primaryRed, borderRadius: BorderRadius.circular(12)),
+                        right: -6,
+                        top: -6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(color: AppTheme.primaryRed, borderRadius: BorderRadius.circular(12)),
                           constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                          child: Text('$itemCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                          child: Text('$itemCount',
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center),
                         ),
                       ),
                   ]),
                   label: 'Cart',
                 ),
                 const BottomNavigationBarItem(icon: Icon(Icons.receipt_outlined), activeIcon: Icon(Icons.receipt), label: 'Orders'),
-                const BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), activeIcon: Icon(Icons.settings), label: 'Settings'),
+                const BottomNavigationBarItem(
+                    icon: Icon(Icons.settings_outlined), activeIcon: Icon(Icons.settings), label: 'Settings'),
               ],
             ),
           );
@@ -565,14 +601,15 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Icon(Icons.search_off, size: 80, color: AppTheme.getMutedTextColor(context)),
             const SizedBox(height: 16),
-            Text('No results found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
+            Text('No results found',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
             const SizedBox(height: 8),
             Text('Try searching for something else', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _clearSearch, 
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed), 
-              child: const Text('Clear Search')
+              onPressed: _clearSearch,
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed),
+              child: const Text('Clear Search'),
             ),
           ],
         ),
@@ -589,22 +626,22 @@ class _HomeScreenState extends State<HomeScreen> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: RestaurantCard(
-              restaurant: item, 
-              onTap: () { 
-                _clearSearch(); 
-                context.push('/restaurant-details', extra: item); 
-              }
+              restaurant: item,
+              onTap: () {
+                _clearSearch();
+                context.push('/restaurant-details', extra: item);
+              },
             ),
           );
         } else {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: FeaturedMealCard(
-              meal: item, 
-              onTap: () { 
-                _clearSearch(); 
-                context.push('/food-detail', extra: item); 
-              }
+              meal: item,
+              onTap: () {
+                _clearSearch();
+                context.push('/food-detail', extra: item);
+              },
             ),
           );
         }
