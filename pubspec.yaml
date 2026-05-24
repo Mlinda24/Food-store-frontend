@@ -11,80 +11,71 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  
+
   # ============================================
-  # GROUP 1: UI & STYLING DEPENDENCIES
+  # GROUP 1: UI & STYLING
   # ============================================
-  cupertino_icons: ^1.0.6
-  flutter_svg: ^2.0.9
+  cupertino_icons: ^1.0.8
+  flutter_svg: ^2.0.10+1
   shimmer: ^3.0.0
   badges: ^3.1.2
-  lottie: ^2.7.0
-  permission_handler: ^11.0.1
-  
+  lottie: ^3.1.0
+  permission_handler: ^11.3.1
+
   # ============================================
-  # GROUP 2: IMAGE HANDLING DEPENDENCIES
+  # GROUP 2: IMAGE HANDLING
   # ============================================
-  cached_network_image: ^3.3.0
-  image_picker: ^1.0.5
-  camera: ^0.10.5
+  cached_network_image: ^3.4.1
+  image_picker: ^1.1.2
+  camera: ^0.11.0+2
   path: ^1.9.0
-  cross_file: ^0.3.4
-  
+  cross_file: ^0.3.4+2
+
   # ============================================
   # GROUP 3: STATE MANAGEMENT & NAVIGATION
   # ============================================
-  provider: ^6.1.1
-  go_router: ^13.0.1
-  
+  provider: ^6.1.2
+  go_router: ^14.2.7
+
   # ============================================
   # GROUP 4: NETWORKING & LOCAL STORAGE
   # ============================================
-  dio: ^5.4.0
-  http: ^1.1.0
-  shared_preferences: ^2.2.2
+  dio: ^5.7.0
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
   hive_flutter: ^1.1.0
   intl: ^0.20.2
-  url_launcher: ^6.2.1
-  
+  url_launcher: ^6.3.1
+
   # ============================================
   # GROUP 5: NOTIFICATIONS, MAPS & LOCATION
   # ============================================
-  flutter_local_notifications: ^17.0.0
-  google_maps_flutter: ^2.5.3
-  geolocator: ^10.1.0
+  flutter_local_notifications: ^17.2.4
+  flutter_map: ^6.1.0        # works on Android, iOS AND Web — no API key
+  latlong2: ^0.9.0           # coordinate types for flutter_map
+  geolocator: ^13.0.2
   
   # ============================================
-  # GROUP 6: FORM & VALIDATION
+  # GROUP 6: FORMS, FONTS & WEBVIEW
   # ============================================
-  flutter_form_builder: ^10.0.0
+  flutter_form_builder: ^10.0.1
   form_builder_validators: ^11.3.0
-  google_fonts: ^8.0.2
-  webview_flutter: ^4.13.1
-  
-  # ============================================
-  # GROUP 7: PAYMENT INTEGRATION
-  # ============================================
-  # For PayChangu mobile money integration
-  # No additional packages needed as we use HTTP directly
-  
-  # Optional: For more payment options in the future
-  # flutter_paystack: ^1.0.7
-  # flutterwave_standard: ^1.0.5
+  google_fonts: ^6.2.1
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
-  
+
   assets:
     - assets/images/
     - assets/icons/
     - assets/animations/
-  
+
   fonts:
     - family: Poppins
       fonts:
