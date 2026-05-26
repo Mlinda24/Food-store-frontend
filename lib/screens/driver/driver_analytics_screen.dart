@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../models/driver_analytics.dart';
 import '../../services/mock_analytics_service.dart';
+import '../../providers/theme_provider.dart';
 
 class DriverAnalyticsScreen extends StatefulWidget {
   const DriverAnalyticsScreen({super.key});
@@ -27,26 +29,35 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+    
+    final backgroundColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final cardColor = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
+    final mutedColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+
     return Scaffold(
-      backgroundColor: AppTheme.mainBackground,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text(
           'Earnings Analytics',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppTheme.primaryText,
           ),
         ),
-        backgroundColor: AppTheme.mainBackground,
+        backgroundColor: backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.primaryText),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
+          color: textColor,
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: AppTheme.primaryText),
+            icon: const Icon(Icons.refresh),
             onPressed: () {
               setState(() {
                 _loadAnalytics();
@@ -55,6 +66,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
                 const SnackBar(content: Text('Analytics refreshed!'), backgroundColor: AppTheme.success),
               );
             },
+            color: textColor,
           ),
         ],
       ),
@@ -62,24 +74,24 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _buildEarningsOverview(),
+            _buildEarningsOverview(isDark, textColor),
             const SizedBox(height: 16),
-            _buildPeriodSelector(),
+            _buildPeriodSelector(isDark, textColor, secondaryTextColor),
             const SizedBox(height: 16),
-            _buildEarningsChart(),
+            _buildEarningsChart(isDark, textColor, secondaryTextColor, mutedColor),
             const SizedBox(height: 16),
-            _buildPerformanceMetrics(),
+            _buildPerformanceMetrics(isDark, textColor, secondaryTextColor),
             const SizedBox(height: 16),
-            _buildRecentDeliveries(),
+            _buildRecentDeliveries(isDark, textColor, secondaryTextColor, mutedColor),
             const SizedBox(height: 16),
-            _buildFeeBreakdownExample(),
+            _buildFeeBreakdownExample(isDark, textColor, secondaryTextColor),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEarningsOverview() {
+  Widget _buildEarningsOverview(bool isDark, Color textColor) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -137,24 +149,24 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildPeriodSelector() {
+  Widget _buildPeriodSelector(bool isDark, Color textColor, Color secondaryTextColor) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppTheme.secondaryBackground,
+        color: isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
         children: [
-          _buildPeriodButton('Week', 'week'),
-          _buildPeriodButton('Month', 'month'),
-          _buildPeriodButton('All Time', 'all'),
+          _buildPeriodButton('Week', 'week', isDark, textColor),
+          _buildPeriodButton('Month', 'month', isDark, textColor),
+          _buildPeriodButton('All Time', 'all', isDark, textColor),
         ],
       ),
     );
   }
 
-  Widget _buildPeriodButton(String label, String period) {
+  Widget _buildPeriodButton(String label, String period, bool isDark, Color textColor) {
     final isSelected = _selectedPeriod == period;
     return Expanded(
       child: GestureDetector(
@@ -173,7 +185,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
             child: Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : AppTheme.secondaryText,
+                color: isSelected ? Colors.white : textColor,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -183,11 +195,11 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildEarningsChart() {
+  Widget _buildEarningsChart(bool isDark, Color textColor, Color secondaryTextColor, Color mutedColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
+        gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
@@ -197,15 +209,15 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Earnings Overview',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryText),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
               ),
               Row(
                 children: [
-                  _buildChartTypeButton('Weekly', 0),
+                  _buildChartTypeButton('Weekly', 0, isDark, textColor),
                   const SizedBox(width: 8),
-                  _buildChartTypeButton('Hourly', 1),
+                  _buildChartTypeButton('Hourly', 1, isDark, textColor),
                 ],
               ),
             ],
@@ -213,14 +225,16 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
           const SizedBox(height: 20),
           SizedBox(
             height: 200,
-            child: _selectedChartIndex == 0 ? _buildWeeklyChart() : _buildHourlyChart(),
+            child: _selectedChartIndex == 0 
+                ? _buildWeeklyChart(secondaryTextColor) 
+                : _buildHourlyChart(secondaryTextColor, mutedColor),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildChartTypeButton(String label, int index) {
+  Widget _buildChartTypeButton(String label, int index, bool isDark, Color textColor) {
     final isSelected = _selectedChartIndex == index;
     return GestureDetector(
       onTap: () {
@@ -231,13 +245,13 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryRed : AppTheme.secondaryBackground,
+          color: isSelected ? AppTheme.primaryRed : (isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.secondaryText,
+            color: isSelected ? Colors.white : textColor,
             fontSize: 12,
           ),
         ),
@@ -245,7 +259,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildWeeklyChart() {
+  Widget _buildWeeklyChart(Color secondaryTextColor) {
     final maxEarnings = _analytics.weeklyBreakdown.values.reduce((a, b) => a > b ? a : b);
     if (maxEarnings == 0) return const Center(child: Text('No data available'));
     
@@ -257,7 +271,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
           children: [
             Text(
               'MK${entry.value.toInt()}',
-              style: const TextStyle(fontSize: 10, color: AppTheme.secondaryText),
+              style: TextStyle(fontSize: 10, color: secondaryTextColor),
             ),
             const SizedBox(height: 4),
             Container(
@@ -271,7 +285,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
             const SizedBox(height: 4),
             Text(
               entry.key,
-              style: const TextStyle(fontSize: 12, color: AppTheme.secondaryText),
+              style: TextStyle(fontSize: 12, color: secondaryTextColor),
             ),
           ],
         );
@@ -279,7 +293,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildHourlyChart() {
+  Widget _buildHourlyChart(Color secondaryTextColor, Color mutedColor) {
     if (_analytics.hourlyBreakdown.isEmpty) {
       return const Center(child: Text('No hourly data available'));
     }
@@ -302,21 +316,21 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
                 if (earnings > 0)
                   Text(
                     'MK${earnings.toInt()}',
-                    style: const TextStyle(fontSize: 8, color: AppTheme.secondaryText),
+                    style: TextStyle(fontSize: 8, color: secondaryTextColor),
                   ),
                 const SizedBox(height: 4),
                 Container(
                   width: 25,
                   height: heightValue,
                   decoration: BoxDecoration(
-                    color: earnings > 0 ? AppTheme.primaryRed : AppTheme.mutedText.withOpacity(0.3),
+                    color: earnings > 0 ? AppTheme.primaryRed : mutedColor.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '$hour:00',
-                  style: const TextStyle(fontSize: 9, color: AppTheme.secondaryText),
+                  style: TextStyle(fontSize: 9, color: secondaryTextColor),
                 ),
               ],
             ),
@@ -326,20 +340,20 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildPerformanceMetrics() {
+  Widget _buildPerformanceMetrics(bool isDark, Color textColor, Color secondaryTextColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
+        gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Performance Metrics',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryText),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
           ),
           const SizedBox(height: 16),
           GridView.count(
@@ -350,42 +364,12 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
             mainAxisSpacing: 12,
             childAspectRatio: 1.5,
             children: [
-              _buildMetricCard(
-                'Acceptance Rate',
-                '${_analytics.acceptanceRate.toStringAsFixed(1)}%',
-                Icons.check_circle,
-                AppTheme.success,
-              ),
-              _buildMetricCard(
-                'Completion Rate',
-                '${_analytics.completionRate.toStringAsFixed(1)}%',
-                Icons.verified,
-                AppTheme.success,
-              ),
-              _buildMetricCard(
-                'Customer Rating',
-                '${_analytics.averageRating.toStringAsFixed(1)} ★',
-                Icons.star,
-                AppTheme.yellow,
-              ),
-              _buildMetricCard(
-                'Avg Delivery Time',
-                '${_analytics.averageDeliveryTime.toStringAsFixed(0)} min',
-                Icons.timer,
-                AppTheme.warning,
-              ),
-              _buildMetricCard(
-                'Total Distance',
-                '${_analytics.totalDistance.toStringAsFixed(0)} km',
-                Icons.route,
-                AppTheme.primaryRed,
-              ),
-              _buildMetricCard(
-                'Total Deliveries',
-                '${(_analytics.totalEarnings / _analytics.averagePerDelivery).toInt()}',
-                Icons.delivery_dining,
-                Colors.blue,
-              ),
+              _buildMetricCard('Acceptance Rate', '${_analytics.acceptanceRate.toStringAsFixed(1)}%', Icons.check_circle, AppTheme.success, isDark),
+              _buildMetricCard('Completion Rate', '${_analytics.completionRate.toStringAsFixed(1)}%', Icons.verified, AppTheme.success, isDark),
+              _buildMetricCard('Customer Rating', '${_analytics.averageRating.toStringAsFixed(1)} ★', Icons.star, AppTheme.yellow, isDark),
+              _buildMetricCard('Avg Delivery Time', '${_analytics.averageDeliveryTime.toStringAsFixed(0)} min', Icons.timer, AppTheme.warning, isDark),
+              _buildMetricCard('Total Distance', '${_analytics.totalDistance.toStringAsFixed(0)} km', Icons.route, AppTheme.primaryRed, isDark),
+              _buildMetricCard('Total Deliveries', '${(_analytics.totalEarnings / _analytics.averagePerDelivery).toInt()}', Icons.delivery_dining, Colors.blue, isDark),
             ],
           ),
         ],
@@ -393,11 +377,11 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
+  Widget _buildMetricCard(String title, String value, IconData icon, Color color, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.secondaryBackground,
+        color: isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -417,11 +401,11 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
               children: [
                 Text(
                   value,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryText),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   title,
-                  style: TextStyle(fontSize: 10, color: AppTheme.secondaryText),
+                  style: TextStyle(fontSize: 10),
                 ),
               ],
             ),
@@ -431,22 +415,22 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildRecentDeliveries() {
+  Widget _buildRecentDeliveries(bool isDark, Color textColor, Color secondaryTextColor, Color mutedColor) {
     final deliveries = MockAnalyticsService.getDeliveries().take(5).toList();
     
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
+        gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Recent Deliveries',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryText),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
           ),
           const SizedBox(height: 12),
           ListView.separated(
@@ -461,18 +445,18 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: AppTheme.secondaryBackground,
+                    color: isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.receipt, size: 20, color: AppTheme.mutedText),
+                  child: Icon(Icons.receipt, size: 20, color: mutedColor),
                 ),
                 title: Text(
                   delivery.restaurantName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryText),
+                  style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
                 ),
                 subtitle: Text(
                   '${delivery.customerName} • ${_formatDate(delivery.timestamp)}',
-                  style: TextStyle(fontSize: 11, color: AppTheme.secondaryText),
+                  style: TextStyle(fontSize: 11, color: secondaryTextColor),
                 ),
                 trailing: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -497,39 +481,39 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildFeeBreakdownExample() {
+  Widget _buildFeeBreakdownExample(bool isDark, Color textColor, Color secondaryTextColor) {
     final sampleDelivery = MockAnalyticsService.getDeliveries().first;
     
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
+        gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Fee Breakdown (Sample Delivery)',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryText),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
           ),
           const SizedBox(height: 12),
-          _buildBreakdownRow('Base Fee', sampleDelivery.baseFee),
-          _buildBreakdownRow('Distance Fee (${sampleDelivery.distance.toStringAsFixed(1)} km)', sampleDelivery.distanceFee),
-          _buildBreakdownRow('Time Fee (${sampleDelivery.duration} min)', sampleDelivery.timeFee),
+          _buildBreakdownRow('Base Fee', sampleDelivery.baseFee, isDark, textColor, secondaryTextColor),
+          _buildBreakdownRow('Distance Fee (${sampleDelivery.distance.toStringAsFixed(1)} km)', sampleDelivery.distanceFee, isDark, textColor, secondaryTextColor),
+          _buildBreakdownRow('Time Fee (${sampleDelivery.duration} min)', sampleDelivery.timeFee, isDark, textColor, secondaryTextColor),
           if (sampleDelivery.bonus > 0)
-            _buildBreakdownRow('Bonus', sampleDelivery.bonus, isBonus: true),
+            _buildBreakdownRow('Bonus', sampleDelivery.bonus, isDark, textColor, secondaryTextColor, isBonus: true),
           if (sampleDelivery.tip > 0)
-            _buildBreakdownRow('Customer Tip', sampleDelivery.tip, isTip: true),
+            _buildBreakdownRow('Customer Tip', sampleDelivery.tip, isDark, textColor, secondaryTextColor, isTip: true),
           const Divider(height: 24, color: AppTheme.deepCrimson),
-          _buildBreakdownRow('TOTAL', sampleDelivery.earnings, isTotal: true),
+          _buildBreakdownRow('TOTAL', sampleDelivery.earnings, isDark, textColor, secondaryTextColor, isTotal: true),
         ],
       ),
     );
   }
 
-  Widget _buildBreakdownRow(String label, double amount, {bool isTotal = false, bool isBonus = false, bool isTip = false}) {
+  Widget _buildBreakdownRow(String label, double amount, bool isDark, Color textColor, Color secondaryTextColor, {bool isTotal = false, bool isBonus = false, bool isTip = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -538,14 +522,14 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
           Text(
             label,
             style: TextStyle(
-              color: isTotal ? AppTheme.primaryText : AppTheme.secondaryText,
+              color: isTotal ? textColor : secondaryTextColor,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
             ),
           ),
           Text(
             'MK${amount.toInt()}',
             style: TextStyle(
-              color: isBonus ? AppTheme.success : (isTip ? AppTheme.yellow : (isTotal ? AppTheme.primaryRed : AppTheme.primaryText)),
+              color: isBonus ? AppTheme.success : (isTip ? AppTheme.yellow : (isTotal ? AppTheme.primaryRed : textColor)),
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
               fontSize: isTotal ? 16 : 14,
             ),
