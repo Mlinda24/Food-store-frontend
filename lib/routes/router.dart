@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../screens/customer/order_tracking_screen.dart';
 import 'package:go_router/go_router.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/registration_screen.dart';
 import '../screens/auth/role_selection_screen.dart';
 import '../screens/location_gate_screen.dart';
 import '../screens/customer/home_screen.dart';
@@ -29,15 +30,24 @@ final GoRouter router = GoRouter(
       name: 'location-gate',
       builder: (context, state) => const LocationGateScreen(),
     ),
-    GoRoute(
-      path: '/login',
-      name: 'login',
-      builder: (context, state) => const LoginScreen(),
-    ),
+    // Auth Routes
     GoRoute(
       path: '/role-selection',
       name: 'role-selection',
       builder: (context, state) => const RoleSelectionScreen(),
+    ),
+    GoRoute(
+      path: '/register',
+      name: 'register',
+      builder: (context, state) {
+        final selectedRole = state.extra as String?;
+        return RegistrationScreen(selectedRole: selectedRole);
+      },
+    ),
+    GoRoute(
+      path: '/login',
+      name: 'login',
+      builder: (context, state) => const LoginScreen(),
     ),
     // Customer Routes
     GoRoute(

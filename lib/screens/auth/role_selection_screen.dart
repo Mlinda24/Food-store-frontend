@@ -1,44 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
-import '../customer/home_screen.dart';
-import '../restaurant/restaurant_dashboard_screen.dart';
-import '../driver/driver_dashboard_screen.dart';
-import '../admin/admin_dashboard_screen.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+Widget build(BuildContext context) {
     final List<Map<String, dynamic>> roles = [
       {
         'title': 'Customer',
         'icon': Icons.person_outline,
         'description': 'Order food from your favorite restaurants',
         'color': AppTheme.primaryRed,
-        'route': '/home',
+        'roleValue': 'customer',
       },
       {
         'title': 'Restaurant Owner',
         'icon': Icons.restaurant_outlined,
         'description': 'Manage your restaurant and orders',
         'color': AppTheme.warning,
-        'route': '/restaurant',
+        'roleValue': 'restaurant',
       },
       {
         'title': 'Delivery Driver',
         'icon': Icons.delivery_dining_outlined,
         'description': 'Deliver food and earn money',
         'color': AppTheme.teal,
-        'route': '/driver',
+        'roleValue': 'driver',
       },
       {
         'title': 'Admin',
         'icon': Icons.admin_panel_settings_outlined,
         'description': 'Manage platform and users',
         'color': AppTheme.orange,
-        'route': '/admin',
+        'roleValue': 'admin',
       },
     ];
 
@@ -121,13 +117,41 @@ class RoleSelectionScreen extends StatelessWidget {
                         size: 18,
                       ),
                       onTap: () {
-                        context.go(role['route'] as String);
+                        context.push(
+                          '/register',
+                          extra: role['roleValue'] as String,
+                        );
                       },
                     ),
                   );
                 },
               ),
             ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Already have an account? ',
+                  style: TextStyle(
+                    color: AppTheme.getSecondaryTextColor(context),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    context.go('/login');
+                  },
+                  child: Text(
+                    'Sign In',
+                    style: TextStyle(
+                      color: AppTheme.primaryRed,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
