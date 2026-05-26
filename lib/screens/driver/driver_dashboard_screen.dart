@@ -15,7 +15,7 @@ import '../../widgets/dialogs/new_request_dialog.dart';
 import '../../widgets/dialogs/update_status_dialog.dart';
 import 'available_orders_screen.dart';
 import 'delivery_history_screen.dart';
-import 'driver_earnings_screen.dart';
+import 'driver_analytics_screen.dart';
 import 'driver_settings_screen.dart';
 
 class DriverDashboardScreen extends StatefulWidget {
@@ -33,7 +33,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     {'icon': Icons.dashboard, 'label': 'Dashboard'},
     {'icon': Icons.delivery_dining, 'label': 'Available'},
     {'icon': Icons.history, 'label': 'History'},
-    {'icon': Icons.attach_money, 'label': 'Earnings'},
+    {'icon': Icons.analytics, 'label': 'Analytics'},
     {'icon': Icons.settings, 'label': 'Settings'},
   ];
 
@@ -172,25 +172,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             ],
           ),
           actions: [
-            // NEW: Analytics Button
-            IconButton(
-              icon: const Icon(Icons.analytics, color: AppTheme.primaryText),
-              onPressed: () {
-                context.push('/driver-analytics');
-              },
-              tooltip: 'Earnings Analytics',
-            ),
-            const SizedBox(width: 4),
-            // Settings Icon Button
-            IconButton(
-              icon: const Icon(Icons.settings_outlined, color: AppTheme.primaryText),
-              onPressed: () {
-                context.push('/driver-settings');
-              },
-              tooltip: 'Settings',
-            ),
-            const SizedBox(width: 8),
-            // Online Status Toggle
+            // REMOVED: Settings icon button from app bar
+            // Only the Online Status Toggle remains
             Container(
               margin: const EdgeInsets.only(right: 16),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -647,7 +630,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       case 2:
         return const DeliveryHistoryScreen();
       case 3:
-        return const DriverEarningsScreen();
+        return const DriverAnalyticsScreen();
       case 4:
         return const DriverSettingsScreen();
       default:
