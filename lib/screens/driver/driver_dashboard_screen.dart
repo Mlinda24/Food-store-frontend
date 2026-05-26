@@ -137,6 +137,116 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     }
   }
 
+  void _makePhoneCall(String phoneNumber) {
+    // Using url_launcher package would be ideal
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Calling $phoneNumber...'),
+        backgroundColor: AppTheme.success,
+      ),
+    );
+  }
+
+  void _sendSms(String phoneNumber) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Opening SMS to $phoneNumber...'),
+        backgroundColor: AppTheme.success,
+      ),
+    );
+  }
+
+  Widget _buildCustomerContactSection(DeliveryRequest activeDelivery) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryRed.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primaryRed.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryRed.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.contact_phone, size: 20, color: AppTheme.primaryRed),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Customer Contact',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => _makePhoneCall(activeDelivery.customerPhone ?? ''),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.phone, size: 18, color: Colors.green),
+                        const SizedBox(width: 8),
+                        Text(
+                          activeDelivery.customerPhone ?? 'No phone',
+                          style: const TextStyle(fontSize: 12, color: Colors.green),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InkWell(
+                  onTap: () => _sendSms(activeDelivery.customerPhone ?? ''),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.message, size: 18, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        const Text('SMS', style: TextStyle(fontSize: 12, color: Colors.blue)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final driverProvider = Provider.of<DriverProvider>(context);
@@ -146,18 +256,17 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     final stats = driverProvider.stats;
     final activeDelivery = driverProvider.activeDelivery;
     
-    // Get theme-aware colors
     final backgroundColor = themeProvider.isDarkMode 
-        ? AppTheme.mainBackground 
+        ? AppTheme.darkBackground 
         : AppTheme.lightBackground;
     final textColor = themeProvider.isDarkMode 
-        ? AppTheme.primaryText 
+        ? AppTheme.darkPrimaryText 
         : AppTheme.lightPrimaryText;
     final cardColor = themeProvider.isDarkMode 
-        ? AppTheme.cardBackground 
+        ? AppTheme.darkCardBackground 
         : AppTheme.lightCardBackground;
     final secondaryTextColor = themeProvider.isDarkMode 
-        ? AppTheme.secondaryText 
+        ? AppTheme.darkSecondaryText 
         : AppTheme.lightSecondaryText;
 
     return Scaffold(
@@ -269,8 +378,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   Widget _buildDashboardContent(DeliveryRequest? activeDelivery, DriverStats stats, ThemeProvider themeProvider) {
     final isDark = themeProvider.isDarkMode;
-    final textColor = isDark ? AppTheme.primaryText : AppTheme.lightPrimaryText;
-    final secondaryTextColor = isDark ? AppTheme.secondaryText : AppTheme.lightSecondaryText;
+    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -470,6 +578,10 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   }
 
   Widget _buildActiveDeliveryExpanded(DeliveryRequest activeDelivery) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -530,6 +642,9 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             address: activeDelivery.deliveryAddress,
           ),
           const SizedBox(height: 16),
+          
+          // Customer Contact Section
+          _buildCustomerContactSection(activeDelivery),
           
           Container(
             padding: const EdgeInsets.all(12),

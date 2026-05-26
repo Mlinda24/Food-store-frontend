@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/delivery_request.dart';
 
-// DriverStats class - ONLY HERE, NOT in delivery_request.dart
 class DriverStats {
   final double todayEarnings;
   final int totalDeliveries;
@@ -51,6 +50,7 @@ class DriverProvider extends ChangeNotifier {
         restaurantName: 'Luigi\'s Pizza',
         restaurantAddress: '123 Main St',
         customerName: 'John Doe',
+        customerPhone: '0999123456',
         deliveryAddress: '456 Oak Ave, Apartment 4B',
         status: 'pending',
         items: '2 items (Pepperoni Pizza, Garlic Bread)',
@@ -63,6 +63,7 @@ class DriverProvider extends ChangeNotifier {
         restaurantName: 'Burger King',
         restaurantAddress: '456 Fast Food Ln',
         customerName: 'Jane Smith',
+        customerPhone: '0888123456',
         deliveryAddress: '789 Pine St',
         status: 'pending',
         items: '1 item (Whopper Meal)',
@@ -75,6 +76,7 @@ class DriverProvider extends ChangeNotifier {
         restaurantName: 'Sushi Master',
         restaurantAddress: '789 Sushi Rd',
         customerName: 'Mike Johnson',
+        customerPhone: '0999765432',
         deliveryAddress: '321 Fish Ave',
         status: 'pending',
         items: '3 items (California Roll, Miso Soup, Green Tea)',
@@ -90,6 +92,7 @@ class DriverProvider extends ChangeNotifier {
         restaurantName: 'Tasty Bites',
         restaurantAddress: '111 Food St',
         customerName: 'Sarah Wilson',
+        customerPhone: '0888123456',
         deliveryAddress: '222 Home Ave',
         status: 'delivered',
         items: '2 items',
@@ -102,6 +105,7 @@ class DriverProvider extends ChangeNotifier {
         restaurantName: 'Flame Grill',
         restaurantAddress: '333 Grill Rd',
         customerName: 'Tom Brown',
+        customerPhone: '0999123789',
         deliveryAddress: '444 Flame Ct',
         status: 'delivered',
         items: '3 items',
