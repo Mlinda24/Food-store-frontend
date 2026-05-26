@@ -9,8 +9,8 @@ import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.1.173:8000';
-  static const String mediaBaseUrl = 'http://192.168.137.1:8000';
+  static const String baseUrl = 'http://127.0.0.1:8000';
+  static const String mediaBaseUrl = 'http://127.0.0.1:8000';
   
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
@@ -375,7 +375,7 @@ class ApiService {
   
   Future<Map<String, dynamic>> getMyRestaurant() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/api/owner/restaurants/'),
+      Uri.parse('$baseUrl/api/owner/restaurants/my_restaurant/'),
       headers: await getHeaders(),
     );
     
@@ -383,6 +383,7 @@ class ApiService {
     
     if (response.statusCode == 200) {
       final dynamic data = json.decode(response.body);
+      print('✅ Restaurant data: $data');
       if (data is List && data.isNotEmpty) {
         return Map<String, dynamic>.from(data[0]);
       }
@@ -395,14 +396,18 @@ class ApiService {
     }
   }
   
+  // ✅ FIXED: Correct endpoint for updating restaurant
   Future<Map<String, dynamic>> updateMyRestaurant(Map<String, dynamic> data) async {
+    print('📝 Updating my restaurant with data: $data');
+    
     final response = await http.patch(
-      Uri.parse('$baseUrl/api/owner/restaurants/'),
+      Uri.parse('$baseUrl/api/owner/restaurants/my_restaurant/'),
       headers: await getHeaders(),
       body: json.encode(data),
     );
     
     print('Update my restaurant response: ${response.statusCode}');
+    print('Update my restaurant body: ${response.body}');
     
     if (response.statusCode == 200) {
       return json.decode(response.body);
@@ -882,7 +887,7 @@ class ApiService {
   }
   
   // ============================================
-  // GROUP 9: NOTIFICATION ENDPOINTS (FIXED)
+  // GROUP 9: NOTIFICATION ENDPOINTS
   // ============================================
   
   Future<List<dynamic>> getNotifications() async {

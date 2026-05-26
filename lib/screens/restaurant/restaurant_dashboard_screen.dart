@@ -21,7 +21,6 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Use addPostFrameCallback to avoid calling during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
@@ -120,7 +119,6 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();
 
-  // Safe number formatting helpers
   String _formatCurrency(dynamic value) {
     if (value == null) return 'MK0';
     double numValue;
@@ -171,7 +169,7 @@ class _DashboardContent extends StatelessWidget {
     final stats = provider.stats;
     final isLoading = provider.isLoading;
     final restaurant = provider.restaurant;
-    
+
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -180,6 +178,7 @@ class _DashboardContent extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // Stat Cards
           Row(
             children: [
               Expanded(
@@ -232,42 +231,58 @@ class _DashboardContent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Restaurant Status',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.getPrimaryTextColor(context),
+
+          // Open/Close Toggle
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: restaurant?.isOpen == true
+                  ? AppTheme.success.withOpacity(0.1)
+                  : AppTheme.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: restaurant?.isOpen == true ? AppTheme.success : AppTheme.error,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: restaurant?.isOpen == true ? AppTheme.success : AppTheme.error,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Restaurant Status',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.getPrimaryTextColor(context),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: restaurant?.isOpen == true ? AppTheme.success : AppTheme.error,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    restaurant?.isOpen == true ? 'Open' : 'Closed',
-                    style: TextStyle(
-                      color: restaurant?.isOpen == true ? AppTheme.success : AppTheme.error,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                Switch(
+                  value: restaurant?.isOpen == true,
+                  onChanged: (value) async {
+                    await provider.toggleRestaurantStatus(value);
+                  },
+                  activeColor: AppTheme.success,
+                  inactiveThumbColor: AppTheme.error,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          
+
+          // Restaurant Info Card
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -378,7 +393,7 @@ class _SettingsContent extends StatefulWidget {
 class __SettingsContentState extends State<_SettingsContent> {
   void _showLogoutDialog(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -435,8 +450,7 @@ class __SettingsContentState extends State<_SettingsContent> {
   Widget build(BuildContext context) {
     final restaurantProvider = Provider.of<RestaurantProvider>(context);
     final restaurant = restaurantProvider.restaurant;
-    final isOpen = restaurantProvider.isRestaurantOpen;
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -482,41 +496,9 @@ class __SettingsContentState extends State<_SettingsContent> {
               ],
             ),
           ),
-          
-          // Restaurant Status Toggle
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isOpen ? AppTheme.success.withOpacity(0.1) : AppTheme.error.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isOpen ? AppTheme.success : AppTheme.error, width: 1),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Restaurant Status',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.getPrimaryTextColor(context),
-                  ),
-                ),
-                Switch(
-                  value: isOpen,
-                  onChanged: (value) async {
-                    await restaurantProvider.toggleRestaurantStatus(value);
-                  },
-                  activeColor: AppTheme.success,
-                  inactiveThumbColor: AppTheme.error,
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
+
+          const SizedBox(height: 8),
+
           // Menu Items
           ListTile(
             leading: const Icon(Icons.restaurant_menu, color: AppTheme.primaryRed),
@@ -532,9 +514,9 @@ class __SettingsContentState extends State<_SettingsContent> {
               }
             },
           ),
-          
+
           const Divider(),
-          
+
           // Orders
           ListTile(
             leading: const Icon(Icons.receipt, color: AppTheme.primaryRed),
@@ -550,9 +532,9 @@ class __SettingsContentState extends State<_SettingsContent> {
               }
             },
           ),
-          
+
           const Divider(),
-          
+
           // Profile
           ListTile(
             leading: const Icon(Icons.person, color: AppTheme.primaryRed),
@@ -563,9 +545,9 @@ class __SettingsContentState extends State<_SettingsContent> {
               context.push('/restaurant-profile');
             },
           ),
-          
+
           const Divider(),
-          
+
           // Logout
           ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.error),

@@ -345,7 +345,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
             ),
           ],
           const SizedBox(height: 12),
-          // Status buttons
+          
+          // ✅ BUTTONS SIDE BY SIDE (LEFT AND RIGHT)
           if (status == 'pending')
             Row(
               children: [
@@ -360,7 +361,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                     child: Text('Decline', style: TextStyle(fontSize: 12, color: AppTheme.error)),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => _updateOrderStatus(order, 'confirmed', 'Confirmed'),
@@ -374,32 +375,45 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 ),
               ],
             ),
+          
           if (status == 'confirmed')
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _updateOrderStatus(order, 'preparing', 'Preparing'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.warning,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    child: ElevatedButton(
+                      onPressed: () => _updateOrderStatus(order, 'preparing', 'Preparing'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.warning,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: const Text('Start Preparing', style: TextStyle(fontSize: 12, color: Colors.white)),
+                    ),
+                  ),
                 ),
-                child: const Text('Start Preparing', style: TextStyle(fontSize: 12, color: Colors.white)),
-              ),
+              ],
             ),
+          
           if (status == 'preparing')
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _updateOrderStatus(order, 'ready', 'Ready'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.teal,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    child: ElevatedButton(
+                      onPressed: () => _updateOrderStatus(order, 'ready', 'Ready'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.teal,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: const Text('Mark as Ready', style: TextStyle(fontSize: 12, color: Colors.white)),
+                    ),
+                  ),
                 ),
-                child: const Text('Mark as Ready', style: TextStyle(fontSize: 12, color: Colors.white)),
-              ),
+              ],
             ),
+          
           if (status == 'ready')
             Row(
               children: [
@@ -414,7 +428,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                     child: Text('Cancel', style: TextStyle(fontSize: 12, color: AppTheme.error)),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => _updateOrderStatus(order, 'picked_up', 'Picked Up'),
@@ -428,18 +442,24 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 ),
               ],
             ),
+          
           if (status == 'picked_up')
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => _updateOrderStatus(order, 'delivered', 'Delivered'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  side: BorderSide(color: AppTheme.success, width: 1.5),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    child: OutlinedButton(
+                      onPressed: () => _updateOrderStatus(order, 'delivered', 'Delivered'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(color: AppTheme.success, width: 1.5),
+                      ),
+                      child: Text('Mark as Delivered', style: TextStyle(fontSize: 12, color: AppTheme.success)),
+                    ),
+                  ),
                 ),
-                child: Text('Mark as Delivered', style: TextStyle(fontSize: 12, color: AppTheme.success)),
-              ),
+              ],
             ),
         ],
       ),
