@@ -17,14 +17,14 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppTheme.primaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor = isDark ? AppTheme.secondaryText : AppTheme.lightSecondaryText;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.cardBackground, AppTheme.secondaryBackground],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
@@ -42,10 +42,10 @@ class StatCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: AppTheme.primaryText,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 4),
@@ -53,7 +53,7 @@ class StatCard extends StatelessWidget {
             title,
             style: TextStyle(
               fontSize: 12,
-              color: AppTheme.secondaryText,
+              color: secondaryTextColor,
             ),
           ),
         ],

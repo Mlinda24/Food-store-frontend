@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/driver_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../models/delivery_request.dart';
 import '../../widgets/driver/stat_card.dart';
 import '../../widgets/driver/schedule_item.dart';
@@ -138,142 +139,145 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    try {
-      final driverProvider = Provider.of<DriverProvider>(context);
-      final authProvider = Provider.of<AuthProvider>(context);
-      final driverName = authProvider.currentUser?.name ?? 'John Driver';
-      final stats = driverProvider.stats;
-      final activeDelivery = driverProvider.activeDelivery;
+    final driverProvider = Provider.of<DriverProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final driverName = authProvider.currentUser?.name ?? 'John Driver';
+    final stats = driverProvider.stats;
+    final activeDelivery = driverProvider.activeDelivery;
+    
+    // Get theme-aware colors
+    final backgroundColor = themeProvider.isDarkMode 
+        ? AppTheme.mainBackground 
+        : AppTheme.lightBackground;
+    final textColor = themeProvider.isDarkMode 
+        ? AppTheme.primaryText 
+        : AppTheme.lightPrimaryText;
+    final cardColor = themeProvider.isDarkMode 
+        ? AppTheme.cardBackground 
+        : AppTheme.lightCardBackground;
+    final secondaryTextColor = themeProvider.isDarkMode 
+        ? AppTheme.secondaryText 
+        : AppTheme.lightSecondaryText;
 
-      return Scaffold(
-        backgroundColor: AppTheme.mainBackground,
-        appBar: AppBar(
-          backgroundColor: AppTheme.mainBackground,
-          elevation: 0,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                driverName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryText,
-                ),
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        backgroundColor: backgroundColor,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              driverName,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textColor,
               ),
-              const SizedBox(height: 2),
-              Text(
-                _selectedIndex == 0 ? 'Driver Dashboard' : _navItems[_selectedIndex]['label'] as String,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.mutedText,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            // REMOVED: Settings icon button from app bar
-            // Only the Online Status Toggle remains
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: driverProvider.isOnline 
-                    ? AppTheme.success.withOpacity(0.2) 
-                    : AppTheme.error.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    driverProvider.isOnline ? 'Online' : 'Offline',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Switch(
-                    value: driverProvider.isOnline,
-                    onChanged: (value) {
-                      driverProvider.toggleOnlineStatus(value);
-                      _showSnackBar(
-                        value ? 'You are now online' : 'You are now offline',
-                      );
-                      if (value) {
-                        Future.delayed(const Duration(seconds: 3), () {
-                          _checkForIncomingRequests();
-                        });
-                      }
-                    },
-                    activeColor: AppTheme.success,
-                    inactiveThumbColor: AppTheme.error,
-                    inactiveTrackColor: AppTheme.error.withOpacity(0.3),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              _selectedIndex == 0 ? 'Driver Dashboard' : _navItems[_selectedIndex]['label'] as String,
+              style: TextStyle(
+                fontSize: 12,
+                color: secondaryTextColor,
               ),
             ),
           ],
         ),
-        body: _selectedIndex == 0
-            ? _buildDashboardContent(context, driverProvider, stats, activeDelivery)
-            : _buildSelectedScreen(_selectedIndex),
-        bottomNavigationBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: AppTheme.cardBackground,
-          selectedItemColor: AppTheme.primaryRed,
-          unselectedItemColor: AppTheme.mutedText,
-          currentIndex: _selectedIndex,
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
-          items: _navItems.map((item) {
-            return BottomNavigationBarItem(
-              icon: Icon(item['icon'] as IconData),
-              label: item['label'] as String,
-            );
-          }).toList(),
-        ),
-      );
-    } catch (e) {
-      return const Scaffold(
-        backgroundColor: AppTheme.mainBackground,
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: driverProvider.isOnline 
+                  ? AppTheme.success.withOpacity(0.2) 
+                  : AppTheme.error.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  driverProvider.isOnline ? 'Online' : 'Offline',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  value: driverProvider.isOnline,
+                  onChanged: (value) {
+                    driverProvider.toggleOnlineStatus(value);
+                    _showSnackBar(
+                      value ? 'You are now online' : 'You are now offline',
+                    );
+                    if (value) {
+                      Future.delayed(const Duration(seconds: 3), () {
+                        _checkForIncomingRequests();
+                      });
+                    }
+                  },
+                  activeColor: AppTheme.success,
+                  inactiveThumbColor: AppTheme.error,
+                  inactiveTrackColor: AppTheme.error.withOpacity(0.3),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: _selectedIndex == 0
+          ? _buildDashboardContent(activeDelivery, stats, themeProvider)
+          : _buildSelectedScreen(_selectedIndex),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: cardColor,
+        selectedItemColor: AppTheme.primaryRed,
+        unselectedItemColor: secondaryTextColor,
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        items: _navItems.map((item) {
+          return BottomNavigationBarItem(
+            icon: Icon(item['icon'] as IconData),
+            label: item['label'] as String,
+          );
+        }).toList(),
+      ),
+    );
   }
 
-  Widget _buildDashboardContent(
-    BuildContext context,
-    DriverProvider driverProvider,
-    DriverStats stats,
-    DeliveryRequest? activeDelivery,
-  ) {
+  Widget _buildDashboardContent(DeliveryRequest? activeDelivery, DriverStats stats, ThemeProvider themeProvider) {
+    final isDark = themeProvider.isDarkMode;
+    final textColor = isDark ? AppTheme.primaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor = isDark ? AppTheme.secondaryText : AppTheme.lightSecondaryText;
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           if (activeDelivery != null && _showActiveDeliveryFullView)
-            _buildActiveDeliveryExpanded(context, activeDelivery, driverProvider),
+            _buildActiveDeliveryExpanded(activeDelivery),
           
           if (activeDelivery != null && !_showActiveDeliveryFullView)
             _buildActiveDeliveryBanner(activeDelivery),
@@ -327,19 +331,19 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: AppTheme.cardGlowGradient,
+              gradient: AppTheme.getCardGlowGradient(context),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Today\'s Schedule',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryText,
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -381,12 +385,12 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           ),
           const SizedBox(height: 24),
           
-          const Text(
+          Text(
             'Recent Earnings',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppTheme.primaryText,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 12),
@@ -465,16 +469,12 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  Widget _buildActiveDeliveryExpanded(
-    BuildContext context,
-    DeliveryRequest activeDelivery,
-    DriverProvider driverProvider,
-  ) {
+  Widget _buildActiveDeliveryExpanded(DeliveryRequest activeDelivery) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGlowGradient,
+        gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/driver_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../widgets/driver/settings_tile.dart';
 
 // Model for a Withdrawal Account
@@ -88,7 +89,6 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   }
 
   void _loadVehicleData() {
-    // Load saved vehicle data
     _vehicleModelController.text = 'Toyota Corolla';
     _vehiclePlateController.text = 'MN 1234';
     _hasVehicleInfo = true;
@@ -696,6 +696,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final driverProvider = Provider.of<DriverProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final todayEarnings = driverProvider.stats.todayEarnings;
     final totalDeliveries = driverProvider.stats.totalDeliveries;
     final rating = driverProvider.stats.rating;
@@ -731,7 +732,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
             const SizedBox(height: 16),
             _buildSecurityCard(),
             const SizedBox(height: 16),
-            _buildPreferencesCard(),
+            _buildPreferencesCard(themeProvider),
             const SizedBox(height: 16),
             _buildSupportCard(),
             const SizedBox(height: 16),
@@ -1125,7 +1126,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                             });
                           },
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppTheme.mutedText),
+                            side: const BorderSide(color: AppTheme.deepCrimson),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -1289,7 +1290,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                         const SizedBox(height: 2),
                         Text(
                           _formatPhoneNumber(account.accountNumber),
-                          style: const TextStyle(fontSize: 12, color: AppTheme.secondaryText),
+                          style: TextStyle(fontSize: 12, color: AppTheme.secondaryText),
                         ),
                         Text(
                           account.holderName,
@@ -1449,7 +1450,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   }
 
   // ==================== PREFERENCES CARD ====================
-  Widget _buildPreferencesCard() {
+  Widget _buildPreferencesCard(ThemeProvider themeProvider) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -1474,6 +1475,37 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
           ),
           const Divider(height: 1, color: AppTheme.deepCrimson),
           
+          // Theme Toggle
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: themeProvider.isDarkMode 
+                    ? Colors.purple.withOpacity(0.2) 
+                    : Colors.orange.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                size: 20,
+                color: themeProvider.isDarkMode ? Colors.purple : Colors.orange,
+              ),
+            ),
+            title: const Text('Theme', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
+            subtitle: Text(
+              themeProvider.isDarkMode ? 'Dark Mode' : 'Light Mode',
+              style: TextStyle(color: AppTheme.secondaryText),
+            ),
+            trailing: Switch(
+              value: themeProvider.isDarkMode,
+              onChanged: (value) {
+                themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+              },
+              activeColor: AppTheme.primaryRed,
+            ),
+          ),
+          
+          // Language Selection
           ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
@@ -1483,12 +1515,13 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               child: const Icon(Icons.language, size: 20, color: AppTheme.primaryRed),
             ),
-            title: const Text('Language', style: TextStyle(color: AppTheme.primaryText)),
+            title: const Text('Language', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
             subtitle: const Text('English / Chichewa', style: TextStyle(color: AppTheme.secondaryText)),
-            trailing: const Icon(Icons.chevron_right, color: AppTheme.mutedText),
+            trailing: const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
             onTap: () => _showLanguageDialog(context),
           ),
           
+          // Notification Settings
           ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
@@ -1498,9 +1531,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               child: const Icon(Icons.notifications, size: 20, color: AppTheme.success),
             ),
-            title: const Text('Notifications', style: TextStyle(color: AppTheme.primaryText)),
+            title: const Text('Notifications', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
             subtitle: const Text('Push notifications, sounds, alerts', style: TextStyle(color: AppTheme.secondaryText)),
-            trailing: const Icon(Icons.chevron_right, color: AppTheme.mutedText),
+            trailing: const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
             onTap: () => _showNotificationSettings(context),
           ),
         ],
@@ -1543,9 +1576,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               child: const Icon(Icons.help_outline, size: 20, color: Colors.blue),
             ),
-            title: const Text('Help Center', style: TextStyle(color: AppTheme.primaryText)),
+            title: const Text('Help Center', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
             subtitle: const Text('FAQs, guides, tutorials', style: TextStyle(color: AppTheme.secondaryText)),
-            trailing: const Icon(Icons.chevron_right, color: AppTheme.mutedText),
+            trailing: const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
             onTap: () => _showComingSoon(context, 'Help Center'),
           ),
           
@@ -1558,9 +1591,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               child: const Icon(Icons.support_agent, size: 20, color: Colors.green),
             ),
-            title: const Text('Contact Support', style: TextStyle(color: AppTheme.primaryText)),
+            title: const Text('Contact Support', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
             subtitle: const Text('24/7 driver support', style: TextStyle(color: AppTheme.secondaryText)),
-            trailing: const Icon(Icons.chevron_right, color: AppTheme.mutedText),
+            trailing: const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
             onTap: () => _showContactSupport(context),
           ),
           
@@ -1573,9 +1606,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               child: const Icon(Icons.report_problem, size: 20, color: Colors.orange),
             ),
-            title: const Text('Report an Issue', style: TextStyle(color: AppTheme.primaryText)),
+            title: const Text('Report an Issue', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
             subtitle: const Text('Technical support, delivery problems', style: TextStyle(color: AppTheme.secondaryText)),
-            trailing: const Icon(Icons.chevron_right, color: AppTheme.mutedText),
+            trailing: const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
             onTap: () => _showReportIssue(context),
           ),
           
@@ -1588,9 +1621,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               child: const Icon(Icons.rate_review, size: 20, color: AppTheme.yellow),
             ),
-            title: const Text('Rate the App', style: TextStyle(color: AppTheme.primaryText)),
+            title: const Text('Rate the App', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
             subtitle: const Text('Help us improve', style: TextStyle(color: AppTheme.secondaryText)),
-            trailing: const Icon(Icons.chevron_right, color: AppTheme.mutedText),
+            trailing: const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
             onTap: () => _rateApp(context),
           ),
         ],
@@ -1633,9 +1666,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               child: const Icon(Icons.info_outline, size: 20, color: AppTheme.primaryRed),
             ),
-            title: const Text('App Version', style: TextStyle(color: AppTheme.primaryText)),
+            title: const Text('App Version', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
             subtitle: const Text('Version 1.0.0', style: TextStyle(color: AppTheme.secondaryText)),
-            trailing: const Icon(Icons.chevron_right, color: AppTheme.mutedText),
+            trailing: const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
             onTap: () => _showVersionInfo(context),
           ),
           
@@ -1648,9 +1681,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               child: const Icon(Icons.security, size: 20, color: Colors.purple),
             ),
-            title: const Text('Privacy Policy', style: TextStyle(color: AppTheme.primaryText)),
+            title: const Text('Privacy Policy', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
             subtitle: const Text('How we handle your data', style: TextStyle(color: AppTheme.secondaryText)),
-            trailing: const Icon(Icons.chevron_right, color: AppTheme.mutedText),
+            trailing: const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
             onTap: () => _showComingSoon(context, 'Privacy Policy'),
           ),
           
@@ -1663,9 +1696,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               child: const Icon(Icons.description, size: 20, color: Colors.teal),
             ),
-            title: const Text('Terms of Service', style: TextStyle(color: AppTheme.primaryText)),
+            title: const Text('Terms of Service', style: TextStyle(color: AppTheme.primaryText, fontWeight: FontWeight.w500)),
             subtitle: const Text('Driver agreement terms', style: TextStyle(color: AppTheme.secondaryText)),
-            trailing: const Icon(Icons.chevron_right, color: AppTheme.mutedText),
+            trailing: const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
             onTap: () => _showComingSoon(context, 'Terms of Service'),
           ),
         ],
@@ -1737,7 +1770,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
           children: [
             const Text(
               'Notification Settings',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryText),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
