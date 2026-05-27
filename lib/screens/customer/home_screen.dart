@@ -530,7 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ──────────────────────────────────────────────
-  // HEADER
+  // HEADER WITH LOGO - FIXED VERSION
   // ──────────────────────────────────────────────
 
   Widget _buildProfessionalHeader(
@@ -548,25 +548,32 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
+          // Logo Image - Clean, no shadows
           Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryButtonGradient,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primaryRed.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+            width: 45,
+            height: 45,
+            decoration: const BoxDecoration(
+              shape: BoxShape.rectangle,
             ),
-            child: const Center(
-              child: Icon(Icons.restaurant_menu, color: Colors.white, size: 28),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 45,
+                height: 45,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: AppTheme.primaryRed,
+                    child: const Icon(Icons.restaurant_menu,
+                        color: Colors.white, size: 25),
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(width: 12),
+          // Brand Name and Tagline
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,6 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          // Welcome Message
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -617,38 +625,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(width: 8),
-          Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryButtonGradient,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryRed.withOpacity(0.3),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.notifications_outlined,
-                      color: Colors.white, size: 22),
-                  onPressed: () => context.push('/notifications'),
-                ),
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
+          // Notification Icon
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.primaryRed.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.notifications_outlined,
+                  color: AppTheme.primaryRed, size: 22),
+              onPressed: () => context.push('/notifications'),
+            ),
           ),
         ],
       ),
@@ -999,7 +986,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                ' © 2026 Foodie Express. All rights reserved.',
+                '© 2026 Foodie Express. All rights reserved.',
                 style: TextStyle(
                   color: AppTheme.getSecondaryTextColor(context),
                   fontSize: 12,

@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _showError('Please enter your username');
       return;
     }
-    
+
     if (_passwordController.text.isEmpty) {
       _showError('Please enter your password');
       return;
@@ -104,43 +104,55 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Logo
+                // Logo - No shadows, better sizing
                 Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryButtonGradient,
+                  width: 100,
+                  height: 100,
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.restaurant,
-                    size: 32,
-                    color: Colors.white,
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: AppTheme.primaryRed,
+                          child: const Icon(
+                            Icons.restaurant,
+                            size: 50,
+                            color: Colors.white,
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // Title
                 Text(
                   'Welcome Back',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.getPrimaryTextColor(context),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   'Sign in to continue',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: AppTheme.getSecondaryTextColor(context),
                   ),
                 ),
                 const SizedBox(height: 32),
-                
+
                 // Username Field
                 TextField(
                   controller: _usernameController,
@@ -154,7 +166,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontSize: 13,
                       color: AppTheme.getMutedTextColor(context),
                     ),
-                    prefixIcon: Icon(Icons.person_outline, size: 18, color: AppTheme.getMutedTextColor(context)),
+                    prefixIcon: Icon(Icons.person_outline,
+                        size: 18, color: AppTheme.getMutedTextColor(context)),
                     filled: true,
                     fillColor: AppTheme.getSurfaceColor(context),
                     border: OutlineInputBorder(
@@ -163,7 +176,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2),
+                      borderSide: const BorderSide(
+                          color: AppTheme.primaryRed, width: 2),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -172,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                
+
                 // Password Field
                 TextField(
                   controller: _passwordController,
@@ -187,10 +201,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontSize: 13,
                       color: AppTheme.getMutedTextColor(context),
                     ),
-                    prefixIcon: Icon(Icons.lock_outline, size: 18, color: AppTheme.getMutedTextColor(context)),
+                    prefixIcon: Icon(Icons.lock_outline,
+                        size: 18, color: AppTheme.getMutedTextColor(context)),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                         size: 18,
                         color: AppTheme.getMutedTextColor(context),
                       ),
@@ -208,7 +225,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2),
+                      borderSide: const BorderSide(
+                          color: AppTheme.primaryRed, width: 2),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -216,16 +234,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 28),
-                
+
                 // Login Button
                 SizedBox(
-                  height: 46,
+                  height: 50,
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: AppTheme.primaryButtonGradient,
-                      borderRadius: BorderRadius.circular(23),
+                      borderRadius: BorderRadius.circular(25),
                     ),
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
@@ -234,7 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         foregroundColor: Colors.white,
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(23),
+                          borderRadius: BorderRadius.circular(25),
                         ),
                       ),
                       child: _isLoading
@@ -249,16 +267,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Text(
                               'Sign In',
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                     ),
                   ),
                 ),
-                
-                const SizedBox(height: 18),
-                
+
+                const SizedBox(height: 20),
+
                 // Sign Up Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -266,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       "Don't have an account? ",
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: AppTheme.getSecondaryTextColor(context),
                       ),
                     ),
@@ -277,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         'Sign Up',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: AppTheme.primaryRed,
                           fontWeight: FontWeight.bold,
                         ),

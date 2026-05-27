@@ -8,7 +8,7 @@ import '../services/api_service.dart';
 
 class RestaurantProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
-  
+
   List<MenuItem> _menuItems = [];
   List<RestaurantOrder> _activeOrders = [];
   List<RestaurantOrder> _readyOrders = [];
@@ -21,7 +21,7 @@ class RestaurantProvider extends ChangeNotifier {
   bool _isRestaurantOpen = true;
   Restaurant? _restaurant;
   String? _error;
-  
+
   // Location and delivery settings
   double? _restaurantLatitude;
   double? _restaurantLongitude;
@@ -40,7 +40,7 @@ class RestaurantProvider extends ChangeNotifier {
   // ============================================
   // GROUP 1: GETTERS
   // ============================================
-  
+
   List<MenuItem> get menuItems => _menuItems;
   List<RestaurantOrder> get activeOrders => _activeOrders;
   List<RestaurantOrder> get readyOrders => _readyOrders;
@@ -53,12 +53,18 @@ class RestaurantProvider extends ChangeNotifier {
   bool get isRestaurantOpen => _isRestaurantOpen;
   Restaurant? get restaurant => _restaurant;
   String? get error => _error;
-  
+
+  // Wallet getters
+  double get walletBalance => _stats?.walletBalance ?? 0.0;
+  double get totalWithdrawn => _stats?.totalWithdrawn ?? 0.0;
+  double get totalEarned => _stats?.totalEarned ?? 0.0;
+
   // Location getters
   double? get restaurantLatitude => _restaurantLatitude;
   double? get restaurantLongitude => _restaurantLongitude;
-  bool get hasLocation => _restaurantLatitude != null && _restaurantLongitude != null;
-  
+  bool get hasLocation =>
+      _restaurantLatitude != null && _restaurantLongitude != null;
+
   // Delivery settings getters
   double get baseDeliveryFee => _baseDeliveryFee;
   double get feePerKm => _feePerKm;
@@ -69,7 +75,7 @@ class RestaurantProvider extends ChangeNotifier {
   // ============================================
   // GROUP 2: HELPER METHODS
   // ============================================
-  
+
   double _toDouble(dynamic value) {
     if (value == null) return 0.0;
     if (value is double) return value;
@@ -102,11 +108,11 @@ class RestaurantProvider extends ChangeNotifier {
   // ============================================
   // GROUP 3: RESTAURANT DATA LOADING
   // ============================================
-  
+
   Future<void> loadRestaurantData() async {
     _isLoading = true;
     _safeNotify();
-    
+
     try {
       await Future.wait([
         loadRestaurantInfo(),
@@ -126,7 +132,7 @@ class RestaurantProvider extends ChangeNotifier {
     try {
       final restaurantData = await _apiService.getMyRestaurant();
       print('📦 Restaurant data: $restaurantData');
-      
+
       if (restaurantData.isNotEmpty) {
         // Parse categories
         List<String> categoryList = [];
@@ -147,20 +153,24 @@ class RestaurantProvider extends ChangeNotifier {
         if (categoryList.isEmpty) {
           categoryList = ['All'];
         }
-        
+
         // Parse location
         if (restaurantData['latitude'] != null) {
           _restaurantLatitude = _toDouble(restaurantData['latitude']);
           _restaurantLongitude = _toDouble(restaurantData['longitude']);
-          print('📍 Restaurant location: $_restaurantLatitude, $_restaurantLongitude');
+          print(
+              '📍 Restaurant location: $_restaurantLatitude, $_restaurantLongitude');
         }
-        
+
         // Parse delivery settings
-        _baseDeliveryFee = _toDouble(restaurantData['base_delivery_fee'] ?? 1000.0);
+        _baseDeliveryFee =
+            _toDouble(restaurantData['base_delivery_fee'] ?? 1000.0);
         _feePerKm = _toDouble(restaurantData['fee_per_km'] ?? 1000.0);
-        _freeDeliveryRadius = _toDouble(restaurantData['free_delivery_radius'] ?? 0.0);
-        _maxDeliveryRadius = _toDouble(restaurantData['max_delivery_radius'] ?? 2500.0);
-        
+        _freeDeliveryRadius =
+            _toDouble(restaurantData['free_delivery_radius'] ?? 0.0);
+        _maxDeliveryRadius =
+            _toDouble(restaurantData['max_delivery_radius'] ?? 2500.0);
+
         _tierFees = {
           'tier_1': _toDouble(restaurantData['tier_1_fee'] ?? 1000.0),
           'tier_2': _toDouble(restaurantData['tier_2_fee'] ?? 2000.0),
@@ -168,7 +178,7 @@ class RestaurantProvider extends ChangeNotifier {
           'tier_4': _toDouble(restaurantData['tier_4_fee'] ?? 4000.0),
           'tier_5': _toDouble(restaurantData['tier_5_fee'] ?? 5000.0),
         };
-        
+
         _restaurant = Restaurant(
           id: restaurantData['id']?.toString() ?? '',
           name: restaurantData['name']?.toString() ?? '',
@@ -196,20 +206,20 @@ class RestaurantProvider extends ChangeNotifier {
   Future<void> loadMenuItems() async {
     _isLoadingMenu = true;
     _safeNotify();
-    
+
     try {
       print('🍽️ Loading restaurant menu items...');
-      
+
       final response = await http.get(
         Uri.parse('${ApiService.baseUrl}/api/owner/menu-items/'),
         headers: await _apiService.getHeaders(),
       );
-      
+
       print('   Menu items response: ${response.statusCode}');
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+
         List<dynamic> itemsData = [];
         if (data is List) {
           itemsData = data;
@@ -218,26 +228,29 @@ class RestaurantProvider extends ChangeNotifier {
         } else if (data is Map && data.containsKey('items')) {
           itemsData = data['items'];
         }
-        
+
         print('   Found ${itemsData.length} menu items');
-        
-        _menuItems = itemsData.map((item) => MenuItem(
-          id: item['id']?.toString() ?? '',
-          restaurantId: item['restaurant']?.toString() ?? '',
-          name: item['name']?.toString() ?? '',
-          description: item['description']?.toString() ?? '',
-          price: _toDouble(item['price']),
-          image: item['image']?.toString() ?? '',
-          imageUrl: item['image_url']?.toString() ?? '',
-          category: item['category_name']?.toString() ?? 
-                    item['category']?.toString() ?? 
-                    'General',
-          isAvailable: item['is_available'] ?? true,
-        )).toList();
-        
+
+        _menuItems = itemsData
+            .map((item) => MenuItem(
+                  id: item['id']?.toString() ?? '',
+                  restaurantId: item['restaurant']?.toString() ?? '',
+                  name: item['name']?.toString() ?? '',
+                  description: item['description']?.toString() ?? '',
+                  price: _toDouble(item['price']),
+                  image: item['image']?.toString() ?? '',
+                  imageUrl: item['image_url']?.toString() ?? '',
+                  category: item['category_name']?.toString() ??
+                      item['category']?.toString() ??
+                      'General',
+                  isAvailable: item['is_available'] ?? true,
+                ))
+            .toList();
+
         print('✅ Loaded ${_menuItems.length} menu items into provider');
         for (var item in _menuItems) {
-          print('   - ${item.name}: MK${item.price} (${item.isAvailable ? "Available" : "Unavailable"})');
+          print(
+              '   - ${item.name}: MK${item.price} (${item.isAvailable ? "Available" : "Unavailable"})');
         }
       } else if (response.statusCode == 401) {
         print('⚠️ Token expired, attempting refresh...');
@@ -248,7 +261,7 @@ class RestaurantProvider extends ChangeNotifier {
         print('❌ Failed to load menu items: ${response.statusCode}');
         _menuItems = [];
       }
-      
+
       _isLoadingMenu = false;
       _safeNotify();
     } catch (e) {
@@ -272,8 +285,14 @@ class RestaurantProvider extends ChangeNotifier {
         activeOrders: _toInt(statsData['activeOrders']),
         monthlyEarnings: _toDouble(statsData['monthlyEarnings']),
         monthlyOrders: _toInt(statsData['monthlyOrders']),
+        walletBalance: _toDouble(statsData['walletBalance'] ?? 0),
+        totalWithdrawn: _toDouble(statsData['totalWithdrawn'] ?? 0),
+        totalEarned: _toDouble(statsData['totalEarned'] ?? 0),
       );
       print('✅ Stats loaded: ${_stats?.todayOrders} orders today');
+      print('   Wallet Balance: MK${_stats?.walletBalance}');
+      print('   Total Earned: MK${_stats?.totalEarned}');
+      print('   Total Withdrawn: MK${_stats?.totalWithdrawn}');
       _safeNotify();
     } catch (e) {
       print('⚠️ Error loading stats: $e');
@@ -286,50 +305,83 @@ class RestaurantProvider extends ChangeNotifier {
         activeOrders: 0,
         monthlyEarnings: 0,
         monthlyOrders: 0,
+        walletBalance: 0,
+        totalWithdrawn: 0,
+        totalEarned: 0,
       );
       _safeNotify();
+    }
+  }
+
+  Future<void> loadWalletBalance() async {
+    try {
+      final walletData = await _apiService.getWalletBalance();
+      if (_stats != null) {
+        _stats = RestaurantStats(
+          todayEarnings: _stats!.todayEarnings,
+          todayOrders: _stats!.todayOrders,
+          totalEarnings: _stats!.totalEarnings,
+          totalOrders: _stats!.totalOrders,
+          averageRating: _stats!.averageRating,
+          activeOrders: _stats!.activeOrders,
+          monthlyEarnings: _stats!.monthlyEarnings,
+          monthlyOrders: _stats!.monthlyOrders,
+          walletBalance: _toDouble(walletData['balance']),
+          totalWithdrawn: _toDouble(walletData['total_withdrawn']),
+          totalEarned: _stats!.totalEarned,
+        );
+        _safeNotify();
+      }
+      print('💰 Wallet balance updated: MK${walletData['balance']}');
+    } catch (e) {
+      print('Error loading wallet balance: $e');
     }
   }
 
   // ============================================
   // GROUP 4: RESTAURANT ORDERS
   // ============================================
-  
+
   Future<void> loadRestaurantOrders() async {
     print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     print('🔄 Loading restaurant orders...');
     _isLoadingOrders = true;
     _safeNotify();
-    
+
     try {
       final allOrders = await _apiService.getRestaurantOrders();
       print('📦 Raw orders from API: ${allOrders.length}');
-      
+
       _orders = allOrders;
-      
+
       final List<RestaurantOrder> allRestaurantOrders = [];
-      
+
       for (var order in _orders) {
         final itemsList = order['items'] as List? ?? [];
         final orderItems = itemsList.map((item) {
-          final price = _toDouble(item['price'] ?? item['total_price'] ?? item['menu_item_price'] ?? 0);
+          final price = _toDouble(item['price'] ??
+              item['total_price'] ??
+              item['menu_item_price'] ??
+              0);
           final quantity = _toInt(item['quantity']);
-          final name = item['menu_item_name']?.toString() ?? 
-                       item['name']?.toString() ?? 
-                       'Menu Item';
+          final name = item['menu_item_name']?.toString() ??
+              item['name']?.toString() ??
+              'Menu Item';
           return OrderItemModel(
-            menuItemId: item['menu_item']?.toString() ?? 
-                       item['menu_item_id']?.toString() ?? '',
+            menuItemId: item['menu_item']?.toString() ??
+                item['menu_item_id']?.toString() ??
+                '',
             name: name,
             quantity: quantity,
             price: price,
           );
         }).toList();
-        
+
         String customerName = 'Customer';
         String customerPhone = 'No phone';
-        
-        if (order['customer_name'] != null && order['customer_name'].toString().isNotEmpty) {
+
+        if (order['customer_name'] != null &&
+            order['customer_name'].toString().isNotEmpty) {
           customerName = order['customer_name'].toString();
         } else if (order['customer'] != null) {
           if (order['customer'] is Map) {
@@ -340,20 +392,22 @@ class RestaurantProvider extends ChangeNotifier {
             customerName = 'Customer #${order['customer']}';
           }
         }
-        
-        if (order['customer_phone'] != null && order['customer_phone'].toString().isNotEmpty) {
+
+        if (order['customer_phone'] != null &&
+            order['customer_phone'].toString().isNotEmpty) {
           customerPhone = order['customer_phone'].toString();
         }
-        
+
         DateTime orderTime;
         try {
-          orderTime = DateTime.parse(order['created']?.toString() ?? DateTime.now().toIso8601String());
+          orderTime = DateTime.parse(
+              order['created']?.toString() ?? DateTime.now().toIso8601String());
         } catch (e) {
           orderTime = DateTime.now();
         }
-        
+
         final statusStr = order['status']?.toString() ?? 'pending';
-        
+
         allRestaurantOrders.add(RestaurantOrder(
           id: order['id'].toString(),
           customerName: customerName,
@@ -367,23 +421,25 @@ class RestaurantProvider extends ChangeNotifier {
           estimatedPrepTime: _toInt(order['estimated_prep_time']),
         ));
       }
-      
-      _activeOrders = allRestaurantOrders.where((o) => 
-        o.status == OrderStatus.pending || 
-        o.status == OrderStatus.confirmed || 
-        o.status == OrderStatus.preparing
-      ).toList();
-      
-      _readyOrders = allRestaurantOrders.where((o) => 
-        o.status == OrderStatus.ready
-      ).toList();
-      
-      _pastOrders = allRestaurantOrders.where((o) => 
-        o.status == OrderStatus.delivered || 
-        o.status == OrderStatus.cancelled ||
-        o.status == OrderStatus.pickedUp
-      ).toList();
-      
+
+      _activeOrders = allRestaurantOrders
+          .where((o) =>
+              o.status == OrderStatus.pending ||
+              o.status == OrderStatus.confirmed ||
+              o.status == OrderStatus.preparing)
+          .toList();
+
+      _readyOrders = allRestaurantOrders
+          .where((o) => o.status == OrderStatus.ready)
+          .toList();
+
+      _pastOrders = allRestaurantOrders
+          .where((o) =>
+              o.status == OrderStatus.delivered ||
+              o.status == OrderStatus.cancelled ||
+              o.status == OrderStatus.pickedUp)
+          .toList();
+
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       print('✅ Orders Summary:');
       print('   Total: ${allRestaurantOrders.length}');
@@ -391,7 +447,7 @@ class RestaurantProvider extends ChangeNotifier {
       print('   Ready: ${_readyOrders.length}');
       print('   Past: ${_pastOrders.length}');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
+
       _isLoadingOrders = false;
       _safeNotify();
     } catch (e) {
@@ -404,14 +460,22 @@ class RestaurantProvider extends ChangeNotifier {
 
   OrderStatus _getOrderStatus(String status) {
     switch (status.toLowerCase()) {
-      case 'pending': return OrderStatus.pending;
-      case 'confirmed': return OrderStatus.confirmed;
-      case 'preparing': return OrderStatus.preparing;
-      case 'ready': return OrderStatus.ready;
-      case 'picked_up': return OrderStatus.pickedUp;
-      case 'delivered': return OrderStatus.delivered;
-      case 'cancelled': return OrderStatus.cancelled;
-      default: return OrderStatus.pending;
+      case 'pending':
+        return OrderStatus.pending;
+      case 'confirmed':
+        return OrderStatus.confirmed;
+      case 'preparing':
+        return OrderStatus.preparing;
+      case 'ready':
+        return OrderStatus.ready;
+      case 'picked_up':
+        return OrderStatus.pickedUp;
+      case 'delivered':
+        return OrderStatus.delivered;
+      case 'cancelled':
+        return OrderStatus.cancelled;
+      default:
+        return OrderStatus.pending;
     }
   }
 
@@ -431,11 +495,11 @@ class RestaurantProvider extends ChangeNotifier {
   // ============================================
   // GROUP 5: RESTAURANT MANAGEMENT
   // ============================================
-  
+
   Future<bool> updateMyRestaurant(Map<String, dynamic> data) async {
     _isLoading = true;
     _safeNotify();
-    
+
     try {
       final result = await _apiService.updateMyRestaurant(data);
       await loadRestaurantInfo();
@@ -457,17 +521,17 @@ class RestaurantProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _safeNotify();
-    
+
     try {
       final result = await _apiService.updateRestaurantLocation(
         restaurantId: _restaurant!.id,
         latitude: latitude,
         longitude: longitude,
       );
-      
+
       _restaurantLatitude = latitude;
       _restaurantLongitude = longitude;
-      
+
       _safeNotify();
       return true;
     } catch (e) {
@@ -493,19 +557,21 @@ class RestaurantProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _safeNotify();
-    
+
     try {
       final data = <String, dynamic>{};
       if (baseDeliveryFee != null) data['base_delivery_fee'] = baseDeliveryFee;
       if (feePerKm != null) data['fee_per_km'] = feePerKm;
-      if (freeDeliveryRadius != null) data['free_delivery_radius'] = freeDeliveryRadius;
-      if (maxDeliveryRadius != null) data['max_delivery_radius'] = maxDeliveryRadius;
+      if (freeDeliveryRadius != null)
+        data['free_delivery_radius'] = freeDeliveryRadius;
+      if (maxDeliveryRadius != null)
+        data['max_delivery_radius'] = maxDeliveryRadius;
       if (tier1Fee != null) data['tier_1_fee'] = tier1Fee;
       if (tier2Fee != null) data['tier_2_fee'] = tier2Fee;
       if (tier3Fee != null) data['tier_3_fee'] = tier3Fee;
       if (tier4Fee != null) data['tier_4_fee'] = tier4Fee;
       if (tier5Fee != null) data['tier_5_fee'] = tier5Fee;
-      
+
       final result = await _apiService.updateMyRestaurant(data);
       await loadRestaurantInfo();
       _safeNotify();
@@ -550,9 +616,55 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 6: MENU ITEM MANAGEMENT (FIXED)
+  // GROUP 6: WITHDRAWAL
   // ============================================
-  
+
+  Future<bool> requestWithdraw({
+    required double amount,
+    required String phone,
+    required String provider,
+  }) async {
+    _isLoading = true;
+    _safeNotify();
+
+    try {
+      print('💰 Requesting withdrawal:');
+      print('   Amount: MK$amount');
+      print('   Phone: $phone');
+      print('   Provider: $provider');
+
+      final result = await _apiService.requestWithdrawal(
+        amount: amount,
+        phoneNumber: phone,
+        provider: provider,
+      );
+
+      print('✅ Withdrawal request submitted: $result');
+
+      // Refresh stats to update wallet balance
+      await loadStats();
+
+      _isLoading = false;
+      _safeNotify();
+      return result['success'] == true;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      _safeNotify();
+      print('❌ Withdrawal error: $e');
+      return false;
+    }
+  }
+
+  Future<void> refreshWallet() async {
+    await loadStats();
+    await loadWalletBalance();
+  }
+
+  // ============================================
+  // GROUP 7: MENU ITEM MANAGEMENT
+  // ============================================
+
   Future<bool> addMenuItemWithImage({
     required String name,
     required String description,
@@ -562,7 +674,7 @@ class RestaurantProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     _safeNotify();
-    
+
     try {
       print('📤 Adding menu item with image file');
       final result = await _apiService.createMenuItemWithImage(
@@ -588,7 +700,7 @@ class RestaurantProvider extends ChangeNotifier {
   Future<bool> addMenuItem(Map<String, dynamic> itemData) async {
     _isLoading = true;
     _safeNotify();
-    
+
     try {
       print('📤 Adding menu item: $itemData');
       final result = await _apiService.createMenuItem(itemData);
@@ -605,10 +717,11 @@ class RestaurantProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateMenuItem(String itemId, Map<String, dynamic> itemData) async {
+  Future<bool> updateMenuItem(
+      String itemId, Map<String, dynamic> itemData) async {
     _isLoading = true;
     _safeNotify();
-    
+
     try {
       await _apiService.updateMenuItem(itemId, itemData);
       await loadMenuItems();
@@ -623,21 +736,21 @@ class RestaurantProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ FIXED: Toggle menu item availability
-  Future<bool> toggleMenuItemAvailability(String menuItemId, bool isAvailable) async {
+  Future<bool> toggleMenuItemAvailability(
+      String menuItemId, bool isAvailable) async {
     _isLoading = true;
     _safeNotify();
-    
+
     try {
-      print('🔄 Toggling menu item $menuItemId to ${isAvailable ? "Available" : "Unavailable"}');
-      
-      // Only send the is_available field to avoid validation errors
+      print(
+          '🔄 Toggling menu item $menuItemId to ${isAvailable ? "Available" : "Unavailable"}');
+
       final updateData = {
         'is_available': isAvailable,
       };
-      
+
       await _apiService.updateMenuItem(menuItemId, updateData);
-      await loadMenuItems(); // Reload to get updated state
+      await loadMenuItems();
       return true;
     } catch (e) {
       _error = e.toString();
@@ -652,7 +765,7 @@ class RestaurantProvider extends ChangeNotifier {
   Future<bool> deleteMenuItem(String menuItemId) async {
     _isLoading = true;
     _safeNotify();
-    
+
     try {
       await _apiService.deleteMenuItem(menuItemId);
       await loadMenuItems();
@@ -668,14 +781,14 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 7: UTILITY METHODS
+  // GROUP 8: UTILITY METHODS
   // ============================================
-  
+
   void clearError() {
     _error = null;
     _safeNotify();
   }
-  
+
   void reset() {
     _menuItems = [];
     _activeOrders = [];

@@ -7,12 +7,14 @@ import '../../providers/restaurant_provider.dart';
 import 'restaurant_orders_screen.dart';
 import 'menu_management_screen.dart';
 import 'restaurant_profile_screen.dart';
+import 'withdraw_screen.dart';
 
 class RestaurantDashboardScreen extends StatefulWidget {
   const RestaurantDashboardScreen({super.key});
 
   @override
-  State<RestaurantDashboardScreen> createState() => _RestaurantDashboardScreenState();
+  State<RestaurantDashboardScreen> createState() =>
+      _RestaurantDashboardScreenState();
 }
 
 class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
@@ -40,11 +42,16 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
 
   String _getAppBarTitle() {
     switch (_selectedIndex) {
-      case 0: return 'Dashboard';
-      case 1: return 'Orders';
-      case 2: return 'Menu';
-      case 3: return 'Settings';
-      default: return 'Restaurant Dashboard';
+      case 0:
+        return 'Dashboard';
+      case 1:
+        return 'Orders';
+      case 2:
+        return 'Menu';
+      case 3:
+        return 'Settings';
+      default:
+        return 'Restaurant Dashboard';
     }
   }
 
@@ -178,7 +185,7 @@ class _DashboardContent extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Stat Cards
+          // Row 1: Today's Earnings & Today's Orders
           Row(
             children: [
               Expanded(
@@ -205,16 +212,21 @@ class _DashboardContent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+
+          // Row 2: Available Balance (Withdrawable) & Rating
           Row(
             children: [
               Expanded(
-                child: _buildStatCard(
+                child: _buildStatCardWithWithdraw(
                   context,
-                  title: 'Total Earnings',
-                  value: _formatCurrency(stats?.totalEarnings),
-                  icon: Icons.attach_money,
+                  title: 'Available Balance',
+                  value: _formatCurrency(stats?.walletBalance),
+                  icon: Icons.wallet,
                   color: AppTheme.success,
-                  subtitle: 'Lifetime',
+                  subtitle: 'Withdrawable amount (after fees)',
+                  onWithdraw: () {
+                    context.push('/withdraw');
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -230,7 +242,48 @@ class _DashboardContent extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+
+          const SizedBox(height: 12),
+
+          // Total Earnings Card (for reference - not withdrawable)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.getSurfaceColor(context),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 16,
+                        color: AppTheme.getSecondaryTextColor(context)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Total Lifetime Earnings',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.getSecondaryTextColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  _formatCurrency(stats?.totalEarnings),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.getSecondaryTextColor(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
 
           // Open/Close Toggle
           Container(
@@ -242,7 +295,9 @@ class _DashboardContent extends StatelessWidget {
                   : AppTheme.error.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: restaurant?.isOpen == true ? AppTheme.success : AppTheme.error,
+                color: restaurant?.isOpen == true
+                    ? AppTheme.success
+                    : AppTheme.error,
                 width: 1,
               ),
             ),
@@ -255,7 +310,9 @@ class _DashboardContent extends StatelessWidget {
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: restaurant?.isOpen == true ? AppTheme.success : AppTheme.error,
+                        color: restaurant?.isOpen == true
+                            ? AppTheme.success
+                            : AppTheme.error,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -325,6 +382,100 @@ class _DashboardContent extends StatelessWidget {
     );
   }
 
+  Widget _buildStatCardWithWithdraw(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required String subtitle,
+    required VoidCallback onWithdraw,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: AppTheme.cardGlowGradient(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 20, color: color),
+              ),
+              GestureDetector(
+                onTap: onWithdraw,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryButtonGradient,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryRed.withOpacity(0.3),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.wallet, size: 14, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        'Withdraw',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.getPrimaryTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.getSecondaryTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 10,
+              color: AppTheme.getMutedTextColor(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatCard(
     BuildContext context, {
     required String title,
@@ -355,7 +506,7 @@ class _DashboardContent extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: AppTheme.getPrimaryTextColor(context),
             ),
@@ -402,8 +553,10 @@ class __SettingsContentState extends State<_SettingsContent> {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
-        title: Text('Logout', style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-        content: Text('Are you sure you want to logout?', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+        title: Text('Logout',
+            style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
+        content: Text('Are you sure you want to logout?',
+            style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
         actions: [
           Row(
             children: [
@@ -414,10 +567,14 @@ class __SettingsContentState extends State<_SettingsContent> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
-                      side: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.5)),
+                      side: BorderSide(
+                          color: AppTheme.getMutedTextColor(context)
+                              .withOpacity(0.5)),
                     ),
                   ),
-                  child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                  child: Text('Cancel',
+                      style: TextStyle(
+                          color: AppTheme.getSecondaryTextColor(context))),
                 ),
               ),
               const SizedBox(width: 12),
@@ -435,7 +592,8 @@ class __SettingsContentState extends State<_SettingsContent> {
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text('Logout',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -501,12 +659,14 @@ class __SettingsContentState extends State<_SettingsContent> {
 
           // Menu Items
           ListTile(
-            leading: const Icon(Icons.restaurant_menu, color: AppTheme.primaryRed),
+            leading:
+                const Icon(Icons.restaurant_menu, color: AppTheme.primaryRed),
             title: const Text('Manage Menu'),
             subtitle: const Text('Add, edit or remove menu items'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              final state = context.findAncestorStateOfType<_RestaurantDashboardScreenState>();
+              final state = context
+                  .findAncestorStateOfType<_RestaurantDashboardScreenState>();
               if (state != null) {
                 state.setState(() {
                   state._selectedIndex = 2;
@@ -524,7 +684,8 @@ class __SettingsContentState extends State<_SettingsContent> {
             subtitle: const Text('Manage incoming orders'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              final state = context.findAncestorStateOfType<_RestaurantDashboardScreenState>();
+              final state = context
+                  .findAncestorStateOfType<_RestaurantDashboardScreenState>();
               if (state != null) {
                 state.setState(() {
                   state._selectedIndex = 1;
@@ -543,6 +704,19 @@ class __SettingsContentState extends State<_SettingsContent> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               context.push('/restaurant-profile');
+            },
+          ),
+
+          const Divider(),
+
+          // Withdraw (Quick Action)
+          ListTile(
+            leading: const Icon(Icons.wallet, color: AppTheme.primaryRed),
+            title: const Text('Withdraw Funds'),
+            subtitle: const Text('Withdraw your earnings to mobile money'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              context.push('/withdraw');
             },
           ),
 

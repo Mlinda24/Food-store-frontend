@@ -18,6 +18,7 @@ import '../screens/customer/settings_screen.dart';
 import '../screens/customer/food_detail_screen.dart';
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_profile_screen.dart';
+import '../screens/restaurant/withdraw_screen.dart';
 import '../screens/driver/driver_dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
@@ -131,6 +132,12 @@ final GoRouter router = GoRouter(
       path: '/restaurant-profile',
       name: 'restaurant-profile',
       builder: (context, state) => const RestaurantProfileScreen(),
+    ),
+    // Withdraw Route (for restaurant owners)
+    GoRoute(
+      path: '/withdraw',
+      name: 'withdraw',
+      builder: (context, state) => const WithdrawScreen(),
     ),
     // Driver Route
     GoRoute(
