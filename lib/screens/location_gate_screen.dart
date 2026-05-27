@@ -105,7 +105,8 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
     );
   }
 
-  void _proceed() => context.go('/login');
+  // ✅ FIXED: Navigate to landing page instead of login
+  void _proceed() => context.go('/landing');
 
   @override
   Widget build(BuildContext context) {
@@ -163,15 +164,12 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
                       onTap: _onMapTap,
                     ),
                     children: [
-                      // OpenStreetMap tiles — no API key needed
                       TileLayer(
                         urlTemplate:
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName:
                             'com.yourapp.foodie_express_mobile',
                       ),
-
-                      // Zomba delivery zone circle
                       CircleLayer(
                         circles: [
                           CircleMarker(
@@ -185,8 +183,6 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
                           ),
                         ],
                       ),
-
-                      // "Zomba district" label
                       MarkerLayer(
                         markers: [
                           Marker(
@@ -213,8 +209,6 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
                           ),
                         ],
                       ),
-
-                      // Tapped pin
                       if (_tappedPoint != null)
                         MarkerLayer(
                           markers: [
@@ -235,8 +229,6 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
                         ),
                     ],
                   ),
-
-                  // GPS FAB
                   Positioned(
                     bottom: 16,
                     right: 16,
@@ -255,8 +247,6 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
                               color: Colors.white),
                     ),
                   ),
-
-                  // First-tap hint
                   if (_tappedPoint == null)
                     Positioned(
                       bottom: 16,
@@ -277,8 +267,6 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
                         ),
                       ),
                     ),
-
-                  // Permission denied banner
                   if (_locationPermissionDenied)
                     Positioned(
                       top: 8,
@@ -416,15 +404,7 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          'You are almost there!',
-          style: TextStyle(
-              color: AppTheme.primaryRed,
-              fontWeight: FontWeight.bold,
-              fontSize: 17),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Login or sign up to enjoy our delicious meals delivered to your doorstep.',
+          'Great! You are in our delivery zone.',
           style: TextStyle(
               color: AppTheme.getSecondaryTextColor(context), fontSize: 12),
         ),
@@ -441,7 +421,7 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
             Icon(Icons.location_off, color: AppTheme.error),
             const SizedBox(width: 6),
             Text(
-              'You are almost there!',
+              'Outside Delivery Zone',
               style: TextStyle(
                   color: AppTheme.error,
                   fontWeight: FontWeight.bold,
@@ -451,13 +431,13 @@ class _LocationGateScreenState extends State<LocationGateScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Login or sign up to enjoy our delicious meals delivered to your doorstep.',
+          'Foodie Express is currently only available in Zomba district.',
           style: TextStyle(
               color: AppTheme.getSecondaryTextColor(context), fontSize: 12),
         ),
         const SizedBox(height: 6),
         Text(
-          'Foodie Express is currently only available in Zomba district. We are expanding soon!',
+          'We are expanding soon!',
           style: TextStyle(
               color: AppTheme.error.withOpacity(0.7), fontSize: 11),
         ),

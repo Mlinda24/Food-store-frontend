@@ -1,142 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
-import '../../widgets/customer/featured_meal_card.dart';
 
-class LandingScreen extends StatefulWidget {
+class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
 
-  @override
-  State<LandingScreen> createState() => _LandingScreenState();
-}
-
-class _LandingScreenState extends State<LandingScreen> {
-  final TextEditingController _searchController = TextEditingController();
-  bool _isSearching = false;
-  List<Map<String, dynamic>> _searchResults = [];
-
-  // Appetising meals only - no restaurants
-  final List<Map<String, dynamic>> _featuredMeals = [
+  // Appetising meals with food images and ratings
+  final List<Map<String, dynamic>> _featuredMeals = const [
     {
       'id': '1',
       'name': 'Grilled Chambo',
-      'description': 'Fresh Lake Malawi chambo fish, grilled to perfection with local spices',
-      'price': 'MK6,500',
       'rating': 4.9,
-      'image': 'assets/images/chambo.jpg',
-      'type': 'meal',
+      'imageUrl': 'https://images.pexels.com/photos/462039/pexels-photo-462039.jpeg?w=400',
     },
     {
       'id': '2',
       'name': 'Nsima with Beef',
-      'description': 'Traditional Malawian nsima served with tender beef stew and vegetables',
-      'price': 'MK4,500',
       'rating': 4.8,
-      'image': 'assets/images/nsima.jpg',
-      'type': 'meal',
+      'imageUrl': 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?w=400',
     },
     {
       'id': '3',
       'name': 'Spicy Chicken Wings',
-      'description': 'Crispy chicken wings tossed in spicy peri-peri sauce',
-      'price': 'MK3,800',
       'rating': 4.7,
-      'image': 'assets/images/wings.jpg',
-      'type': 'meal',
+      'imageUrl': 'https://images.pexels.com/photos/60616/fried-chicken-chicken-fried-crunchy-60616.jpeg?w=400',
     },
     {
       'id': '4',
-      'name': 'Zitumbuwa (Banana Fritters)',
-      'description': 'Sweet ripe banana fritters, crispy outside and soft inside',
-      'price': 'MK2,500',
+      'name': 'Zitumbuwa',
       'rating': 4.6,
-      'image': 'assets/images/zitumbuwa.jpg',
-      'type': 'meal',
+      'imageUrl': 'https://images.pexels.com/photos/1092747/pexels-photo-1092747.jpeg?w=400',
     },
     {
       'id': '5',
-      'name': 'Beef Burger Deluxe',
-      'description': 'Juicy beef patty with cheese, lettuce, tomato, and special sauce',
-      'price': 'MK5,500',
+      'name': 'Beef Burger',
       'rating': 4.5,
-      'image': 'assets/images/burger.jpg',
-      'type': 'meal',
+      'imageUrl': 'https://images.pexels.com/photos/1639557/pexels-photo-1639557.jpeg?w=400',
     },
     {
       'id': '6',
-      'name': 'Vegetable Pasta',
-      'description': 'Penne pasta with fresh vegetables in creamy Alfredo sauce',
-      'price': 'MK4,200',
-      'rating': 4.4,
-      'image': 'assets/images/pasta.jpg',
-      'type': 'meal',
+      'name': 'Grilled Chicken',
+      'rating': 4.8,
+      'imageUrl': 'https://images.pexels.com/photos/616353/pexels-photo-616353.jpeg?w=400',
     },
     {
       'id': '7',
-      'name': 'Grilled Chicken',
-      'description': 'Half chicken marinated in herbs and grilled to perfection',
-      'price': 'MK7,000',
-      'rating': 4.8,
-      'image': 'assets/images/grilled_chicken.jpg',
-      'type': 'meal',
+      'name': 'Fish and Chips',
+      'rating': 4.3,
+      'imageUrl': 'https://images.pexels.com/photos/699953/pexels-photo-699953.jpeg?w=400',
     },
     {
       'id': '8',
-      'name': 'Fish and Chips',
-      'description': 'Crispy battered fish served with golden fries and tartar sauce',
-      'price': 'MK4,800',
-      'rating': 4.3,
-      'image': 'assets/images/fish_chips.jpg',
-      'type': 'meal',
+      'name': 'Chicken Curry',
+      'rating': 4.7,
+      'imageUrl': 'https://images.pexels.com/photos/5639293/pexels-photo-5639293.jpeg?w=400',
     },
     {
       'id': '9',
-      'name': 'Chicken Curry',
-      'description': 'Tender chicken in aromatic coconut curry sauce with rice',
-      'price': 'MK5,200',
-      'rating': 4.7,
-      'image': 'assets/images/curry.jpg',
-      'type': 'meal',
+      'name': 'Margherita Pizza',
+      'rating': 4.6,
+      'imageUrl': 'https://images.pexels.com/photos/803290/pexels-photo-803290.jpeg?w=400',
     },
     {
       'id': '10',
-      'name': 'Margherita Pizza',
-      'description': 'Classic pizza with tomato sauce, fresh mozzarella, and basil',
-      'price': 'MK4,500',
-      'rating': 4.6,
-      'image': 'assets/images/pizza.jpg',
-      'type': 'meal',
+      'name': 'Vegetable Pasta',
+      'rating': 4.4,
+      'imageUrl': 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?w=400',
     },
   ];
-
-  void _onSearchChanged(String query) {
-    setState(() {
-      if (query.trim().isEmpty) {
-        _isSearching = false;
-        _searchResults = [];
-      } else {
-        _isSearching = true;
-        final lowerQuery = query.toLowerCase();
-        _searchResults = _featuredMeals.where((m) =>
-            m['name'].toString().toLowerCase().contains(lowerQuery) ||
-            m['description'].toString().toLowerCase().contains(lowerQuery)).toList();
-      }
-    });
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    setState(() {
-      _isSearching = false;
-      _searchResults = [];
-    });
-  }
-
-  void _onSearchSubmitted(String query) {
-    if (query.trim().isNotEmpty) {
-      _onSearchChanged(query);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,33 +76,12 @@ class _LandingScreenState extends State<LandingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header with Welcome Text and Login Button
+            // Header with Login Button only
             Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Delicious Food',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryRed,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Discover the best meals in town',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.getSecondaryTextColor(context),
-                        ),
-                      ),
-                    ],
-                  ),
                   // Login Button
                   Container(
                     decoration: BoxDecoration(
@@ -187,7 +97,8 @@ class _LandingScreenState extends State<LandingScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                        minimumSize: const Size(80, 40),
                       ),
                       child: const Text(
                         'Login',
@@ -201,155 +112,22 @@ class _LandingScreenState extends State<LandingScreen> {
                 ],
               ),
             ),
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.getSurfaceColor(context),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  style: TextStyle(color: AppTheme.getPrimaryTextColor(context), fontSize: 14),
-                  onChanged: _onSearchChanged,
-                  onSubmitted: _onSearchSubmitted,
-                  decoration: InputDecoration(
-                    hintText: 'Search for delicious meals...',
-                    hintStyle: TextStyle(color: AppTheme.getMutedTextColor(context), fontSize: 13),
-                    prefixIcon: Icon(Icons.search, color: AppTheme.primaryRed, size: 20),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear, color: AppTheme.getMutedTextColor(context), size: 18),
-                            onPressed: _clearSearch,
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  ),
-                ),
-              ),
-            ),
-            // Main content
+            // Meals Grid
             Expanded(
-              child: _isSearching
-                  ? _buildSearchResults(context)
-                  : SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          // Hero Section
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 20),
-                            height: 180,
-                            decoration: BoxDecoration(
-                              gradient: AppTheme.primaryButtonGradient,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Stack(
-                              children: [
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Image.network(
-                                    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200',
-                                    height: 150,
-                                    errorBuilder: (context, error, stackTrace) => const SizedBox(),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Text(
-                                        '50% OFF',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'on your first order',
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.9),
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: ElevatedButton(
-                                          onPressed: () => context.go('/role-selection'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.white,
-                                            foregroundColor: AppTheme.primaryRed,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(20),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                                          ),
-                                          child: const Text('Order Now'),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          // Featured Meals Section
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Row(
-                              children: [
-                                Icon(Icons.local_fire_department, color: AppTheme.primaryRed, size: 20),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Popular Meals',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.getPrimaryTextColor(context),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.7,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                            ),
-                            itemCount: _featuredMeals.length,
-                            itemBuilder: (context, index) {
-                              final meal = _featuredMeals[index];
-                              return _buildMealCard(meal);
-                            },
-                          ),
-                          const SizedBox(height: 30),
-                        ],
-                      ),
-                    ),
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.85,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: _featuredMeals.length,
+                itemBuilder: (context, index) {
+                  final meal = _featuredMeals[index];
+                  return _buildMealCard(context, meal);
+                },
+              ),
             ),
           ],
         ),
@@ -357,7 +135,11 @@ class _LandingScreenState extends State<LandingScreen> {
     );
   }
 
-  Widget _buildMealCard(Map<String, dynamic> meal) {
+  Widget _buildMealCard(BuildContext context, Map<String, dynamic> meal) {
+    final String name = (meal['name'] ?? 'Unknown').toString();
+    final double rating = (meal['rating'] ?? 0.0) as double;
+    final String imageUrl = (meal['imageUrl'] ?? '').toString();
+    
     return GestureDetector(
       onTap: () => context.push('/food-detail', extra: meal),
       child: Container(
@@ -366,7 +148,7 @@ class _LandingScreenState extends State<LandingScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -375,29 +157,66 @@ class _LandingScreenState extends State<LandingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Meal Image Placeholder
-            Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryRed.withOpacity(0.1),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.fastfood,
-                  size: 50,
-                  color: AppTheme.primaryRed.withOpacity(0.5),
-                ),
-              ),
+            // Meal Image
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      height: 140,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 140,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryRed.withOpacity(0.1),
+                          ),
+                          child: Icon(
+                            Icons.fastfood,
+                            size: 50,
+                            color: AppTheme.primaryRed.withOpacity(0.5),
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 140,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryRed.withOpacity(0.1),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      height: 140,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryRed.withOpacity(0.1),
+                      ),
+                      child: Icon(
+                        Icons.fastfood,
+                        size: 50,
+                        color: AppTheme.primaryRed.withOpacity(0.5),
+                      ),
+                    ),
             ),
+            // Meal Details
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    meal['name'],
+                    name,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -406,35 +225,25 @@ class _LandingScreenState extends State<LandingScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    meal['description'],
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.getSecondaryTextColor(context),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.star, size: 12, color: Colors.amber),
+                      const Icon(Icons.star, size: 14, color: Colors.amber),
                       const SizedBox(width: 4),
                       Text(
-                        meal['rating'].toString(),
+                        rating.toString(),
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color: AppTheme.getSecondaryTextColor(context),
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 4),
                       Text(
-                        meal['price'],
+                        '(${(rating * 20).toInt()}+ reviews)',
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryRed,
+                          fontSize: 10,
+                          color: AppTheme.getMutedTextColor(context),
                         ),
                       ),
                     ],
@@ -445,61 +254,6 @@ class _LandingScreenState extends State<LandingScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSearchResults(BuildContext context) {
-    if (_searchResults.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off, size: 64, color: AppTheme.getMutedTextColor(context)),
-            const SizedBox(height: 16),
-            Text(
-              'No meals found',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.getPrimaryTextColor(context),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Try searching for something else',
-              style: TextStyle(
-                color: AppTheme.getSecondaryTextColor(context),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _clearSearch,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryRed,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-              ),
-              child: const Text('Clear Search'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.7,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final meal = _searchResults[index];
-        return _buildMealCard(meal);
-      },
     );
   }
 }
