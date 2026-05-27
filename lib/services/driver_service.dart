@@ -61,8 +61,7 @@ class DriverService {
     throw Exception('Failed to load profile');
   }
 
-  static Future<Map<String, dynamic>> updateProfile(
-      Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
     final token = await _getToken();
     if (token == null) throw Exception('Not authenticated');
     final response = await http.patch(
@@ -78,13 +77,7 @@ class DriverService {
   static Future<Map<String, dynamic>> getEarningsSummary() async {
     final token = await _getToken();
     if (token == null) {
-      return {
-        'today_earnings': 0,
-        'total_earnings': 0,
-        'total_deliveries': 0,
-        'rating': 5.0,
-        'today_deliveries': 0,
-      };
+      throw Exception('Not authenticated');
     }
     try {
       final response = await http.get(
@@ -95,33 +88,22 @@ class DriverService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return {
-          'today_earnings':
-              double.tryParse(data['today_earnings']?.toString() ?? '0') ?? 0,
-          'total_earnings':
-              double.tryParse(data['total_earnings']?.toString() ?? '0') ?? 0,
-          'total_deliveries':
-              int.tryParse(data['total_deliveries']?.toString() ?? '0') ?? 0,
-          'rating':
-              double.tryParse(data['rating']?.toString() ?? '5.0') ?? 5.0,
-          'today_deliveries':
-              int.tryParse(data['today_deliveries']?.toString() ?? '0') ?? 0,
+          'today_earnings': double.tryParse(data['today_earnings']?.toString() ?? '0') ?? 0,
+          'total_earnings': double.tryParse(data['total_earnings']?.toString() ?? '0') ?? 0,
+          'total_deliveries': int.tryParse(data['total_deliveries']?.toString() ?? '0') ?? 0,
+          'rating': double.tryParse(data['rating']?.toString() ?? '5.0') ?? 5.0,
+          'today_deliveries': int.tryParse(data['today_deliveries']?.toString() ?? '0') ?? 0,
         };
       }
     } catch (e) {
       print('Error getting earnings: $e');
     }
-    return {
-      'today_earnings': 0,
-      'total_earnings': 0,
-      'total_deliveries': 0,
-      'rating': 5.0,
-      'today_deliveries': 0,
-    };
+    throw Exception('Failed to load earnings');
   }
 
   static Future<List<dynamic>> getDeliveryHistory() async {
     final token = await _getToken();
-    if (token == null) return [];
+    if (token == null) throw Exception('Not authenticated');
     try {
       final response = await http.get(
         Uri.parse('$_base/drivers/delivery_history/'),
@@ -130,22 +112,17 @@ class DriverService {
       print('📜 History - Status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // Backend may return { "deliveries": [...] } or a plain list
         if (data is List) return data;
         return data['deliveries'] ?? data['orders'] ?? [];
       }
     } catch (e) {
       print('Error getting history: $e');
     }
-    return [];
+    throw Exception('Failed to load delivery history');
   }
 
   // ============================================================
   // RESTAURANT ADDRESS LOOKUP
-  // The Order schema does NOT include restaurant_address, so we
-  // fetch it from the customer restaurants endpoint using the
-  // restaurant_id that comes with every order.
-  // Results are cached to avoid redundant calls.
   // ============================================================
   static final Map<int, String> _restaurantAddressCache = {};
 
@@ -172,104 +149,39 @@ class DriverService {
   }
 
   // ============================================================
-  // AVAILABLE ORDERS
-  // Returns real backend orders, falls back to mock only if
-  // backend is unreachable (network error).
+  // AVAILABLE ORDERS - NO MOCK DATA
   // ============================================================
-  static List<Map<String, dynamic>> _getMockOrders() {
-    return [
-      {
-        'id': 'MOCK-001',
-        'restaurant_name': "Luigi's Pizza",
-        'restaurant_address': '123 Main Street, Downtown',
-        'restaurant_id': 0,
-        'customer_name': 'John Doe',
-        'customer_phone': '0999123456',
-        'delivery_address': '456 Oak Avenue, Apartment 4B',
-        'status': 'pending',
-        'items': '2 items (Pepperoni Pizza, Garlic Bread)',
-        'total_price': '450',
-        'created': '15-20 min',
-      },
-      {
-        'id': 'MOCK-002',
-        'restaurant_name': 'Burger King',
-        'restaurant_address': '456 Fast Food Lane',
-        'restaurant_id': 0,
-        'customer_name': 'Jane Smith',
-        'customer_phone': '0888123456',
-        'delivery_address': '789 Pine Street',
-        'status': 'pending',
-        'items': '1 item (Whopper Meal)',
-        'total_price': '380',
-        'created': '10-15 min',
-      },
-      {
-        'id': 'MOCK-003',
-        'restaurant_name': 'Sushi Master',
-        'restaurant_address': '789 Sushi Road',
-        'restaurant_id': 0,
-        'customer_name': 'Mike Johnson',
-        'customer_phone': '0999765432',
-        'delivery_address': '321 Fish Avenue',
-        'status': 'pending',
-        'items': '3 items (California Roll, Miso Soup, Green Tea)',
-        'total_price': '520',
-        'created': '25-30 min',
-      },
-    ];
-  }
-
   static Future<List<dynamic>> getAvailableOrders() async {
     final token = await _getToken();
-    if (token == null) {
-      print('⚠️ No token – returning mock orders');
-      return _getMockOrders();
-    }
+    if (token == null) throw Exception('Not authenticated');
 
-    try {
-      final response = await http.get(
-        Uri.parse('$_base/drivers/available_orders/'),
-        headers: _headers(token),
-      );
+    final response = await http.get(
+      Uri.parse('$_base/drivers/available_orders/'),
+      headers: _headers(token),
+    );
 
-      print('📦 Available orders - Status: ${response.statusCode}');
-      print('📦 Available orders - Body: ${response.body}');
+    print('📦 Available orders - Status: ${response.statusCode}');
+    print('📦 Available orders - Body: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        List<dynamic> orders;
-
-        // Handle both { "orders": [...] } and plain list responses
-        if (data is List) {
-          orders = data;
-        } else {
-          orders = data['orders'] ?? data['results'] ?? [];
-        }
-
-        if (orders.isEmpty) {
-          print('⚠️ Backend returned 0 orders – using mock data for testing');
-          return _getMockOrders();
-        }
-        return orders;
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      List<dynamic> orders;
+      if (data is List) {
+        orders = data;
       } else {
-        print('⚠️ Backend error (${response.statusCode}) – using mock data');
-        return _getMockOrders();
+        orders = data['orders'] ?? data['results'] ?? [];
       }
-    } catch (e) {
-      print('⚠️ Network error: $e – using mock data');
-      return _getMockOrders();
+      return orders;
     }
+    throw Exception('Failed to load available orders');
   }
 
   // ============================================================
   // ACTIVE DELIVERY
-  // Backend may return the delivery/order directly or wrapped.
-  // We normalise to a single Map or null.
   // ============================================================
   static Future<Map<String, dynamic>?> getActiveDelivery() async {
     final token = await _getToken();
-    if (token == null) return null;
+    if (token == null) throw Exception('Not authenticated');
 
     try {
       final response = await http.get(
@@ -283,7 +195,6 @@ class DriverService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data == null) return null;
-        // Unwrap { "delivery": {...} } or { "order": {...} } if present
         if (data is Map) {
           if (data.containsKey('delivery') && data['delivery'] is Map) {
             return Map<String, dynamic>.from(data['delivery']);
@@ -291,14 +202,12 @@ class DriverService {
           if (data.containsKey('order') && data['order'] is Map) {
             return Map<String, dynamic>.from(data['order']);
           }
-          // Plain order object
           if (data.containsKey('id')) {
             return Map<String, dynamic>.from(data);
           }
         }
         return null;
       }
-      // 404 means no active delivery – that's fine
       return null;
     } catch (e) {
       print('Error getting active delivery: $e');
@@ -332,8 +241,7 @@ class DriverService {
   // ============================================================
   // UPDATE DELIVERY STATUS
   // ============================================================
-  static Future<Map<String, dynamic>> updateDeliveryStatus(
-      String deliveryId, String status) async {
+  static Future<Map<String, dynamic>> updateDeliveryStatus(String deliveryId, String status) async {
     final token = await _getToken();
     if (token == null) throw Exception('Not authenticated');
 
