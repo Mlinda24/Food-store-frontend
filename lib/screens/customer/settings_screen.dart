@@ -83,7 +83,7 @@ class SettingsScreen extends StatelessWidget {
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: AppTheme.getCardColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -99,18 +99,23 @@ class SettingsScreen extends StatelessWidget {
         content: Text('Are you sure you want to logout?', style: TextStyle(color: AppTheme.getSecondaryTextColor(context), fontSize: 13)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context), fontSize: 13)),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              // Close the dialog first
+              Navigator.pop(dialogContext);
+              
+              // Show loading indicator
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Logging out...'),
                   duration: Duration(seconds: 1),
                 ),
               );
+              
+              // Perform logout - this will clear tokens and navigate to login
               await authProvider.logout(context: context);
             },
             style: ElevatedButton.styleFrom(

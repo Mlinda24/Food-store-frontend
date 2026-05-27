@@ -18,12 +18,10 @@ class AuthProvider extends ChangeNotifier {
   bool get isRestaurant => _currentUser?.role == UserRole.restaurant;
   bool get isCustomer => _currentUser?.role == UserRole.customer;
 
-  // ✅ Constructor - checks for existing session when app starts
   AuthProvider() {
     checkAuthStatus();
   }
 
-  // ✅ Check if user is already logged in (restores session)
   Future<void> checkAuthStatus() async {
     _isLoading = true;
     notifyListeners();
@@ -31,7 +29,6 @@ class AuthProvider extends ChangeNotifier {
     try {
       final token = await _apiService.getToken();
       if (token != null && token.isNotEmpty) {
-        // Token exists, try to get user info
         _currentUser = await _apiService.getCurrentUser();
         print('✅ Session restored for: ${_currentUser?.name}');
       } else {
@@ -41,7 +38,6 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       print('❌ Session restoration failed: $e');
       _currentUser = null;
-      // Clear invalid tokens
       await _apiService.clearTokens();
     } finally {
       _isLoading = false;
@@ -59,7 +55,6 @@ class AuthProvider extends ChangeNotifier {
       await _apiService.login(username, password);
       _currentUser = await _apiService.getCurrentUser();
 
-      // Load cart after successful login
       if (context != null && _currentUser != null) {
         try {
           await Provider.of<CartProvider>(context, listen: false).loadCart();
@@ -118,7 +113,6 @@ class AuthProvider extends ChangeNotifier {
       await _apiService.clearTokens();
       _currentUser = null;
 
-      // Clear cart after logout
       if (context != null) {
         try {
           await Provider.of<CartProvider>(context, listen: false).clearCart();
@@ -132,16 +126,12 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       
       // ✅ Navigate to login screen after logout
-      if (context != null) {
+      if (context != null && context.mounted) {
         // Use a microtask to ensure the widget tree is ready
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          // Check if the context is still valid and mounted
           if (context.mounted) {
             // Navigate to login and clear all history
-            Navigator.of(context).pushNamedAndRemoveUntil(
-              '/login',
-              (route) => false,
-            );
+            context.go('/login');
           }
         });
       }
@@ -153,10 +143,7 @@ class AuthProvider extends ChangeNotifier {
       // Even if there's an error, try to navigate to login
       if (context != null && context.mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            '/login',
-            (route) => false,
-          );
+          context.go('/login');
         });
       }
     }
@@ -167,7 +154,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Refresh user data
   Future<void> refreshUser() async {
     try {
       _currentUser = await _apiService.getCurrentUser();
