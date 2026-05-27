@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/delivery_request.dart';
+import '../services/driver_service.dart';
+import '../providers/auth_provider.dart';
 
+// Driver Stats Model
 class DriverStats {
   final double todayEarnings;
   final int totalDeliveries;
@@ -17,161 +20,244 @@ class DriverStats {
     required this.activeDeliveries,
     required this.completedToday,
   });
+
+  factory DriverStats.fromApi(Map<String, dynamic> data) {
+    return DriverStats(
+      todayEarnings: double.tryParse(data['today_earnings']?.toString() ?? '0') ?? 0,
+      totalDeliveries: data['total_deliveries'] ?? 0,
+      rating: double.tryParse(data['rating']?.toString() ?? '5') ?? 5,
+      totalEarnings: double.tryParse(data['total_earnings']?.toString() ?? '0') ?? 0,
+      activeDeliveries: 0,
+      completedToday: data['today_deliveries'] ?? 0,
+    );
+  }
 }
 
 class DriverProvider extends ChangeNotifier {
-  bool _isOnline = false;
-  DeliveryRequest? _activeDelivery;
+  bool _isLoading = false;
+  bool _isAvailable = false;
+  String? _error;
+  Map<String, dynamic>? _rawStats;
   List<DeliveryRequest> _availableOrders = [];
-  List<DeliveryRequest> _deliveryHistory = [];
-  DriverStats _stats = DriverStats(
-    todayEarnings: 2450,
-    totalDeliveries: 342,
-    rating: 4.8,
-    totalEarnings: 45800,
-    activeDeliveries: 0,
-    completedToday: 5,
-  );
+  DeliveryRequest? _activeDelivery;
+  List<dynamic> _deliveryHistory = [];
 
-  bool get isOnline => _isOnline;
-  DeliveryRequest? get activeDelivery => _activeDelivery;
+  bool get isLoading => _isLoading;
+  bool get isAvailable => _isAvailable;
+  bool get isOnline => _isAvailable;
+  String? get error => _error;
+  DriverStats? get stats => _rawStats != null ? DriverStats.fromApi(_rawStats!) : null;
   List<DeliveryRequest> get availableOrders => _availableOrders;
-  List<DeliveryRequest> get deliveryHistory => _deliveryHistory;
-  DriverStats get stats => _stats;
+  DeliveryRequest? get activeDelivery => _activeDelivery;
+  List<dynamic> get deliveryHistory => _deliveryHistory;
 
-  DriverProvider() {
-    _loadMockData();
+  double get todayEarnings {
+    return double.tryParse(_rawStats?['today_earnings']?.toString() ?? '0') ?? 0;
   }
 
-  void _loadMockData() {
-    _availableOrders = [
-      DeliveryRequest(
-        id: 'ORD-001',
-        restaurantName: 'Luigi\'s Pizza',
-        restaurantAddress: '123 Main St',
-        customerName: 'John Doe',
-        customerPhone: '0999123456',
-        deliveryAddress: '456 Oak Ave, Apartment 4B',
-        status: 'pending',
-        items: '2 items (Pepperoni Pizza, Garlic Bread)',
-        distance: '1.2 km',
-        earnings: 450,
-        estimatedTime: '12:30 PM',
-      ),
-      DeliveryRequest(
-        id: 'ORD-002',
-        restaurantName: 'Burger King',
-        restaurantAddress: '456 Fast Food Ln',
-        customerName: 'Jane Smith',
-        customerPhone: '0888123456',
-        deliveryAddress: '789 Pine St',
-        status: 'pending',
-        items: '1 item (Whopper Meal)',
-        distance: '0.8 km',
-        earnings: 380,
-        estimatedTime: '1:15 PM',
-      ),
-      DeliveryRequest(
-        id: 'ORD-003',
-        restaurantName: 'Sushi Master',
-        restaurantAddress: '789 Sushi Rd',
-        customerName: 'Mike Johnson',
-        customerPhone: '0999765432',
-        deliveryAddress: '321 Fish Ave',
-        status: 'pending',
-        items: '3 items (California Roll, Miso Soup, Green Tea)',
-        distance: '2.5 km',
-        earnings: 520,
-        estimatedTime: '2:00 PM',
-      ),
-    ];
-
-    _deliveryHistory = [
-      DeliveryRequest(
-        id: 'ORD-004',
-        restaurantName: 'Tasty Bites',
-        restaurantAddress: '111 Food St',
-        customerName: 'Sarah Wilson',
-        customerPhone: '0888123456',
-        deliveryAddress: '222 Home Ave',
-        status: 'delivered',
-        items: '2 items',
-        distance: '1.5 km',
-        earnings: 410,
-        estimatedTime: 'Yesterday, 12:45 PM',
-      ),
-      DeliveryRequest(
-        id: 'ORD-005',
-        restaurantName: 'Flame Grill',
-        restaurantAddress: '333 Grill Rd',
-        customerName: 'Tom Brown',
-        customerPhone: '0999123789',
-        deliveryAddress: '444 Flame Ct',
-        status: 'delivered',
-        items: '3 items',
-        distance: '2.0 km',
-        earnings: 490,
-        estimatedTime: 'Yesterday, 6:30 PM',
-      ),
-    ];
+  int get totalDeliveries {
+    return _rawStats?['total_deliveries'] ?? 0;
   }
 
-  void toggleOnlineStatus(bool status) {
-    _isOnline = status;
+  double get rating {
+    return double.tryParse(_rawStats?['rating']?.toString() ?? '5') ?? 5;
+  }
+
+  /// Load all driver data in parallel
+  Future<void> loadAll() async {
+    _isLoading = true;
+    _error = null;
     notifyListeners();
-    
-    if (_isOnline) {
-      Future.delayed(const Duration(seconds: 5), () {
-        if (_isOnline && _activeDelivery == null && _availableOrders.isNotEmpty) {
-          notifyListeners();
-        }
-      });
-    }
-  }
 
-  void acceptOrder(DeliveryRequest order) {
-    final updatedOrder = order.copyWith(status: 'accepted');
-    _activeDelivery = updatedOrder;
-    _availableOrders.removeWhere((o) => o.id == order.id);
-    _stats = DriverStats(
-      todayEarnings: _stats.todayEarnings,
-      totalDeliveries: _stats.totalDeliveries,
-      rating: _stats.rating,
-      totalEarnings: _stats.totalEarnings,
-      activeDeliveries: _stats.activeDeliveries + 1,
-      completedToday: _stats.completedToday,
-    );
-    notifyListeners();
-  }
+    print('🔄 Loading all driver data...');
 
-  void updateOrderStatus(String newStatus) {
-    if (_activeDelivery != null) {
-      _activeDelivery = _activeDelivery!.copyWith(status: newStatus);
+    try {
+      final results = await Future.wait([
+        DriverService.getEarningsSummary(),
+        DriverService.getAvailableOrders(),
+        DriverService.getActiveDelivery(),
+        DriverService.getDeliveryHistory(),
+      ]);
+
+      print('✅ All data loaded successfully');
+      print('📊 Earnings data: ${results[0]}');
+      print('📦 Available orders raw: ${results[1]}');
+      print('🚚 Active delivery: ${results[2]}');
+      print('📜 Delivery history: ${results[3]}');
+
+      _rawStats = results[0] as Map<String, dynamic>;
       
-      if (newStatus == 'delivered') {
-        _stats = DriverStats(
-          todayEarnings: _stats.todayEarnings + _activeDelivery!.earnings,
-          totalDeliveries: _stats.totalDeliveries + 1,
-          rating: _stats.rating,
-          totalEarnings: _stats.totalEarnings + _activeDelivery!.earnings,
-          activeDeliveries: _stats.activeDeliveries - 1,
-          completedToday: _stats.completedToday + 1,
-        );
-        
-        _deliveryHistory.insert(0, _activeDelivery!);
+      final availableOrdersData = results[1] as List<dynamic>;
+      print('📦 Available orders count from API: ${availableOrdersData.length}');
+      
+      _availableOrders = availableOrdersData
+          .map((order) {
+            print('📦 Processing order: $order');
+            return DeliveryRequest.fromAvailableOrder(order);
+          })
+          .toList();
+      
+      print('📦 Parsed available orders: ${_availableOrders.length}');
+      
+      final activeDeliveryData = results[2] as Map<String, dynamic>?;
+      if (activeDeliveryData != null && activeDeliveryData['has_active_delivery'] == true) {
+        _activeDelivery = DeliveryRequest.fromDelivery(activeDeliveryData);
+        print('🚚 Active delivery found: ${_activeDelivery?.id}');
+      } else if (activeDeliveryData != null && activeDeliveryData.containsKey('order')) {
+        _activeDelivery = DeliveryRequest.fromDelivery(activeDeliveryData);
+        print('🚚 Active delivery found: ${_activeDelivery?.id}');
+      } else {
         _activeDelivery = null;
+        print('🚚 No active delivery');
       }
       
+      _deliveryHistory = results[3] as List<dynamic>;
+      print('📜 Delivery history count: ${_deliveryHistory.length}');
+
+      // Check if driver is online based on profile
+      try {
+        final profile = await DriverService.getProfile();
+        _isAvailable = profile['is_available'] == true || profile['status'] == 'online';
+        print('👤 Driver profile loaded - isAvailable: $_isAvailable');
+      } catch (e) {
+        print('⚠️ Could not load driver profile: $e');
+      }
+
+      _error = null;
+    } catch (e) {
+      _error = e.toString();
+      print('❌ Load all failed: $e');
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  void declineOrder(DeliveryRequest order) {
-    _availableOrders.removeWhere((o) => o.id == order.id);
+  /// Toggle driver online/offline status
+  Future<bool> toggleOnlineStatus(bool isOnline) async {
+    print('🔄 Toggling online status to: $isOnline');
+    try {
+      if (isOnline) {
+        await DriverService.goOnline();
+        print('✅ Driver is now ONLINE');
+      } else {
+        await DriverService.goOffline();
+        print('✅ Driver is now OFFLINE');
+      }
+      _isAvailable = isOnline;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      print('❌ Toggle online failed: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Accept an order by ID
+  Future<bool> acceptOrder(String orderId) async {
+    print('✅ Accepting order: $orderId');
+    try {
+      await DriverService.acceptOrder(orderId);
+      print('✅ Order accepted successfully');
+      await loadAll(); // Refresh all data
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      print('❌ Accept order failed: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Decline an order
+  Future<bool> declineOrder(DeliveryRequest order) async {
+    print('❌ Declining order: ${order.id}');
+    await refreshAvailableOrders();
+    return true;
+  }
+
+  /// Update order status
+  Future<bool> updateOrderStatus(String orderId, String newStatus) async {
+    print('🔄 Updating order $orderId to status: $newStatus');
+    try {
+      await DriverService.updateDeliveryStatus(orderId, newStatus);
+      print('✅ Status updated successfully');
+      await loadAll(); // Refresh all data
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      print('❌ Update status failed: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Update delivery status (alias)
+  Future<bool> updateDeliveryStatus(String deliveryId, String newStatus) async {
+    return updateOrderStatus(deliveryId, newStatus);
+  }
+
+  /// Refresh available orders only
+  Future<void> refreshAvailableOrders() async {
+    print('🔄 Refreshing available orders...');
+    try {
+      final ordersData = await DriverService.getAvailableOrders();
+      print('📦 Orders data received: $ordersData');
+      print('📦 Orders count from API: ${ordersData.length}');
+      
+      _availableOrders = ordersData
+          .map((order) {
+            print('📦 Processing order: ${order['id']} - ${order['restaurant_name']}');
+            return DeliveryRequest.fromAvailableOrder(order);
+          })
+          .toList();
+      
+      print('📦 Parsed orders in provider: ${_availableOrders.length}');
+      notifyListeners();
+    } catch (e) {
+      print('❌ Refresh available orders failed: $e');
+    }
+  }
+
+  /// Refresh active delivery only
+  Future<void> refreshActiveDelivery() async {
+    print('🔄 Refreshing active delivery...');
+    try {
+      final deliveryData = await DriverService.getActiveDelivery();
+      if (deliveryData != null && deliveryData['has_active_delivery'] == true) {
+        _activeDelivery = DeliveryRequest.fromDelivery(deliveryData);
+        print('🚚 Active delivery found: ${_activeDelivery?.id}');
+      } else if (deliveryData != null && deliveryData.containsKey('order')) {
+        _activeDelivery = DeliveryRequest.fromDelivery(deliveryData);
+        print('🚚 Active delivery found: ${_activeDelivery?.id}');
+      } else {
+        _activeDelivery = null;
+        print('🚚 No active delivery');
+      }
+      notifyListeners();
+    } catch (e) {
+      print('❌ Refresh active delivery failed: $e');
+    }
+  }
+
+  /// Clear error message
+  void clearError() {
+    _error = null;
     notifyListeners();
   }
 
-  List<DeliveryRequest> getActiveDeliveries() {
-    return _activeDelivery != null ? [_activeDelivery!] : [];
+  /// Reset all data (used on logout)
+  void reset() {
+    print('🔄 Resetting driver provider...');
+    _isLoading = false;
+    _isAvailable = false;
+    _error = null;
+    _rawStats = null;
+    _availableOrders = [];
+    _activeDelivery = null;
+    _deliveryHistory = [];
+    notifyListeners();
   }
 }

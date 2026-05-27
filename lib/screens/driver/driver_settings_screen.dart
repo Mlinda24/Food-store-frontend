@@ -7,7 +7,7 @@ import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/driver_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../widgets/driver/settings_tile.dart';
+import '../../services/driver_service.dart';
 
 // Model for a Withdrawal Account
 class WithdrawalAccount {
@@ -82,10 +82,17 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     setState(() {});
   }
 
-  void _loadProfileData() {
-    _driverName = 'John Driver';
-    _driverEmail = 'driver@example.com';
-    _driverPhone = '0999123456';
+  Future<void> _loadProfileData() async {
+    try {
+      final profile = await DriverService.getProfile();
+      setState(() {
+        _driverName = profile['user']?['username'] ?? profile['name'] ?? 'Driver';
+        _driverEmail = profile['user']?['email'] ?? '';
+        _driverPhone = profile['user']?['phone'] ?? profile['phone'] ?? '';
+      });
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+    }
   }
 
   void _loadVehicleData() {
@@ -417,16 +424,26 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _driverName = nameController.text;
-                _driverEmail = emailController.text;
-                _driverPhone = phoneController.text;
-              });
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile updated!'), backgroundColor: AppTheme.success),
-              );
+              try {
+                await DriverService.updateProfile({
+                  'name': nameController.text,
+                  'phone': phoneController.text,
+                });
+                setState(() {
+                  _driverName = nameController.text;
+                  _driverEmail = emailController.text;
+                  _driverPhone = phoneController.text;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile updated!'), backgroundColor: AppTheme.success),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.error),
+                );
+              }
             },
             child: const Text('Save'),
           ),
@@ -633,8 +650,8 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                   setState(() {
                     if (isEditing) {
                       account!.holderName = nameController.text;
-                      account!.accountNumber = cleanedNumber;
-                      account!.method = selectedMethod;
+                      account.accountNumber = cleanedNumber;
+                      account.method = selectedMethod;
                     } else {
                       _withdrawalAccounts.add(WithdrawalAccount(
                         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -710,9 +727,12 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   Widget build(BuildContext context) {
     final driverProvider = Provider.of<DriverProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final todayEarnings = driverProvider.stats.todayEarnings;
-    final totalDeliveries = driverProvider.stats.totalDeliveries;
-    final rating = driverProvider.stats.rating;
+    
+    // FIXED: Use null-safe stats access
+    final stats = driverProvider.stats;
+    final todayEarnings = stats?.todayEarnings ?? 0;
+    final totalDeliveries = stats?.totalDeliveries ?? 0;
+    final rating = stats?.rating ?? 5.0;
     
     final isDark = themeProvider.isDarkMode;
     final backgroundColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
@@ -898,7 +918,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                 _buildDivider(),
                 _buildStatItem(Icons.delivery_dining, '$totalDeliveries', 'Deliveries'),
                 _buildDivider(),
-                _buildStatItem(Icons.star, '$rating ★', 'Rating'),
+                _buildStatItem(Icons.star, '${rating.toStringAsFixed(1)} ★', 'Rating'),
               ],
             ),
           ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/driver_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -8,7 +7,6 @@ import '../../providers/theme_provider.dart';
 import '../../models/delivery_request.dart';
 import '../../widgets/driver/stat_card.dart';
 import '../../widgets/driver/schedule_item.dart';
-import '../../widgets/driver/earnings_item.dart';
 import '../../widgets/driver/status_chip.dart';
 import '../../widgets/driver/progress_timeline.dart';
 import '../../widgets/driver/info_section.dart';
@@ -48,10 +46,10 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   void _checkForIncomingRequests() {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
-      
-      if (driverProvider.isOnline && 
-          driverProvider.activeDelivery == null && 
+      final driverProvider =
+          Provider.of<DriverProvider>(context, listen: false);
+      if (driverProvider.isOnline &&
+          driverProvider.activeDelivery == null &&
           driverProvider.availableOrders.isNotEmpty) {
         _showNewRequestDialog();
       }
@@ -62,18 +60,20 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   void _showNewRequestDialog() {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      final driverProvider =
+          Provider.of<DriverProvider>(context, listen: false);
       if (driverProvider.availableOrders.isEmpty) return;
-      
+
       final order = driverProvider.availableOrders.first;
-      
+
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => NewRequestDialog(
           request: order,
-          onAccept: () {
-            driverProvider.acceptOrder(order);
+          onAccept: () async {
+            await driverProvider.acceptOrder(order.id);
+            if (!mounted) return;
             Navigator.pop(context);
             _showSnackBar('Order accepted! Head to the restaurant.');
             setState(() {
@@ -86,8 +86,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             Navigator.pop(context);
             _showSnackBar('Order declined', isError: true);
             Future.delayed(const Duration(seconds: 2), () {
-              if (driverProvider.isOnline && 
-                  driverProvider.activeDelivery == null && 
+              if (driverProvider.isOnline &&
+                  driverProvider.activeDelivery == null &&
                   driverProvider.availableOrders.isNotEmpty) {
                 _showNewRequestDialog();
               }
@@ -110,11 +110,16 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  void _updateOrderStatus(String newStatus) {
+  Future<void> _updateOrderStatus(String newStatus) async {
     try {
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
-      driverProvider.updateOrderStatus(newStatus);
-      
+      final driverProvider =
+          Provider.of<DriverProvider>(context, listen: false);
+      final activeDelivery = driverProvider.activeDelivery;
+      if (activeDelivery != null) {
+        await driverProvider.updateOrderStatus(activeDelivery.id, newStatus);
+      }
+
+      if (!mounted) return;
       if (newStatus == 'delivered') {
         _showSnackBar('Delivery completed! Great job! 🎉');
         setState(() {
@@ -130,15 +135,18 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   String _getStatusDisplay(String status) {
     switch (status) {
-      case 'accepted': return 'Accepted';
-      case 'picked_up': return 'Picked Up';
-      case 'delivered': return 'Delivered';
-      default: return status;
+      case 'accepted':
+        return 'Accepted';
+      case 'picked_up':
+        return 'Picked Up';
+      case 'delivered':
+        return 'Delivered';
+      default:
+        return status;
     }
   }
 
   void _makePhoneCall(String phoneNumber) {
-    // Using url_launcher package would be ideal
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Calling $phoneNumber...'),
@@ -156,117 +164,26 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  Widget _buildCustomerContactSection(DeliveryRequest activeDelivery) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
-    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryRed.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryRed.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryRed.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.contact_phone, size: 20, color: AppTheme.primaryRed),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Customer Contact',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => _makePhoneCall(activeDelivery.customerPhone ?? ''),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.phone, size: 18, color: Colors.green),
-                        const SizedBox(width: 8),
-                        Text(
-                          activeDelivery.customerPhone ?? 'No phone',
-                          style: const TextStyle(fontSize: 12, color: Colors.green),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: InkWell(
-                  onTap: () => _sendSms(activeDelivery.customerPhone ?? ''),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.message, size: 18, color: Colors.blue),
-                        const SizedBox(width: 8),
-                        const Text('SMS', style: TextStyle(fontSize: 12, color: Colors.blue)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final driverProvider = Provider.of<DriverProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final driverName = authProvider.currentUser?.name ?? 'John Driver';
+    final driverName = authProvider.currentUser?.name ?? 'Driver';
     final stats = driverProvider.stats;
     final activeDelivery = driverProvider.activeDelivery;
-    
-    final backgroundColor = themeProvider.isDarkMode 
-        ? AppTheme.darkBackground 
+
+    final backgroundColor = themeProvider.isDarkMode
+        ? AppTheme.darkBackground
         : AppTheme.lightBackground;
-    final textColor = themeProvider.isDarkMode 
-        ? AppTheme.darkPrimaryText 
+    final textColor = themeProvider.isDarkMode
+        ? AppTheme.darkPrimaryText
         : AppTheme.lightPrimaryText;
-    final cardColor = themeProvider.isDarkMode 
-        ? AppTheme.darkCardBackground 
+    final cardColor = themeProvider.isDarkMode
+        ? AppTheme.darkCardBackground
         : AppTheme.lightCardBackground;
-    final secondaryTextColor = themeProvider.isDarkMode 
-        ? AppTheme.darkSecondaryText 
+    final secondaryTextColor = themeProvider.isDarkMode
+        ? AppTheme.darkSecondaryText
         : AppTheme.lightSecondaryText;
 
     return Scaffold(
@@ -280,18 +197,16 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             Text(
               driverName,
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textColor),
             ),
             const SizedBox(height: 2),
             Text(
-              _selectedIndex == 0 ? 'Driver Dashboard' : _navItems[_selectedIndex]['label'] as String,
-              style: TextStyle(
-                fontSize: 12,
-                color: secondaryTextColor,
-              ),
+              _selectedIndex == 0
+                  ? 'Driver Dashboard'
+                  : _navItems[_selectedIndex]['label'] as String,
+              style: TextStyle(fontSize: 12, color: secondaryTextColor),
             ),
           ],
         ),
@@ -300,12 +215,14 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: driverProvider.isOnline 
-                  ? AppTheme.success.withOpacity(0.2) 
+              color: driverProvider.isOnline
+                  ? AppTheme.success.withOpacity(0.2)
                   : AppTheme.error.withOpacity(0.2),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                color: driverProvider.isOnline
+                    ? AppTheme.success
+                    : AppTheme.error,
                 width: 1,
               ),
             ),
@@ -316,7 +233,9 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                    color: driverProvider.isOnline
+                        ? AppTheme.success
+                        : AppTheme.error,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -326,17 +245,20 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: driverProvider.isOnline ? AppTheme.success : AppTheme.error,
+                    color: driverProvider.isOnline
+                        ? AppTheme.success
+                        : AppTheme.error,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Switch(
                   value: driverProvider.isOnline,
-                  onChanged: (value) {
-                    driverProvider.toggleOnlineStatus(value);
-                    _showSnackBar(
-                      value ? 'You are now online' : 'You are now offline',
-                    );
+                  onChanged: (value) async {
+                    await driverProvider.toggleOnlineStatus(value);
+                    if (!mounted) return;
+                    _showSnackBar(value
+                        ? 'You are now online'
+                        : 'You are now offline');
                     if (value) {
                       Future.delayed(const Duration(seconds: 3), () {
                         _checkForIncomingRequests();
@@ -353,7 +275,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         ],
       ),
       body: _selectedIndex == 0
-          ? _buildDashboardContent(activeDelivery, stats, themeProvider)
+          ? _buildDashboardContent(activeDelivery, driverProvider, themeProvider)
           : _buildSelectedScreen(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -376,139 +298,296 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  Widget _buildDashboardContent(DeliveryRequest? activeDelivery, DriverStats stats, ThemeProvider themeProvider) {
+  Widget _buildDashboardContent(
+    DeliveryRequest? activeDelivery,
+    DriverProvider driverProvider,
+    ThemeProvider themeProvider,
+  ) {
     final isDark = themeProvider.isDarkMode;
-    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          if (activeDelivery != null && _showActiveDeliveryFullView)
-            _buildActiveDeliveryExpanded(activeDelivery),
-          
-          if (activeDelivery != null && !_showActiveDeliveryFullView)
-            _buildActiveDeliveryBanner(activeDelivery),
-          
-          Row(
-            children: [
-              Expanded(
-                child: StatCard(
-                  title: 'Today\'s Earnings',
-                  value: 'MK${stats.todayEarnings.toInt()}',
-                  icon: Icons.attach_money,
-                  color: AppTheme.primaryRed,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  title: 'Total Deliveries',
-                  value: '${stats.totalDeliveries}',
-                  icon: Icons.delivery_dining,
-                  color: AppTheme.success,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          Row(
-            children: [
-              Expanded(
-                child: StatCard(
-                  title: 'Rating',
-                  value: '${stats.rating} ★',
-                  icon: Icons.star,
-                  color: AppTheme.yellow,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  title: 'Active Orders',
-                  value: activeDelivery != null ? '1' : '0',
-                  icon: Icons.shopping_bag,
-                  color: AppTheme.warning,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: AppTheme.getCardGlowGradient(context),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+    final textColor =
+        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final stats = driverProvider.stats;
+
+    // Show loading spinner on first load
+    if (driverProvider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Show error with retry button
+    if (driverProvider.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.wifi_off, size: 48, color: AppTheme.error),
+            const SizedBox(height: 12),
+            Text(
+              driverProvider.error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: secondaryTextColor),
             ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => driverProvider.loadAll(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryRed),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => driverProvider.loadAll(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Active delivery banner / expanded view
+            if (activeDelivery != null && _showActiveDeliveryFullView)
+              _buildActiveDeliveryExpanded(activeDelivery),
+
+            if (activeDelivery != null && !_showActiveDeliveryFullView)
+              _buildActiveDeliveryBanner(activeDelivery),
+
+            // Stats row 1
+            Row(
+              children: [
+                Expanded(
+                  child: StatCard(
+                    title: 'Today\'s Earnings',
+                    value: 'MK${stats?.todayEarnings.toInt() ?? 0}',
+                    icon: Icons.attach_money,
+                    color: AppTheme.primaryRed,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: StatCard(
+                    title: 'Total Deliveries',
+                    value: '${stats?.totalDeliveries ?? 0}',
+                    icon: Icons.delivery_dining,
+                    color: AppTheme.success,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Stats row 2
+            Row(
+              children: [
+                Expanded(
+                  child: StatCard(
+                    title: 'Rating',
+                    value: stats?.rating != null && stats!.rating > 0
+                        ? '${stats.rating.toStringAsFixed(1)} ★'
+                        : '— ★',
+                    icon: Icons.star,
+                    color: AppTheme.yellow,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: StatCard(
+                    title: 'Active Orders',
+                    value: activeDelivery != null ? '1' : '0',
+                    icon: Icons.shopping_bag,
+                    color: AppTheme.warning,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Today's Schedule
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: AppTheme.getCardGlowGradient(context),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: AppTheme.deepCrimson.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Today\'s Schedule',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: textColor),
+                      ),
+                      Icon(Icons.refresh,
+                          size: 16, color: secondaryTextColor),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Active delivery in schedule
+                  if (activeDelivery != null)
+                    ScheduleItem(
+                      orderId: activeDelivery.id,
+                      restaurant: activeDelivery.restaurantName,
+                      customer: activeDelivery.customerName,
+                      time: activeDelivery.estimatedTime,
+                      status: activeDelivery.status == 'accepted'
+                          ? 'Ready for Pickup'
+                          : activeDelivery.status == 'picked_up'
+                              ? 'Out for Delivery'
+                              : 'In Progress',
+                      onTap: () {
+                        setState(() {
+                          _showActiveDeliveryFullView = true;
+                        });
+                      },
+                    ),
+
+                  // Available orders in schedule
+                  ...driverProvider.availableOrders
+                      .take(3)
+                      .map((order) => ScheduleItem(
+                            orderId: order.id,
+                            restaurant: order.restaurantName,
+                            customer: order.customerName,
+                            time: order.estimatedTime,
+                            status: 'Pending',
+                            onTap: () {
+                              setState(() {
+                                _selectedIndex = 1;
+                              });
+                            },
+                          )),
+
+                  // Empty state
+                  if (activeDelivery == null &&
+                      driverProvider.availableOrders.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: Text(
+                          driverProvider.isOnline
+                              ? 'No orders right now. Hang tight!'
+                              : 'Go online to start receiving orders.',
+                          style: TextStyle(color: secondaryTextColor),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Recent Earnings
+            Text(
+              'Recent Earnings',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textColor),
+            ),
+            const SizedBox(height: 12),
+
+            if (driverProvider.deliveryHistory.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'No deliveries yet.',
+                    style: TextStyle(color: secondaryTextColor),
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: driverProvider.deliveryHistory.length > 5
+                    ? 5
+                    : driverProvider.deliveryHistory.length,
+                itemBuilder: (context, index) {
+                  final delivery = driverProvider.deliveryHistory[index];
+                  return _buildEarningsRow(delivery, isDark);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEarningsRow(dynamic delivery, bool isDark) {
+    String restaurantName;
+    String customerName;
+    double earnings;
+
+    if (delivery is DeliveryRequest) {
+      restaurantName = delivery.restaurantName;
+      customerName = delivery.customerName;
+      earnings = delivery.earnings;
+    } else {
+      restaurantName = delivery['restaurant_name'] ?? 'Restaurant';
+      customerName = delivery['customer_name'] ?? 'Customer';
+      earnings = double.tryParse(delivery['total_earning']?.toString() ?? '0') ?? 0;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppTheme.darkCardBackground
+            : AppTheme.lightCardBackground,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.success.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.check_circle,
+                color: AppTheme.success, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Today\'s Schedule',
+                  restaurantName,
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
                 ),
-                const SizedBox(height: 16),
-                if (activeDelivery != null)
-                  ScheduleItem(
-                    orderId: activeDelivery.id,
-                    restaurant: activeDelivery.restaurantName,
-                    customer: activeDelivery.customerName,
-                    time: activeDelivery.estimatedTime,
-                    status: activeDelivery.status == 'accepted' 
-                        ? 'Ready for Pickup' 
-                        : activeDelivery.status == 'picked_up'
-                        ? 'Out for Delivery'
-                        : 'In Progress',
-                    onTap: () {
-                      setState(() {
-                        _showActiveDeliveryFullView = true;
-                      });
-                    },
-                  ),
-                ScheduleItem(
-                  orderId: 'ORD-002',
-                  restaurant: 'Burger King',
-                  customer: 'Jane Smith',
-                  time: '1:15 PM',
-                  status: 'Preparing',
-                  onTap: () {},
-                ),
-                ScheduleItem(
-                  orderId: 'ORD-003',
-                  restaurant: 'Sushi Master',
-                  customer: 'Mike Johnson',
-                  time: '2:00 PM',
-                  status: 'Scheduled',
-                  onTap: () {},
+                Text(
+                  customerName,
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          
           Text(
-            'Recent Earnings',
-            style: TextStyle(
-              fontSize: 18,
+            'MK${earnings.toInt()}',
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
-              color: textColor,
+              color: AppTheme.success,
+              fontSize: 15,
             ),
-          ),
-          const SizedBox(height: 12),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 3,
-            itemBuilder: (context, index) {
-              return EarningsItem(index: index);
-            },
           ),
         ],
       ),
@@ -537,29 +616,27 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.delivery_dining, color: Colors.white, size: 28),
+              child: const Icon(Icons.delivery_dining,
+                  color: Colors.white, size: 28),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Active Delivery',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
+                  const Text('Active Delivery',
+                      style:
+                          TextStyle(color: Colors.white70, fontSize: 12)),
                   Text(
                     'Order #${delivery.id}',
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16),
                   ),
-                  Text(
-                    delivery.restaurantName,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
+                  Text(delivery.restaurantName,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 12)),
                 ],
               ),
             ),
@@ -569,7 +646,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+              child: const Icon(Icons.arrow_forward,
+                  color: Colors.white, size: 20),
             ),
           ],
         ),
@@ -578,17 +656,22 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   }
 
   Widget _buildActiveDeliveryExpanded(DeliveryRequest activeDelivery) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    final themeProvider =
+        Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
-    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    
+    final textColor =
+        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+        border:
+            Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -598,11 +681,10 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             children: [
               Text(
                 'Order #${activeDelivery.id}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryText,
-                ),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor),
               ),
               Row(
                 children: [
@@ -623,18 +705,52 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           ProgressTimeline(status: activeDelivery.status),
           const SizedBox(height: 24),
-          
-          InfoSection(
-            icon: Icons.restaurant,
-            title: 'Restaurant',
-            subtitle: activeDelivery.restaurantName,
-            address: activeDelivery.restaurantAddress,
+
+          // Restaurant info
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppTheme.darkSecondaryBackground
+                  : AppTheme.lightSecondaryBackground,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: AppTheme.primaryRed.withOpacity(0.1),
+                  ),
+                  child: const Icon(Icons.restaurant,
+                      size: 28, color: AppTheme.primaryRed),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(activeDelivery.restaurantName,
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: textColor)),
+                      Text(activeDelivery.restaurantAddress,
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: secondaryTextColor)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
-          
+
           InfoSection(
             icon: Icons.home,
             title: 'Delivery Address',
@@ -642,41 +758,109 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             address: activeDelivery.deliveryAddress,
           ),
           const SizedBox(height: 16),
-          
-          // Customer Contact Section
-          _buildCustomerContactSection(activeDelivery),
-          
+
+          // Customer contact
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.secondaryBackground,
+              color: AppTheme.primaryRed.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: AppTheme.primaryRed.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.fastfood, size: 20, color: AppTheme.mutedText),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    activeDelivery.items,
-                    style: const TextStyle(color: AppTheme.secondaryText),
+                  child: InkWell(
+                    onTap: () =>
+                        _makePhoneCall(activeDelivery.customerPhone ?? ''),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.phone,
+                              size: 18, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text(
+                            activeDelivery.customerPhone ?? 'No phone',
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.green),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                const Spacer(),
-                const Icon(Icons.attach_money, size: 20, color: AppTheme.primaryRed),
-                const SizedBox(width: 4),
-                Text(
-                  'MK${activeDelivery.earnings.toInt()}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryRed,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: () =>
+                        _sendSms(activeDelivery.customerPhone ?? ''),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.message,
+                              size: 18, color: Colors.blue),
+                          SizedBox(width: 8),
+                          Text('SMS',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.blue)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 16),
+
+          // Items + earnings
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppTheme.darkSecondaryBackground
+                  : AppTheme.lightSecondaryBackground,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.fastfood,
+                    size: 20,
+                    color: isDark
+                        ? AppTheme.darkMutedText
+                        : AppTheme.lightMutedText),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(activeDelivery.items.isNotEmpty ? activeDelivery.items : 'Items will be shown here',
+                      style: TextStyle(color: secondaryTextColor)),
+                ),
+                const Icon(Icons.attach_money,
+                    size: 20, color: AppTheme.primaryRed),
+                const SizedBox(width: 4),
+                Text(
+                  'MK${activeDelivery.earnings.toInt()}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryRed),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
-          
+
           if (activeDelivery.status != 'delivered')
             SizedBox(
               width: double.infinity,
@@ -701,16 +885,12 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   backgroundColor: AppTheme.primaryRed,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
+                      borderRadius: BorderRadius.circular(30)),
                 ),
-                child: const Text(
-                  'Update Delivery Status',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                child: const Text('Update Delivery Status',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
               ),
             )
           else
@@ -728,8 +908,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   backgroundColor: AppTheme.success,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
+                      borderRadius: BorderRadius.circular(30)),
                 ),
               ),
             ),

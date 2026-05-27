@@ -13,13 +13,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -27,32 +27,52 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
       );
       return;
     }
 
-    final success = await authProvider.login(
-      _emailController.text,
-      _passwordController.text,
-    );
+    print('🔐 Attempting login with username: $username');
+    final success = await authProvider.login(username, password);
 
     if (success && mounted) {
       final user = authProvider.currentUser;
+      print('✅ Login successful! User role: ${user?.role}');
+      
       if (user != null) {
         if (user.role == UserRole.admin) {
+          print('➡️ Navigating to admin dashboard');
           context.go('/admin');
         } else if (user.role == UserRole.driver) {
+          print('➡️ Navigating to driver dashboard');
           context.go('/driver');
         } else if (user.role == UserRole.restaurant) {
+          print('➡️ Navigating to restaurant dashboard');
+          context.go('/restaurant');
+        } else {
+          print('➡️ Navigating to customer home');
+          context.go('/home');
+        }
+      } else {
+        print('⚠️ User object is null after successful login!');
+        // Fallback - try to determine role from username
+        if (username.toLowerCase() == 'driver') {
+          context.go('/driver');
+        } else if (username.toLowerCase() == 'admin') {
+          context.go('/admin');
+        } else if (username.toLowerCase() == 'restaurant') {
           context.go('/restaurant');
         } else {
           context.go('/home');
         }
       }
     } else if (mounted) {
+      print('❌ Login failed: ${authProvider.error}');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(authProvider.error ?? 'Login failed')),
       );
@@ -62,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.mainBackground, // #0F0A0A
+      backgroundColor: AppTheme.mainBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -75,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 100,
                 width: 100,
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryButtonGradient, // #FF2E2E → #B11226
+                  gradient: AppTheme.primaryButtonGradient,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -95,31 +115,31 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(
                 'Welcome Back!',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryText, // #FFFFFF
-                ),
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryText,
+                    ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'Sign in to continue to Foodie Express',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.secondaryText, // #C9C9C9
-                ),
+                      color: AppTheme.secondaryText,
+                    ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
-              // Email Field
+              // Username Field
               TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(color: AppTheme.primaryText), // #FFFFFF
+                controller: _usernameController,
+                keyboardType: TextInputType.text,
+                style: const TextStyle(color: AppTheme.primaryText),
                 decoration: InputDecoration(
-                  labelText: 'Email',
-                  labelStyle: const TextStyle(color: AppTheme.secondaryText), // #C9C9C9
-                  prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.mutedText), // #8A8A8A
+                  labelText: 'Username',
+                  labelStyle: const TextStyle(color: AppTheme.secondaryText),
+                  prefixIcon: const Icon(Icons.person_outline, color: AppTheme.mutedText),
                   filled: true,
-                  fillColor: AppTheme.secondaryBackground, // #1A0D0D
+                  fillColor: AppTheme.secondaryBackground,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -130,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2), // #FF2E2E
+                    borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2),
                   ),
                 ),
               ),
@@ -139,15 +159,15 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
-                style: const TextStyle(color: AppTheme.primaryText), // #FFFFFF
+                style: const TextStyle(color: AppTheme.primaryText),
                 decoration: InputDecoration(
                   labelText: 'Password',
-                  labelStyle: const TextStyle(color: AppTheme.secondaryText), // #C9C9C9
-                  prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.mutedText), // #8A8A8A
+                  labelStyle: const TextStyle(color: AppTheme.secondaryText),
+                  prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.mutedText),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: AppTheme.mutedText, // #8A8A8A
+                      color: AppTheme.mutedText,
                     ),
                     onPressed: () {
                       setState(() {
@@ -156,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   filled: true,
-                  fillColor: AppTheme.secondaryBackground, // #1A0D0D
+                  fillColor: AppTheme.secondaryBackground,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -167,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2), // #FF2E2E
+                    borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2),
                   ),
                 ),
               ),
@@ -176,11 +196,16 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    // TODO: Implement forgot password
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Forgot password feature coming soon!')),
+                    );
+                  },
                   child: Text(
                     'Forgot Password?',
                     style: TextStyle(
-                      color: AppTheme.primaryRed, // #FF2E2E
+                      color: AppTheme.primaryRed,
                     ),
                   ),
                 ),
@@ -189,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
               // Login Button
               Container(
                 decoration: BoxDecoration(
-                  gradient: AppTheme.primaryButtonGradient, // #FF2E2E → #B11226
+                  gradient: AppTheme.primaryButtonGradient,
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: ElevatedButton(
@@ -228,10 +253,10 @@ class _LoginScreenState extends State<LoginScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: AppTheme.cardGlowGradient, // #2A0F0F → #7A0C18
+                  gradient: AppTheme.cardGlowGradient,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppTheme.deepCrimson.withOpacity(0.3), // #B11226
+                    color: AppTheme.deepCrimson.withOpacity(0.3),
                   ),
                 ),
                 child: Column(
@@ -240,42 +265,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       'Demo Credentials:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText, // #FFFFFF
+                        color: AppTheme.primaryText,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Customer: customer@example.com',
-                      style: TextStyle(
-                        color: AppTheme.secondaryText, // #C9C9C9
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      'Admin: admin@example.com',
-                      style: TextStyle(
-                        color: AppTheme.secondaryText, // #C9C9C9
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      'Restaurant: restaurant@example.com',
-                      style: TextStyle(
-                        color: AppTheme.secondaryText, // #C9C9C9
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      'Driver: driver@example.com',
-                      style: TextStyle(
-                        color: AppTheme.secondaryText, // #C9C9C9
-                        fontSize: 12,
-                      ),
-                    ),
+                    _buildDemoCredential('Customer', 'customer'),
+                    _buildDemoCredential('Admin', 'admin'),
+                    _buildDemoCredential('Restaurant', 'restaurant'),
+                    _buildDemoCredential('Driver', 'driver'),
+                    const SizedBox(height: 4),
                     const Text(
-                      'Password: any',
+                      'Password for all: password123',
                       style: TextStyle(
-                        color: AppTheme.yellow, // #FACC15
+                        color: AppTheme.yellow,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -291,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     "Don't have an account? ",
                     style: TextStyle(
-                      color: AppTheme.secondaryText, // #C9C9C9
+                      color: AppTheme.secondaryText,
                     ),
                   ),
                   TextButton(
@@ -301,7 +303,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       'Sign Up',
                       style: TextStyle(
-                        color: AppTheme.primaryRed, // #FF2E2E
+                        color: AppTheme.primaryRed,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -311,6 +313,32 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDemoCredential(String role, String username) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$role: ',
+            style: const TextStyle(
+              color: AppTheme.secondaryText,
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            username,
+            style: const TextStyle(
+              color: AppTheme.primaryRed,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

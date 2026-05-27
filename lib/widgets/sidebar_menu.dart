@@ -266,7 +266,7 @@ class _SidebarMenuState extends State<SidebarMenu> with SingleTickerProviderStat
                                 ),
                               ),
                             );
-                          }).toList(),
+                          }),
                           const Divider(
                             height: 1,
                             color: AppTheme.deepCrimson,

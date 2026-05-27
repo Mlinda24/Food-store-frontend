@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../models/models.dart';
 import '../../widgets/sidebar_menu.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -14,7 +13,7 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int _selectedIndex = 0;
+  final int _selectedIndex = 0;
   late AdminStats _stats;
   
   final List<Widget> _screens = [

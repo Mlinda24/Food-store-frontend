@@ -19,7 +19,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedCategory = 'All';
   final TextEditingController _searchController = TextEditingController();
-  int _selectedIndex = 0;
+  final int _selectedIndex = 0;
 
   final List<String> _categories = [
     'All',

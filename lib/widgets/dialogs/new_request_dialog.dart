@@ -33,7 +33,6 @@ class NewRequestDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -65,7 +64,6 @@ class NewRequestDialog extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             
-            // Order Details
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -88,7 +86,7 @@ class NewRequestDialog extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          request.items,
+                          request.items.isNotEmpty ? request.items : 'Items will be shown',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.secondaryText,
@@ -103,7 +101,7 @@ class NewRequestDialog extends StatelessWidget {
                       const Icon(Icons.timer, size: 16, color: AppTheme.mutedText),
                       const SizedBox(width: 8),
                       Text(
-                        request.estimatedTime,
+                        '${request.estimatedTime} min',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.secondaryText,
@@ -127,7 +125,6 @@ class NewRequestDialog extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             
-            // Action Buttons
             Row(
               children: [
                 Expanded(
@@ -178,7 +175,7 @@ class NewRequestDialog extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            text,
+            text.isNotEmpty ? text : 'Not provided',
             style: TextStyle(
               fontSize: 13,
               color: AppTheme.primaryText,

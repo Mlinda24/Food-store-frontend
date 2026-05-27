@@ -5,7 +5,7 @@ class ScheduleItem extends StatelessWidget {
   final String orderId;
   final String restaurant;
   final String customer;
-  final String time;
+  final int time;
   final String status;
   final VoidCallback? onTap;
 
@@ -64,7 +64,7 @@ class ScheduleItem extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    time,
+                    '${time.toString()} min',
                     style: TextStyle(
                       fontSize: 10,
                       color: AppTheme.mutedText,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 
 class CartProvider extends ChangeNotifier {
-  List<CartItem> _items = [];
+  final List<CartItem> _items = [];
   String? _restaurantId;
   String? _restaurantName;
 
