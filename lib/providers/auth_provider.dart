@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/models.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
@@ -125,13 +126,11 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       
-      // ✅ Navigate to login screen after logout
+      // ✅ Navigate to login screen after logout using go_router
       if (context != null && context.mounted) {
-        // Use a microtask to ensure the widget tree is ready
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
-            // Navigate to login and clear all history
-            context.go('/login');
+            GoRouter.of(context).go('/login');
           }
         });
       }
@@ -143,7 +142,9 @@ class AuthProvider extends ChangeNotifier {
       // Even if there's an error, try to navigate to login
       if (context != null && context.mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          context.go('/login');
+          if (context.mounted) {
+            GoRouter.of(context).go('/login');
+          }
         });
       }
     }
