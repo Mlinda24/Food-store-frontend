@@ -636,23 +636,43 @@ class ApiService {
       headers: await getHeaders(),
     );
 
+    print('Get restaurant stats response: ${response.statusCode}');
+
     if (response.statusCode == 200) {
       final dynamic data = await decodeResponse(response);
       if (data is Map<String, dynamic>) {
         return data;
       }
       return {
-        'todayEarnings': 0,
+        'walletBalance': 0.0,
+        'totalEarned': 0.0,
+        'totalWithdrawn': 0.0,
+        'todayEarnings': 0.0,
         'todayOrders': 0,
-        'monthlyEarnings': 0,
+        'monthlyEarnings': 0.0,
         'monthlyOrders': 0,
-        'totalEarnings': 0,
+        'totalEarnings': 0.0,
         'totalOrders': 0,
         'activeOrders': 0,
-        'averageRating': 0,
+        'averageRating': 0.0,
       };
     } else {
       return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> getRestaurantWalletBalance() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/restaurants/wallet_balance/'),
+      headers: await getHeaders(),
+    );
+
+    print('Get wallet balance response: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to get wallet balance');
     }
   }
 
@@ -1151,7 +1171,78 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 9: NOTIFICATION ENDPOINTS
+  // GROUP 9: WITHDRAWAL & WALLET ENDPOINTS
+  // ============================================
+
+  Future<Map<String, dynamic>> requestWithdrawal({
+    required double amount,
+    required String phoneNumber,
+    required String provider,
+  }) async {
+    print('💰 Requesting withdrawal:');
+    print('   Amount: MK$amount');
+    print('   Phone: $phoneNumber');
+    print('   Provider: $provider');
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/restaurants/withdraw/'),
+      headers: await getHeaders(),
+      body: json.encode({
+        'amount': amount.toString(),
+        'phone_number': phoneNumber,
+        'provider': provider,
+      }),
+    );
+
+    print('Withdrawal response status: ${response.statusCode}');
+    print('Withdrawal response body: ${response.body}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      Map<String, dynamic> error = {};
+      try {
+        error = json.decode(response.body);
+      } catch (_) {}
+      throw Exception(
+          error['error'] ?? 'Withdrawal failed: ${response.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getWalletBalance() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/restaurants/wallet_balance/'),
+      headers: await getHeaders(),
+    );
+
+    print('Get wallet balance response: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else if (response.statusCode == 404) {
+      return {'balance': 0.0, 'total_earned': 0.0, 'total_withdrawn': 0.0};
+    } else {
+      throw Exception('Failed to get wallet balance');
+    }
+  }
+
+  Future<Map<String, dynamic>> getWalletTransactions() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/restaurants/wallet/'),
+      headers: await getHeaders(),
+    );
+
+    print('Get wallet transactions response: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to get wallet transactions');
+    }
+  }
+
+  // ============================================
+  // GROUP 10: NOTIFICATION ENDPOINTS
   // ============================================
 
   Future<List<dynamic>> getNotifications() async {
@@ -1236,7 +1327,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 10: UTILITY METHODS
+  // GROUP 11: UTILITY METHODS
   // ============================================
 
   String getImageUrl(String? imagePath) {

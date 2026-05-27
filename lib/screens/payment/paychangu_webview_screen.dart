@@ -21,9 +21,8 @@ class PaychanguWebViewScreen extends StatefulWidget {
 class _PaychanguWebViewScreenState extends State<PaychanguWebViewScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
-  String _statusMessage = 'Loading payment page...';
-
-  static const String _statusPath = '/payment/status/';
+  bool _isReturning = false;
+  String? _error;
 
   @override
   void initState() {
@@ -34,44 +33,93 @@ class _PaychanguWebViewScreenState extends State<PaychanguWebViewScreen> {
   void _initWebView() {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000))
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageStarted: (url) {
+          onPageStarted: (String url) {
             setState(() {
               _isLoading = true;
-              _statusMessage = 'Loading...';
+              _error = null;
             });
-            _handleUrlChange(url);
+            print('🌐 WebView page started: $url');
+            _checkForPaymentCompletion(url);
           },
-          onPageFinished: (url) {
-            setState(() => _isLoading = false);
-          },
-          onWebResourceError: (error) {
+          onPageFinished: (String url) {
             setState(() {
               _isLoading = false;
-              _statusMessage = 'Error loading page';
             });
+            print('🌐 WebView page finished: $url');
+            _checkForPaymentCompletion(url);
+          },
+          onWebResourceError: (WebResourceError error) {
+            setState(() {
+              _error = error.description;
+              _isLoading = false;
+            });
+            print('❌ WebView error: ${error.description}');
+          },
+          onNavigationRequest: (NavigationRequest request) {
+            print('🔗 Navigation request: ${request.url}');
+
+            // Check if this is a return/callback URL
+            if (_shouldCloseWebView(request.url)) {
+              return NavigationDecision.prevent;
+            }
+
+            return NavigationDecision.navigate;
           },
         ),
       )
       ..loadRequest(Uri.parse(widget.checkoutUrl));
   }
 
-  void _handleUrlChange(String url) {
-    final uri = Uri.parse(url);
+  bool _shouldCloseWebView(String url) {
+    final lowerUrl = url.toLowerCase();
 
-    if (uri.path.contains(_statusPath)) {
-      final cancelled = uri.queryParameters['cancelled'] == 'true';
-
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          Navigator.of(context).pop({
-            'status': cancelled ? 'cancelled' : 'submitted',
-            'reference': widget.reference,
-          });
-        }
-      });
+    // Check for success indicators
+    if (lowerUrl.contains('success') ||
+        lowerUrl.contains('complete') ||
+        (lowerUrl.contains('/payment/status/') &&
+            !lowerUrl.contains('cancelled')) ||
+        lowerUrl.contains('reference=${widget.reference}') &&
+            !lowerUrl.contains('cancelled')) {
+      _returnToApp(success: true, cancelled: false);
+      return true;
     }
+
+    // Check for cancel indicators
+    if (lowerUrl.contains('cancel') ||
+        lowerUrl.contains('cancelled') ||
+        lowerUrl.contains('error') ||
+        lowerUrl.contains('failed')) {
+      _returnToApp(success: false, cancelled: true);
+      return true;
+    }
+
+    return false;
+  }
+
+  void _checkForPaymentCompletion(String url) {
+    if (_isReturning) return;
+    _shouldCloseWebView(url);
+  }
+
+  void _returnToApp({required bool success, required bool cancelled}) {
+    if (_isReturning) return;
+    _isReturning = true;
+
+    print('✅ Returning to app: success=$success, cancelled=$cancelled');
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        Navigator.of(context).pop({
+          'status':
+              cancelled ? 'cancelled' : (success ? 'submitted' : 'failed'),
+          'reference': widget.reference,
+          'amount': widget.amount,
+        });
+      }
+    });
   }
 
   void _onCancel() {
@@ -90,10 +138,7 @@ class _PaychanguWebViewScreenState extends State<PaychanguWebViewScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.of(context).pop({
-                'status': 'cancelled',
-                'reference': widget.reference,
-              });
+              _returnToApp(success: false, cancelled: true);
             },
             child: const Text('Cancel', style: TextStyle(color: Colors.red)),
           ),
@@ -167,10 +212,12 @@ class _PaychanguWebViewScreenState extends State<PaychanguWebViewScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const CircularProgressIndicator(),
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                    ),
                     const SizedBox(height: 16),
                     Text(
-                      _statusMessage,
+                      'Loading payment page...',
                       style: const TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                     const SizedBox(height: 8),
@@ -180,6 +227,31 @@ class _PaychanguWebViewScreenState extends State<PaychanguWebViewScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+          if (_error != null)
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: $_error'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _error = null;
+                        _isLoading = true;
+                      });
+                      _controller.reload();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: const Text('Try Again'),
+                  ),
+                ],
               ),
             ),
         ],

@@ -18,7 +18,11 @@ import '../screens/customer/settings_screen.dart';
 import '../screens/customer/food_detail_screen.dart';
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_profile_screen.dart';
+<<<<<<< HEAD
 import '../screens/restaurant/restaurant_setup_screen.dart';
+=======
+import '../screens/restaurant/withdraw_screen.dart';
+>>>>>>> 760ea6c1047b37ad556e4e81863e7091d934f643
 import '../screens/driver/driver_dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
@@ -133,11 +137,19 @@ final GoRouter router = GoRouter(
       name: 'restaurant-profile',
       builder: (context, state) => const RestaurantProfileScreen(),
     ),
+<<<<<<< HEAD
     // ✅ Restaurant Setup Route (for new restaurant owners)
     GoRoute(
       path: '/restaurant-setup',
       name: 'restaurant-setup',
       builder: (context, state) => const RestaurantSetupScreen(),
+=======
+    // Withdraw Route (for restaurant owners)
+    GoRoute(
+      path: '/withdraw',
+      name: 'withdraw',
+      builder: (context, state) => const WithdrawScreen(),
+>>>>>>> 760ea6c1047b37ad556e4e81863e7091d934f643
     ),
     // Driver Route
     GoRoute(

@@ -135,7 +135,7 @@ class MenuItem {
   final String description;
   final double price;
   final String image;
-  final String imageUrl; // ADDED: For full URL from backend
+  final String imageUrl;
   final String category;
   final bool isAvailable;
   final List<String>? options;
@@ -147,7 +147,7 @@ class MenuItem {
     required this.description,
     required this.price,
     required this.image,
-    this.imageUrl = '', // ADDED: Default empty string
+    this.imageUrl = '',
     required this.category,
     required this.isAvailable,
     this.options,
@@ -180,20 +180,6 @@ class MenuItem {
       return 'http://192.168.137.1:8000/media/$imageStr';
     }
 
-    // Debug: Print the raw JSON to see what's coming from API
-    print('🔍 Parsing MenuItem from JSON:');
-    print('   id: ${json['id']}');
-    print('   restaurant: ${json['restaurant']}');
-    print('   name: ${json['name']}');
-    print('   description: ${json['description']}');
-    print('   price: ${json['price']}');
-    print('   image: ${json['image']}');
-    print('   image_url: ${json['image_url']}');
-    print('   category: ${json['category']}');
-    print('   category_name: ${json['category_name']}');
-    print('   is_available: ${json['is_available']}');
-
-    // Safe category extraction - handle both 'category' and 'category_name' fields
     String categoryValue = 'General';
     if (json['category_name'] != null &&
         json['category_name'].toString().isNotEmpty) {
@@ -203,7 +189,6 @@ class MenuItem {
       categoryValue = json['category'].toString();
     }
 
-    // Get image URL - prefer image_url from backend, otherwise build from image field
     String imageUrl = '';
     if (json['image_url'] != null && json['image_url'].toString().isNotEmpty) {
       imageUrl = json['image_url'].toString();
@@ -218,7 +203,7 @@ class MenuItem {
       description: toString(json['description']),
       price: toDouble(json['price']),
       image: toString(json['image']),
-      imageUrl: imageUrl, // ADDED: Use the full URL
+      imageUrl: imageUrl,
       category: categoryValue,
       isAvailable: json['is_available'] ?? true,
       options:
@@ -534,6 +519,9 @@ class RestaurantStats {
   final int activeOrders;
   final double monthlyEarnings;
   final int monthlyOrders;
+  final double walletBalance;
+  final double totalWithdrawn;
+  final double totalEarned; // ADDED THIS FIELD
 
   RestaurantStats({
     required this.todayEarnings,
@@ -544,6 +532,9 @@ class RestaurantStats {
     required this.activeOrders,
     required this.monthlyEarnings,
     required this.monthlyOrders,
+    required this.walletBalance,
+    required this.totalWithdrawn,
+    required this.totalEarned, // ADDED THIS
   });
 
   factory RestaurantStats.empty() {
@@ -556,6 +547,9 @@ class RestaurantStats {
       activeOrders: 0,
       monthlyEarnings: 0,
       monthlyOrders: 0,
+      walletBalance: 0,
+      totalWithdrawn: 0,
+      totalEarned: 0, // ADDED THIS
     );
   }
 
@@ -585,6 +579,9 @@ class RestaurantStats {
       activeOrders: toInt(json['activeOrders']),
       monthlyEarnings: toDouble(json['monthlyEarnings']),
       monthlyOrders: toInt(json['monthlyOrders']),
+      walletBalance: toDouble(json['walletBalance']),
+      totalWithdrawn: toDouble(json['totalWithdrawn']),
+      totalEarned: toDouble(json['totalEarned'] ?? 0), // ADDED THIS
     );
   }
 }
