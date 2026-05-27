@@ -81,6 +81,84 @@ class PaymentProvider extends ChangeNotifier {
     }
   }
 
+  /// Simplified payment initiation - PayChangu handles everything
+  /// User selects payment method and enters phone number on PayChangu checkout page
+  Future<Map<String, dynamic>> initiateSimplePayment({
+    required double amount,
+    required String orderId,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    _safeNotify();
+
+    print('💳 Initiating simple payment (PayChangu handles everything):');
+    print('   Amount: MK$amount');
+    print('   Order ID: $orderId');
+
+    try {
+      final result = await _apiService.initiateSimplePayment(
+        amount: amount,
+        orderId: orderId,
+      );
+
+      print('✅ Simple payment initiated: $result');
+
+      // Store current payment if the response has enough data
+      try {
+        _currentPayment = Payment.fromJson(result);
+      } catch (_) {
+        // fromJson may fail if checkout_url fields differ — non-fatal
+      }
+
+      _isLoading = false;
+      _safeNotify();
+      return result;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      _safeNotify();
+      print('❌ Simple payment initiation failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Alternative method using paychangu method
+  Future<Map<String, dynamic>> initiatePayChanguPayment({
+    required double amount,
+    required String orderId,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    _safeNotify();
+
+    print('💳 Initiating PayChangu payment via dedicated method:');
+    print('   Amount: MK$amount');
+    print('   Order ID: $orderId');
+
+    try {
+      final result = await _apiService.initiatePayChanguPayment(
+        amount: amount,
+        orderId: orderId,
+      );
+
+      print('✅ PayChangu payment initiated: $result');
+
+      try {
+        _currentPayment = Payment.fromJson(result);
+      } catch (_) {}
+
+      _isLoading = false;
+      _safeNotify();
+      return result;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      _safeNotify();
+      print('❌ PayChangu payment initiation failed: $e');
+      rethrow;
+    }
+  }
+
   // ============================================
   // GROUP 3: PAYMENT VERIFICATION
   // ============================================
@@ -293,6 +371,8 @@ class PaymentProvider extends ChangeNotifier {
         return Icons.phone_iphone;
       case 'cash_on_delivery':
         return Icons.money;
+      case 'paychangu':
+        return Icons.payment;
       default:
         return Icons.payment;
     }

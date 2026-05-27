@@ -4,21 +4,23 @@ import '../services/api_service.dart';
 
 class OrderProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
-  
+
   List<Order> _orders = [];
   bool _isLoading = false;
   bool _isLoadingOrder = false;
+  bool _isPlacingOrder = false; // Add flag to prevent duplicate submissions
   String? _error;
 
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
   bool get isLoadingOrder => _isLoadingOrder;
+  bool get isPlacingOrder => _isPlacingOrder; // Add getter
   String? get error => _error;
 
   // ============================================
   // GROUP 1: ORDER FETCHING METHODS
   // ============================================
-  
+
   Future<void> fetchOrders() async {
     _isLoading = true;
     _error = null;
@@ -56,10 +58,17 @@ class OrderProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 2: ORDER CREATION METHOD
+  // GROUP 2: ORDER CREATION METHOD (UPDATED)
   // ============================================
-  
+
   Future<Order?> placeOrder(Map<String, dynamic> orderData) async {
+    // Prevent multiple simultaneous order placements
+    if (_isPlacingOrder) {
+      print('⏳ Order already in progress, ignoring duplicate call');
+      return null;
+    }
+
+    _isPlacingOrder = true;
     _isLoading = true;
     _error = null;
     _safeNotify();
@@ -69,26 +78,30 @@ class OrderProvider extends ChangeNotifier {
       final cleanedData = Map<String, dynamic>.from(orderData);
       cleanedData.remove('restaurantId');
       cleanedData.remove('items'); // Items are handled separately by backend
-      
+
       print('📤 Placing order with cleaned data: $cleanedData');
-      
+
       final response = await _apiService.createOrder(cleanedData);
-      
+
       if (response != null && response['id'] != null) {
         final newOrder = _parseOrder(response);
         _orders.insert(0, newOrder);
         _isLoading = false;
+        _isPlacingOrder = false;
         _safeNotify();
+        print('✅ Order created successfully: #${newOrder.id}');
         return newOrder;
       }
-      
+
       _isLoading = false;
+      _isPlacingOrder = false;
       _safeNotify();
       return null;
     } catch (e) {
       _error = e.toString();
-      print('Error placing order: $e');
+      print('❌ Error placing order: $e');
       _isLoading = false;
+      _isPlacingOrder = false;
       _safeNotify();
       return null;
     }
@@ -97,14 +110,14 @@ class OrderProvider extends ChangeNotifier {
   // ============================================
   // GROUP 3: ORDER STATUS UPDATE METHODS
   // ============================================
-  
+
   Future<bool> updateOrderStatus(String orderId, String status) async {
     _isLoading = true;
     _safeNotify();
 
     try {
       await _apiService.updateOrderStatus(orderId, status);
-      
+
       // Update local order status
       final index = _orders.indexWhere((order) => order.id == orderId);
       if (index != -1) {
@@ -126,7 +139,7 @@ class OrderProvider extends ChangeNotifier {
         );
         _orders[index] = updatedOrder;
       }
-      
+
       _isLoading = false;
       _safeNotify();
       return true;
@@ -142,18 +155,19 @@ class OrderProvider extends ChangeNotifier {
   // ============================================
   // GROUP 4: ORDER PARSING METHODS
   // ============================================
-  
+
   List<Order> _parseOrders(List<dynamic> data) {
+    if (data == null || data.isEmpty) return [];
     return data.map((item) => _parseOrder(item)).toList();
   }
 
   Order _parseOrder(Map<String, dynamic> json) {
     final itemsList = json['items'] as List? ?? [];
-    
+
     // Get customer name and phone from serializer fields
     String customerName = json['customer_name'] ?? 'Customer';
     String customerPhone = json['customer_phone'] ?? 'No phone';
-    
+
     // If customer_name not present, try to get from customer object
     if (customerName == 'Customer' && json['customer'] != null) {
       if (json['customer'] is Map) {
@@ -161,25 +175,37 @@ class OrderProvider extends ChangeNotifier {
         customerPhone = json['customer']['phone'] ?? 'No phone';
       }
     }
-    
-    final items = itemsList.map((item) => OrderItemModel(
-      menuItemId: item['menu_item']?.toString() ?? item['menu_item_id']?.toString() ?? '0',
-      name: item['menu_item_name'] ?? item['name'] ?? 'Item',
-      quantity: item['quantity'] ?? 1,
-      price: _parseDouble(item['price']) ?? 0,
-    )).toList();
+
+    final items = itemsList
+        .map((item) => OrderItemModel(
+              menuItemId: item['menu_item']?.toString() ??
+                  item['menu_item_id']?.toString() ??
+                  '0',
+              name: item['menu_item_name'] ?? item['name'] ?? 'Item',
+              quantity: item['quantity'] is int
+                  ? item['quantity']
+                  : (item['quantity'] ?? 1),
+              price: _parseDouble(item['price']) ??
+                  _parseDouble(item['menu_item_price']) ??
+                  0,
+            ))
+        .toList();
 
     return Order(
       id: json['id'].toString(),
       userId: json['customer']?.toString() ?? json['user']?.toString() ?? '',
-      restaurantId: json['restaurant']?.toString() ?? '0',
+      restaurantId: json['restaurant']?.toString() ??
+          json['restaurant_id']?.toString() ??
+          '0',
       driverId: json['driver']?.toString(),
       items: items,
       status: _parseStatus(json['status'] ?? 'pending'),
       subtotal: _parseDouble(json['subtotal']) ?? _calculateSubtotal(items),
       deliveryFee: _parseDouble(json['delivery_fee']) ?? 2000.0,
       tax: _parseDouble(json['tax']) ?? 0,
-      total: _parseDouble(json['total_price']) ?? _parseDouble(json['total']) ?? 0,
+      total: _parseDouble(json['total_price']) ??
+          _parseDouble(json['total']) ??
+          _calculateSubtotal(items) + 2000.0,
       deliveryAddress: json['delivery_address'] ?? '',
       specialInstructions: json['note'],
       createdAt: _parseDateTime(json['created']),
@@ -190,7 +216,7 @@ class OrderProvider extends ChangeNotifier {
   // ============================================
   // GROUP 5: HELPER METHODS
   // ============================================
-  
+
   double _parseDouble(dynamic value) {
     if (value == null) return 0;
     if (value is double) return value;
@@ -231,22 +257,31 @@ class OrderProvider extends ChangeNotifier {
 
   OrderStatus _parseStatus(String status) {
     switch (status.toLowerCase()) {
-      case 'pending': return OrderStatus.pending;
-      case 'confirmed': return OrderStatus.confirmed;
-      case 'preparing': return OrderStatus.preparing;
-      case 'ready': return OrderStatus.ready;
-      case 'picked_up': return OrderStatus.pickedUp;
-      case 'on_the_way': return OrderStatus.onTheWay;
-      case 'delivered': return OrderStatus.delivered;
-      case 'cancelled': return OrderStatus.cancelled;
-      default: return OrderStatus.pending;
+      case 'pending':
+        return OrderStatus.pending;
+      case 'confirmed':
+        return OrderStatus.confirmed;
+      case 'preparing':
+        return OrderStatus.preparing;
+      case 'ready':
+        return OrderStatus.ready;
+      case 'picked_up':
+        return OrderStatus.pickedUp;
+      case 'on_the_way':
+        return OrderStatus.onTheWay;
+      case 'delivered':
+        return OrderStatus.delivered;
+      case 'cancelled':
+        return OrderStatus.cancelled;
+      default:
+        return OrderStatus.pending;
     }
   }
 
   // ============================================
   // GROUP 6: UTILITY METHODS
   // ============================================
-  
+
   void _safeNotify() {
     Future.microtask(() {
       if (hasListeners) {
@@ -265,6 +300,11 @@ class OrderProvider extends ChangeNotifier {
     _safeNotify();
   }
 
+  void resetPlacingOrder() {
+    _isPlacingOrder = false;
+    _safeNotify();
+  }
+
   // Get orders by status
   List<Order> getOrdersByStatus(OrderStatus status) {
     return _orders.where((order) => order.status == status).toList();
@@ -272,25 +312,32 @@ class OrderProvider extends ChangeNotifier {
 
   // Get pending orders
   List<Order> get pendingOrders {
-    return _orders.where((order) => order.status == OrderStatus.pending).toList();
+    return _orders
+        .where((order) => order.status == OrderStatus.pending)
+        .toList();
   }
 
   // Get active orders (pending, confirmed, preparing)
   List<Order> get activeOrders {
-    return _orders.where((order) => 
-      order.status == OrderStatus.pending ||
-      order.status == OrderStatus.confirmed ||
-      order.status == OrderStatus.preparing
-    ).toList();
+    return _orders
+        .where((order) =>
+            order.status == OrderStatus.pending ||
+            order.status == OrderStatus.confirmed ||
+            order.status == OrderStatus.preparing)
+        .toList();
   }
 
   // Get completed orders (delivered)
   List<Order> get completedOrders {
-    return _orders.where((order) => order.status == OrderStatus.delivered).toList();
+    return _orders
+        .where((order) => order.status == OrderStatus.delivered)
+        .toList();
   }
 
   // Get cancelled orders
   List<Order> get cancelledOrders {
-    return _orders.where((order) => order.status == OrderStatus.cancelled).toList();
+    return _orders
+        .where((order) => order.status == OrderStatus.cancelled)
+        .toList();
   }
 }
