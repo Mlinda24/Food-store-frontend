@@ -9,7 +9,6 @@ import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  // ✅ FIXED: Changed to localhost (127.0.0.1)
   static const String baseUrl = 'http://127.0.0.1:8000';
   static const String mediaBaseUrl = 'http://127.0.0.1:8000';
 
@@ -168,12 +167,35 @@ class ApiService {
       }),
     );
 
-    print('Register response: ${response.statusCode}');
+    print('Register response status: ${response.statusCode}');
+    print('Register response body: ${response.body}');
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return json.decode(response.body);
     } else {
-      throw Exception('Registration failed: ${response.statusCode}');
+      // Parse detailed error message
+      String errorMessage = 'Registration failed: ${response.statusCode}';
+      try {
+        final errorData = json.decode(response.body);
+        if (errorData is Map) {
+          final errors = <String>[];
+          errorData.forEach((key, value) {
+            if (value is List && value.isNotEmpty) {
+              errors.add('$key: ${value.join(', ')}');
+            } else if (value is String) {
+              errors.add('$key: $value');
+            } else if (value is Map) {
+              value.forEach((subKey, subValue) {
+                errors.add('$key.$subKey: ${subValue.join(', ')}');
+              });
+            }
+          });
+          if (errors.isNotEmpty) {
+            errorMessage = errors.join('\n');
+          }
+        }
+      } catch (_) {}
+      throw Exception(errorMessage);
     }
   }
 
@@ -353,11 +375,55 @@ class ApiService {
     }
   }
 
+  /// Fetches menu items for a specific restaurant, or aggregates ALL menu items
+  /// across every restaurant when no [restaurantId] is provided.
   Future<List<dynamic>> getMenuItems({int? restaurantId}) async {
-    if (restaurantId == null) {
+    // If a specific restaurant is requested, fetch just that one
+    if (restaurantId != null) {
+      return getRestaurantMenu(restaurantId);
+    }
+
+    // Otherwise fetch all restaurants and aggregate their menu items
+    print('🌐 Fetching menu items from ALL restaurants...');
+    final restaurants = await getRestaurants();
+
+    if (restaurants.isEmpty) {
+      print('⚠️ No restaurants found, returning empty menu list');
       return [];
     }
-    return getRestaurantMenu(restaurantId);
+
+    final List<dynamic> allItems = [];
+
+    for (var restaurant in restaurants) {
+      try {
+        final dynamic rawId = restaurant['id'];
+        if (rawId == null) continue;
+
+        final int parsedId = rawId is int ? rawId : int.parse(rawId.toString());
+        final String restaurantName =
+            restaurant['name']?.toString() ?? 'Restaurant';
+
+        print('📡 Fetching menu for: $restaurantName (ID: $parsedId)');
+
+        final items = await getRestaurantMenu(parsedId);
+
+        for (var item in items) {
+          // Clone and ensure restaurant info is attached
+          final enriched = Map<String, dynamic>.from(item as Map);
+          enriched['restaurant'] ??= parsedId;
+          enriched['restaurant_name'] ??= restaurantName;
+          allItems.add(enriched);
+        }
+
+        print('   ✅ Added ${items.length} items from $restaurantName');
+      } catch (e) {
+        print('❌ Error fetching menu for restaurant ${restaurant['id']}: $e');
+        // Continue to next restaurant instead of failing entirely
+      }
+    }
+
+    print('🎉 Total menu items across all restaurants: ${allItems.length}');
+    return allItems;
   }
 
   Future<List<dynamic>> searchMenu(String query) async {

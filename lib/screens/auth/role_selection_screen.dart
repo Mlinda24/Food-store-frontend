@@ -6,7 +6,7 @@ class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
   @override
-Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     final List<Map<String, dynamic>> roles = [
       {
         'title': 'Customer',
@@ -44,7 +44,8 @@ Widget build(BuildContext context) {
         backgroundColor: AppTheme.getBackgroundColor(context),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.getPrimaryTextColor(context)),
+          icon: Icon(Icons.arrow_back,
+              color: AppTheme.getPrimaryTextColor(context)),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -117,6 +118,7 @@ Widget build(BuildContext context) {
                         size: 18,
                       ),
                       onTap: () {
+                        // Navigate directly to registration with selected role
                         context.push(
                           '/register',
                           extra: role['roleValue'] as String,
