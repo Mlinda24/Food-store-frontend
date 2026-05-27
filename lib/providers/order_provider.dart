@@ -8,17 +8,17 @@ class OrderProvider extends ChangeNotifier {
   List<Order> _orders = [];
   bool _isLoading = false;
   bool _isLoadingOrder = false;
-  bool _isPlacingOrder = false; // Add flag to prevent duplicate submissions
+  bool _isPlacingOrder = false;
   String? _error;
 
   List<Order> get orders => _orders;
   bool get isLoading => _isLoading;
   bool get isLoadingOrder => _isLoadingOrder;
-  bool get isPlacingOrder => _isPlacingOrder; // Add getter
+  bool get isPlacingOrder => _isPlacingOrder;
   String? get error => _error;
 
   // ============================================
-  // GROUP 1: ORDER FETCHING METHODS
+  // ORDER FETCHING METHODS
   // ============================================
 
   Future<void> fetchOrders() async {
@@ -58,11 +58,10 @@ class OrderProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 2: ORDER CREATION METHOD (UPDATED)
+  // ORDER CREATION
   // ============================================
 
   Future<Order?> placeOrder(Map<String, dynamic> orderData) async {
-    // Prevent multiple simultaneous order placements
     if (_isPlacingOrder) {
       print('⏳ Order already in progress, ignoring duplicate call');
       return null;
@@ -74,10 +73,9 @@ class OrderProvider extends ChangeNotifier {
     _safeNotify();
 
     try {
-      // Clean the order data - remove any problematic fields
       final cleanedData = Map<String, dynamic>.from(orderData);
       cleanedData.remove('restaurantId');
-      cleanedData.remove('items'); // Items are handled separately by backend
+      cleanedData.remove('items');
 
       print('📤 Placing order with cleaned data: $cleanedData');
 
@@ -108,7 +106,7 @@ class OrderProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 3: ORDER STATUS UPDATE METHODS
+  // ORDER STATUS UPDATE
   // ============================================
 
   Future<bool> updateOrderStatus(String orderId, String status) async {
@@ -118,7 +116,6 @@ class OrderProvider extends ChangeNotifier {
     try {
       await _apiService.updateOrderStatus(orderId, status);
 
-      // Update local order status
       final index = _orders.indexWhere((order) => order.id == orderId);
       if (index != -1) {
         final updatedOrder = Order(
@@ -153,7 +150,7 @@ class OrderProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 4: ORDER PARSING METHODS
+  // PARSING METHODS
   // ============================================
 
   List<Order> _parseOrders(List<dynamic> data) {
@@ -164,11 +161,9 @@ class OrderProvider extends ChangeNotifier {
   Order _parseOrder(Map<String, dynamic> json) {
     final itemsList = json['items'] as List? ?? [];
 
-    // Get customer name and phone from serializer fields
     String customerName = json['customer_name'] ?? 'Customer';
     String customerPhone = json['customer_phone'] ?? 'No phone';
 
-    // If customer_name not present, try to get from customer object
     if (customerName == 'Customer' && json['customer'] != null) {
       if (json['customer'] is Map) {
         customerName = json['customer']['username'] ?? 'Customer';
@@ -214,7 +209,7 @@ class OrderProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 5: HELPER METHODS
+  // HELPER METHODS
   // ============================================
 
   double _parseDouble(dynamic value) {
@@ -279,7 +274,7 @@ class OrderProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 6: UTILITY METHODS
+  // UTILITY METHODS
   // ============================================
 
   void _safeNotify() {
@@ -305,19 +300,16 @@ class OrderProvider extends ChangeNotifier {
     _safeNotify();
   }
 
-  // Get orders by status
   List<Order> getOrdersByStatus(OrderStatus status) {
     return _orders.where((order) => order.status == status).toList();
   }
 
-  // Get pending orders
   List<Order> get pendingOrders {
     return _orders
         .where((order) => order.status == OrderStatus.pending)
         .toList();
   }
 
-  // Get active orders (pending, confirmed, preparing)
   List<Order> get activeOrders {
     return _orders
         .where((order) =>
@@ -327,14 +319,12 @@ class OrderProvider extends ChangeNotifier {
         .toList();
   }
 
-  // Get completed orders (delivered)
   List<Order> get completedOrders {
     return _orders
         .where((order) => order.status == OrderStatus.delivered)
         .toList();
   }
 
-  // Get cancelled orders
   List<Order> get cancelledOrders {
     return _orders
         .where((order) => order.status == OrderStatus.cancelled)

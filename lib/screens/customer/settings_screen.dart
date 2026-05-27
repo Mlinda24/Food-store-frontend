@@ -72,6 +72,8 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showLogoutDialog(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -96,7 +98,7 @@ class SettingsScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              context.read<AuthProvider>().logout();
+              authProvider.logout(context: context);
               context.go('/login');
             },
             style: ElevatedButton.styleFrom(
@@ -110,91 +112,15 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  void _showEditProfileDialog(BuildContext context, User user) {
-    final nameController = TextEditingController(text: user.name);
-    final emailController = TextEditingController(text: user.email);
-    final phoneController = TextEditingController(text: user.phone);
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.getCardColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.edit, color: AppTheme.primaryRed),
-            const SizedBox(width: 10),
-            Text('Edit Profile', style: TextStyle(color: AppTheme.getPrimaryTextColor(context), fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-              decoration: InputDecoration(
-                labelText: 'Name',
-                labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                prefixIcon: Icon(Icons.person_outline, color: AppTheme.primaryRed),
-                filled: true,
-                fillColor: AppTheme.getSurfaceColor(context),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: emailController,
-              style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-              decoration: InputDecoration(
-                labelText: 'Email',
-                labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                prefixIcon: Icon(Icons.email_outlined, color: AppTheme.primaryRed),
-                filled: true,
-                fillColor: AppTheme.getSurfaceColor(context),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phoneController,
-              style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-              decoration: InputDecoration(
-                labelText: 'Phone',
-                labelStyle: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
-                prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.primaryRed),
-                filled: true,
-                fillColor: AppTheme.getSurfaceColor(context),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Implement profile update API call
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile update coming soon!'), backgroundColor: AppTheme.success),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryRed,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            ),
-            child: const Text('Save Changes'),
-          ),
-        ],
-      ),
-    );
+  void _goBack(BuildContext context) {
+    // FIXED: Properly handle back navigation with go_router
+    // Use canPop() to check if there's anything to pop first
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      // If nothing to pop, navigate to home screen
+      context.go('/home');
+    }
   }
 
   Widget _buildSettingsItem(
@@ -258,7 +184,7 @@ class SettingsScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppTheme.getPrimaryTextColor(context)),
-          onPressed: () => context.pop(),
+          onPressed: () => _goBack(context),
         ),
         title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
@@ -266,7 +192,7 @@ class SettingsScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Profile Header Card
+            // Profile Header Card - from /api/auth/me/
             Container(
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(20),
@@ -277,7 +203,6 @@ class SettingsScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  // Avatar
                   Container(
                     width: 70,
                     height: 70,
@@ -308,67 +233,38 @@ class SettingsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          user?.email ?? 'user@example.com',
+                          user?.email ?? '',
                           style: TextStyle(
                             fontSize: 13,
                             color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryRed.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryRed.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                currentRole == UserRole.restaurant ? Icons.restaurant : Icons.person,
+                                size: 12,
+                                color: AppTheme.primaryRed,
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    currentRole == UserRole.restaurant ? Icons.restaurant : Icons.person,
-                                    size: 12,
-                                    color: AppTheme.primaryRed,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    currentRoleName,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: AppTheme.primaryRed,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () => _showEditProfileDialog(context, user!),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.getSurfaceColor(context),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.edit, size: 12, color: AppTheme.getSecondaryTextColor(context)),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Edit',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppTheme.getSecondaryTextColor(context),
-                                      ),
-                                    ),
-                                  ],
+                              const SizedBox(width: 4),
+                              Text(
+                                currentRoleName,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppTheme.primaryRed,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -376,32 +272,6 @@ class SettingsScreen extends StatelessWidget {
                 ],
               ),
             ),
-            
-            // Account Section
-            _buildSectionHeader(context, 'ACCOUNT', Icons.person_outline),
-            _buildSettingsItem(
-              context,
-              icon: Icons.person_outline,
-              title: 'Profile Information',
-              subtitle: 'View and edit your personal details',
-              onTap: () => _showEditProfileDialog(context, user!),
-            ),
-            _buildSettingsItem(
-              context,
-              icon: Icons.phone_outlined,
-              title: 'Phone Number',
-              subtitle: user?.phone ?? 'Not set',
-              onTap: () => _showEditProfileDialog(context, user!),
-            ),
-            _buildSettingsItem(
-              context,
-              icon: Icons.email_outlined,
-              title: 'Email Address',
-              subtitle: user?.email ?? 'Not set',
-              onTap: () => _showEditProfileDialog(context, user!),
-            ),
-            
-            const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
             
             // Preferences Section
             _buildSectionHeader(context, 'PREFERENCES', Icons.settings_outlined),
@@ -414,38 +284,10 @@ class SettingsScreen extends StatelessWidget {
             ),
             _buildSettingsItem(
               context,
-              icon: Icons.language_outlined,
-              title: 'Language',
-              subtitle: 'English / Chichewa',
-              onTap: () {},
-            ),
-            _buildSettingsItem(
-              context,
               icon: Icons.notifications_outlined,
               title: 'Notifications',
-              subtitle: 'Push notifications, email alerts',
-              onTap: () {},
-            ),
-            
-            const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
-            
-            // Security Section
-            _buildSectionHeader(context, 'SECURITY', Icons.security_outlined),
-            _buildSettingsItem(
-              context,
-              icon: Icons.lock_outline,
-              title: 'Change Password',
-              subtitle: 'Update your password',
-              onTap: () {},
-              iconColor: AppTheme.warning,
-            ),
-            _buildSettingsItem(
-              context,
-              icon: Icons.fingerprint,
-              title: 'Biometric Login',
-              subtitle: 'Enable fingerprint or face recognition',
-              onTap: () {},
-              iconColor: AppTheme.teal,
+              subtitle: 'View your notifications',
+              onTap: () => context.push('/notifications'),
             ),
             
             const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
@@ -456,28 +298,21 @@ class SettingsScreen extends StatelessWidget {
               context,
               icon: Icons.help_outline,
               title: 'Help Center',
-              subtitle: 'FAQs, guides, and tutorials',
-              onTap: () {},
-            ),
-            _buildSettingsItem(
-              context,
-              icon: Icons.feedback_outlined,
-              title: 'Send Feedback',
-              subtitle: 'Help us improve your experience',
+              subtitle: 'FAQs and support',
               onTap: () {},
             ),
             _buildSettingsItem(
               context,
               icon: Icons.info_outline,
               title: 'About',
-              subtitle: 'Version 1.0.0 | Terms & Privacy',
-              onTap: () {},
+              subtitle: 'Version 1.0.0',
+              onTap: () => _showAboutDialog(context),
             ),
             
             const Divider(height: 1, color: AppTheme.deepCrimson, indent: 70, endIndent: 16),
             
             // Account Actions
-            _buildSectionHeader(context, 'ACCOUNT ACTIONS', Icons.warning_amber_outlined),
+            _buildSectionHeader(context, 'ACCOUNT', Icons.account_circle_outlined),
             _buildSettingsItem(
               context,
               icon: Icons.logout,
@@ -491,6 +326,37 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 30),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.getCardColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+        ),
+        title: const Text('About Foodie Express'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Version: 1.0.0'),
+            const SizedBox(height: 8),
+            const Text('A food delivery app connecting you with the best restaurants in your area.'),
+            const SizedBox(height: 8),
+            Text('© 2026 Foodie Express. All rights reserved.', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+          ),
+        ],
       ),
     );
   }

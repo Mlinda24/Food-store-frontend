@@ -1,34 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../utils/theme.dart';
+import 'package:provider/provider.dart';
+import '../../config/theme.dart';
+import '../../providers/auth_provider.dart';
 
 class CustomerProfileScreen extends StatelessWidget {
   const CustomerProfileScreen({super.key});
 
+  void _showLogoutDialog(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.getCardColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+        ),
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              authProvider.logout(context: context);
+              context.go('/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.currentUser;
+    
     return Scaffold(
-      backgroundColor: AppTheme.mainBackground,
+      backgroundColor: AppTheme.getBackgroundColor(context),
       appBar: AppBar(
-        backgroundColor: AppTheme.mainBackground,
+        backgroundColor: AppTheme.getBackgroundColor(context),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.primaryText),
+          icon: Icon(Icons.arrow_back, color: AppTheme.getPrimaryTextColor(context)),
           onPressed: () => context.pop(),
         ),
         title: const Text(
           'Profile',
-          style: TextStyle(
-            color: AppTheme.primaryText,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Profile Header
+            // Profile Header - from /api/auth/me/
             Container(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -37,7 +73,7 @@ class CustomerProfileScreen extends StatelessWidget {
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      gradient: AppTheme.cardGlowGradient(context),
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: AppTheme.primaryRed.withOpacity(0.5),
@@ -47,81 +83,29 @@ class CustomerProfileScreen extends StatelessWidget {
                     child: const Icon(
                       Icons.person,
                       size: 50,
-                      color: AppTheme.primaryText,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Precious Kapakasa',
+                  Text(
+                    user?.name ?? '',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'precious@example.com',
-                    style: TextStyle(
-                      color: AppTheme.secondaryText,
+                      color: AppTheme.getPrimaryTextColor(context),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '+265 888 123 456',
+                    user?.email ?? '',
                     style: TextStyle(
-                      color: AppTheme.secondaryText,
+                      color: AppTheme.getSecondaryTextColor(context),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: 200,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        // Edit profile
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppTheme.primaryRed),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text('Edit Profile'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Stats Cards
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      context,
-                      icon: Icons.shopping_bag_outlined,
-                      label: 'Total Orders',
-                      value: '12',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      context,
-                      icon: Icons.star_outline,
-                      label: 'Ratings',
-                      value: '4.8',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      context,
-                      icon: Icons.local_offer_outlined,
-                      label: 'Saved',
-                      value: '3',
+                  const SizedBox(height: 8),
+                  Text(
+                    user?.phone ?? '',
+                    style: TextStyle(
+                      color: AppTheme.getSecondaryTextColor(context),
                     ),
                   ),
                 ],
@@ -130,7 +114,7 @@ class CustomerProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Menu Items (only order history remains, others moved to settings)
+            // Menu Items - Only what backend supports
             _buildMenuItem(
               context,
               icon: Icons.history,
@@ -139,47 +123,26 @@ class CustomerProfileScreen extends StatelessWidget {
                 context.go('/my-orders');
               },
             ),
+            _buildMenuItem(
+              context,
+              icon: Icons.notifications_outlined,
+              title: 'Notifications',
+              onTap: () {
+                context.push('/notifications');
+              },
+            ),
+            _buildMenuItem(
+              context,
+              icon: Icons.logout,
+              title: 'Logout',
+              iconColor: AppTheme.error,
+              textColor: AppTheme.error,
+              onTap: () => _showLogoutDialog(context),
+            ),
+            
+            const SizedBox(height: 24),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.deepCrimson.withOpacity(0.3),
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: AppTheme.primaryRed, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryText,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppTheme.secondaryText,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -189,28 +152,30 @@ class CustomerProfileScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    Color? iconColor,
+    Color? textColor,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFF5F5F5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: AppTheme.cardGlowGradient(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: AppTheme.deepCrimson.withOpacity(0.3),
         ),
       ),
       child: ListTile(
-        leading: Icon(icon, color: AppTheme.primaryRed, size: 24),
+        leading: Icon(icon, color: iconColor ?? AppTheme.primaryRed, size: 24),
         title: Text(
           title,
-          style: const TextStyle(
-            color: AppTheme.primaryText,
+          style: TextStyle(
+            color: textColor ?? AppTheme.getPrimaryTextColor(context),
             fontWeight: FontWeight.w500,
           ),
         ),
         trailing: Icon(
           Icons.chevron_right,
-          color: AppTheme.mutedText,
+          color: AppTheme.getMutedTextColor(context),
         ),
         onTap: onTap,
       ),

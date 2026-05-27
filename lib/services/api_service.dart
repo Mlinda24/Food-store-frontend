@@ -173,7 +173,6 @@ class ApiService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return json.decode(response.body);
     } else {
-      // Parse detailed error message
       String errorMessage = 'Registration failed: ${response.statusCode}';
       try {
         final errorData = json.decode(response.body);
@@ -375,15 +374,11 @@ class ApiService {
     }
   }
 
-  /// Fetches menu items for a specific restaurant, or aggregates ALL menu items
-  /// across every restaurant when no [restaurantId] is provided.
   Future<List<dynamic>> getMenuItems({int? restaurantId}) async {
-    // If a specific restaurant is requested, fetch just that one
     if (restaurantId != null) {
       return getRestaurantMenu(restaurantId);
     }
 
-    // Otherwise fetch all restaurants and aggregate their menu items
     print('🌐 Fetching menu items from ALL restaurants...');
     final restaurants = await getRestaurants();
 
@@ -408,7 +403,6 @@ class ApiService {
         final items = await getRestaurantMenu(parsedId);
 
         for (var item in items) {
-          // Clone and ensure restaurant info is attached
           final enriched = Map<String, dynamic>.from(item as Map);
           enriched['restaurant'] ??= parsedId;
           enriched['restaurant_name'] ??= restaurantName;
@@ -418,7 +412,6 @@ class ApiService {
         print('   ✅ Added ${items.length} items from $restaurantName');
       } catch (e) {
         print('❌ Error fetching menu for restaurant ${restaurant['id']}: $e');
-        // Continue to next restaurant instead of failing entirely
       }
     }
 
@@ -447,6 +440,77 @@ class ApiService {
   // GROUP 5: RESTAURANT OWNER ENDPOINTS
   // ============================================
 
+  Future<Map<String, dynamic>> createRestaurant(Map<String, dynamic> data) async {
+    print('🏪 Creating restaurant with data: $data');
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/owner/restaurants/'),
+      headers: await getHeaders(),
+      body: json.encode(data),
+    );
+
+    print('Create restaurant response: ${response.statusCode}');
+    print('Create restaurant body: ${response.body}');
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return json.decode(response.body);
+    } else if (response.statusCode == 400) {
+      final error = json.decode(response.body);
+      throw Exception(error['error'] ?? error.toString());
+    } else {
+      throw Exception('Failed to create restaurant: ${response.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> createRestaurantWithImage({
+    required String name,
+    required String address,
+    required String phone,
+    String? description,
+    required File imageFile,
+  }) async {
+    print('🏪 Creating restaurant with image upload');
+    
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/owner/restaurants/'),
+    );
+    
+    final token = await getToken();
+    request.headers['Authorization'] = 'Bearer $token';
+    
+    request.fields['name'] = name;
+    request.fields['address'] = address;
+    request.fields['phone'] = phone;
+    if (description != null && description.isNotEmpty) {
+      request.fields['description'] = description;
+    }
+    request.fields['is_open'] = 'true';
+    
+    final bytes = await imageFile.readAsBytes();
+    final fileName = path.basename(imageFile.path);
+    
+    final multipartFile = http.MultipartFile.fromBytes(
+      'image',
+      bytes,
+      filename: fileName,
+      contentType: MediaType('image', 'jpeg'),
+    );
+    request.files.add(multipartFile);
+    
+    final response = await request.send();
+    final responseBody = await http.Response.fromStream(response);
+    
+    print('Create restaurant response: ${response.statusCode}');
+    print('Create restaurant body: ${responseBody.body}');
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return json.decode(responseBody.body);
+    } else {
+      throw Exception('Failed to create restaurant: ${response.statusCode}');
+    }
+  }
+
   Future<Map<String, dynamic>> getMyRestaurant() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/owner/restaurants/my_restaurant/'),
@@ -457,7 +521,6 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final dynamic data = json.decode(response.body);
-      print('✅ Restaurant data: $data');
       if (data is List && data.isNotEmpty) {
         return Map<String, dynamic>.from(data[0]);
       }
@@ -838,7 +901,36 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final data = json.decode(response.body);
+      if (data is List) {
+        return data;
+      } else if (data is Map && data.containsKey('results')) {
+        return data['results'];
+      }
+      return [];
+    } else {
+      return [];
+    }
+  }
+
+  // Get my orders (for customer)
+  Future<List<Order>> getMyOrders() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/orders/my_orders/'),
+      headers: await getHeaders(),
+    );
+
+    print('Get my orders response: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      List<dynamic> ordersData = data is List ? data : (data['results'] ?? []);
+      
+      return ordersData.map((json) => Order.fromJson(json)).toList();
+    } else if (response.statusCode == 401) {
+      final refreshed = await refreshToken();
+      if (refreshed) return getMyOrders();
+      return [];
     } else {
       return [];
     }
@@ -884,6 +976,8 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateOrderStatus(
       String orderId, String status) async {
+    print('🔄 Updating order #$orderId status to: $status');
+    
     final response = await http.patch(
       Uri.parse('$baseUrl/api/orders/orders/$orderId/update_status/'),
       headers: await getHeaders(),
@@ -891,12 +985,22 @@ class ApiService {
     );
 
     print('Update order status response: ${response.statusCode}');
+    print('Update order status body: ${response.body}');
 
     if (response.statusCode == 200) {
       return json.decode(response.body);
+    } else if (response.statusCode == 401) {
+      final refreshed = await refreshToken();
+      if (refreshed) return updateOrderStatus(orderId, status);
+      throw Exception('Session expired. Please login again.');
     } else {
       throw Exception('Failed to update order status: ${response.statusCode}');
     }
+  }
+
+  // Customer marks order as delivered/received
+  Future<Map<String, dynamic>> markOrderAsDelivered(String orderId) async {
+    return updateOrderStatus(orderId, 'delivered');
   }
 
   // ============================================

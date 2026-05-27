@@ -432,6 +432,75 @@ class RestaurantProvider extends ChangeNotifier {
   // GROUP 5: RESTAURANT MANAGEMENT
   // ============================================
   
+  // Create a restaurant without image
+  Future<bool> createRestaurant({
+    required String name,
+    required String address,
+    required String phone,
+    String? description,
+  }) async {
+    _isLoading = true;
+    _safeNotify();
+    
+    try {
+      final data = {
+        'name': name,
+        'address': address,
+        'phone': phone,
+        if (description != null && description.isNotEmpty) 'description': description,
+        'is_open': true,
+      };
+      
+      final result = await _apiService.createRestaurant(data);
+      print('✅ Restaurant created: $result');
+      
+      await loadRestaurantInfo();
+      
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      print('❌ Error creating restaurant: $e');
+      return false;
+    } finally {
+      _isLoading = false;
+      _safeNotify();
+    }
+  }
+
+  // ✅ NEW: Create a restaurant with image upload
+  Future<bool> createRestaurantWithImage({
+    required String name,
+    required String address,
+    required String phone,
+    String? description,
+    required File imageFile,
+  }) async {
+    _isLoading = true;
+    _safeNotify();
+    
+    try {
+      final result = await _apiService.createRestaurantWithImage(
+        name: name,
+        address: address,
+        phone: phone,
+        description: description,
+        imageFile: imageFile,
+      );
+      print('✅ Restaurant created with image: $result');
+      
+      await loadRestaurantInfo();
+      
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      print('❌ Error creating restaurant with image: $e');
+      return false;
+    } finally {
+      _isLoading = false;
+      _safeNotify();
+    }
+  }
+
   Future<bool> updateMyRestaurant(Map<String, dynamic> data) async {
     _isLoading = true;
     _safeNotify();
@@ -550,7 +619,7 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 6: MENU ITEM MANAGEMENT (FIXED)
+  // GROUP 6: MENU ITEM MANAGEMENT
   // ============================================
   
   Future<bool> addMenuItemWithImage({
@@ -623,7 +692,6 @@ class RestaurantProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ FIXED: Toggle menu item availability
   Future<bool> toggleMenuItemAvailability(String menuItemId, bool isAvailable) async {
     _isLoading = true;
     _safeNotify();
@@ -631,13 +699,12 @@ class RestaurantProvider extends ChangeNotifier {
     try {
       print('🔄 Toggling menu item $menuItemId to ${isAvailable ? "Available" : "Unavailable"}');
       
-      // Only send the is_available field to avoid validation errors
       final updateData = {
         'is_available': isAvailable,
       };
       
       await _apiService.updateMenuItem(menuItemId, updateData);
-      await loadMenuItems(); // Reload to get updated state
+      await loadMenuItems();
       return true;
     } catch (e) {
       _error = e.toString();

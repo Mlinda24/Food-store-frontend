@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/restaurant_provider.dart';
-import '../../services/location_service.dart';
-import '../../services/api_service.dart';
-import '../../utils/delivery_fee_calculator.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/app_provider.dart';
 
 class RestaurantProfileScreen extends StatefulWidget {
   const RestaurantProfileScreen({super.key});
@@ -17,663 +14,510 @@ class RestaurantProfileScreen extends StatefulWidget {
 }
 
 class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
+  bool _isEditing = false;
+  final _formKey = GlobalKey<FormState>();
+  
+  // Controllers for backend fields
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _deliveryFeeController = TextEditingController();
+  final _minOrderController = TextEditingController();
+  final _deliveryTimeController = TextEditingController();
   
-  // Location and Delivery Settings
-  double? _restaurantLatitude;
-  double? _restaurantLongitude;
-  bool _isLoadingLocation = false;
-  String? _locationError;
-  bool _hasLocation = false;
+  // Frontend only (not saved to backend)
+  bool _emailNotifications = true;
+  bool _pushNotifications = true;
+  String _selectedLanguage = 'English';
   
-  // Delivery Fee Settings
-  final _baseFeeController = TextEditingController();
-  final _feePerKmController = TextEditingController();
-  final _freeDeliveryRadiusController = TextEditingController();
-  final _maxDeliveryRadiusController = TextEditingController();
+  final List<String> _languages = ['English', 'Chichewa'];
   
-  bool _isLoading = false;
-  final ApiService _apiService = ApiService();
-
   @override
   void initState() {
     super.initState();
     _loadRestaurantData();
   }
-
+  
   Future<void> _loadRestaurantData() async {
-    setState(() {
-      _isLoading = true;
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    await provider.loadRestaurantInfo();
+    
+    final restaurant = provider.restaurant;
+    if (restaurant != null) {
+      _nameController.text = restaurant.name;
+      _phoneController.text = restaurant.phone;
+      _addressController.text = restaurant.address;
+      _descriptionController.text = restaurant.description;
+      _deliveryFeeController.text = restaurant.deliveryFee.toString();
+      _minOrderController.text = restaurant.minOrderAmount.toString();
+      _deliveryTimeController.text = restaurant.deliveryTime.toString();
+      
+      setState(() {});
+    }
+  }
+  
+  Future<void> _saveSettings() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    
+    final success = await provider.updateMyRestaurant({
+      'name': _nameController.text.trim(),
+      'phone': _phoneController.text.trim(),
+      'address': _addressController.text.trim(),
+      'description': _descriptionController.text.trim(),
+      'delivery_fee': double.tryParse(_deliveryFeeController.text) ?? 0,
+      'min_order_amount': double.tryParse(_minOrderController.text) ?? 0,
+      'delivery_time': int.tryParse(_deliveryTimeController.text) ?? 30,
     });
     
-    try {
-      final restaurantProvider = Provider.of<RestaurantProvider>(context, listen: false);
-      final restaurant = restaurantProvider.restaurant;
-      
-      if (restaurant != null) {
-        _nameController.text = restaurant.name;
-        _emailController.text = ''; // Email would come from user data
-        _phoneController.text = restaurant.phone;
-        _addressController.text = restaurant.address;
-        _descriptionController.text = restaurant.description;
-        
-        // Load additional restaurant data from API
-        final restaurantData = await _apiService.getMyRestaurant();
-        if (restaurantData.isNotEmpty) {
-          if (restaurantData['latitude'] != null) {
-            _restaurantLatitude = double.parse(restaurantData['latitude'].toString());
-            _restaurantLongitude = double.parse(restaurantData['longitude'].toString());
-            _hasLocation = _restaurantLatitude != null && _restaurantLongitude != null;
-          }
-          
-          // Load delivery settings
-          _baseFeeController.text = restaurantData['base_delivery_fee']?.toString() ?? '2000';
-          _feePerKmController.text = restaurantData['fee_per_km']?.toString() ?? '1000';
-          _freeDeliveryRadiusController.text = restaurantData['free_delivery_radius']?.toString() ?? '0';
-          _maxDeliveryRadiusController.text = restaurantData['max_delivery_radius']?.toString() ?? '2500';
-        }
-      }
-    } catch (e) {
-      print('Error loading restaurant data: $e');
-    } finally {
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully!')),
+      );
       setState(() {
-        _isLoading = false;
+        _isEditing = false;
       });
     }
   }
-
-  Future<void> _getCurrentLocation() async {
-    setState(() {
-      _isLoadingLocation = true;
-      _locationError = null;
-    });
+  
+  void _showLogoutDialog() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    try {
-      final location = await LocationService.getCurrentLocation();
-      if (location != null) {
-        setState(() {
-          _restaurantLatitude = location.latitude;
-          _restaurantLongitude = location.longitude;
-          _hasLocation = true;
-        });
-        _showSuccess('Location captured successfully!');
-      } else {
-        setState(() {
-          _locationError = 'Could not get location. Please enable GPS.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _locationError = 'Error getting location: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoadingLocation = false;
-      });
-    }
-  }
-
-  Future<void> _saveProfile() async {
-    setState(() {
-      _isLoading = true;
-    });
-    
-    try {
-      final restaurantProvider = Provider.of<RestaurantProvider>(context, listen: false);
-      
-      // Update restaurant info
-      final restaurantData = {
-        'name': _nameController.text,
-        'phone': _phoneController.text,
-        'address': _addressController.text,
-        'description': _descriptionController.text,
-      };
-      
-      await restaurantProvider.updateMyRestaurant(restaurantData);
-      
-      // Update location and delivery settings
-      if (_hasLocation) {
-        final locationData = {
-          'latitude': _restaurantLatitude,
-          'longitude': _restaurantLongitude,
-          'base_delivery_fee': double.tryParse(_baseFeeController.text) ?? 2000,
-          'fee_per_km': double.tryParse(_feePerKmController.text) ?? 1000,
-          'free_delivery_radius': double.tryParse(_freeDeliveryRadiusController.text) ?? 0,
-          'max_delivery_radius': double.tryParse(_maxDeliveryRadiusController.text) ?? 2500,
-        };
-        
-        await restaurantProvider.updateMyRestaurant(locationData);
-      }
-      
-      _showSuccess('Profile updated successfully!');
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          context.pop();
-        }
-      });
-    } catch (e) {
-      _showError('Error updating profile: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppTheme.success,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppTheme.error,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    _descriptionController.dispose();
-    _baseFeeController.dispose();
-    _feePerKmController.dispose();
-    _freeDeliveryRadiusController.dispose();
-    _maxDeliveryRadiusController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    return Scaffold(
-      backgroundColor: AppTheme.getBackgroundColor(context),
-      appBar: AppBar(
-        backgroundColor: AppTheme.getBackgroundColor(context),
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.getPrimaryTextColor(context)),
-          onPressed: () => context.pop(),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.getCardColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
-        title: Text(
-          'Restaurant Profile',
-          style: TextStyle(
-            color: AppTheme.getPrimaryTextColor(context),
-            fontWeight: FontWeight.bold,
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Profile Image
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryButtonGradient,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.primaryRed, width: 3),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.restaurant,
-                        size: 50,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // ============================================
-                  // GROUP 1: BASIC INFORMATION
-                  // ============================================
-                  const Text(
-                    'Basic Information',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  _buildInfoField(
-                    context,
-                    label: 'Restaurant Name',
-                    controller: _nameController,
-                    icon: Icons.restaurant,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  _buildInfoField(
-                    context,
-                    label: 'Phone Number',
-                    controller: _phoneController,
-                    icon: Icons.phone_outlined,
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  _buildInfoField(
-                    context,
-                    label: 'Address',
-                    controller: _addressController,
-                    icon: Icons.location_on_outlined,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  _buildInfoField(
-                    context,
-                    label: 'Description',
-                    controller: _descriptionController,
-                    icon: Icons.description_outlined,
-                    maxLines: 3,
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  const Divider(color: AppTheme.deepCrimson),
-                  const SizedBox(height: 24),
-                  
-                  // ============================================
-                  // GROUP 2: RESTAURANT LOCATION
-                  // ============================================
-                  const Text(
-                    'Restaurant Location',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Set your restaurant location for distance-based delivery fees',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.getSecondaryTextColor(context),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.getSurfaceColor(context),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-                    ),
-                    child: Column(
-                      children: [
-                        if (_hasLocation) ...[
-                          Row(
-                            children: [
-                              Icon(Icons.check_circle, color: AppTheme.success, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Location set: ${_restaurantLatitude!.toStringAsFixed(6)}, ${_restaurantLongitude!.toStringAsFixed(6)}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                        
-                        ElevatedButton.icon(
-                          onPressed: _isLoadingLocation ? null : _getCurrentLocation,
-                          icon: _isLoadingLocation
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.my_location),
-                          label: Text(_hasLocation ? 'Update Location' : 'Get Current Location'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryRed,
-                            minimumSize: const Size(double.infinity, 45),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                        
-                        if (_locationError != null) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            _locationError!,
-                            style: TextStyle(color: AppTheme.error, fontSize: 12),
-                          ),
-                        ],
-                        
-                        const SizedBox(height: 12),
-                        Text(
-                          'This location will be used to calculate delivery distances',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppTheme.getMutedTextColor(context),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  const Divider(color: AppTheme.deepCrimson),
-                  const SizedBox(height: 24),
-                  
-                  // ============================================
-                  // GROUP 3: DELIVERY FEE SETTINGS (5-TIER STRUCTURE)
-                  // ============================================
-                  const Text(
-                    'Delivery Fee Settings',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Delivery fees are calculated based on distance:',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.getSecondaryTextColor(context),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // Display the 5-tier delivery fee structure
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryRed.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.primaryRed.withOpacity(0.3)),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          'Current Delivery Fee Structure',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildFeeTierRow('0 - 500 m', 'MK1,000'),
-                        _buildFeeTierRow('501 m - 1 km', 'MK2,000'),
-                        _buildFeeTierRow('1 km - 1.5 km', 'MK3,000'),
-                        _buildFeeTierRow('1.5 km - 2 km', 'MK4,000'),
-                        _buildFeeTierRow('2 km - 2.5 km', 'MK5,000'),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.warning.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'Beyond 2.5 km: Not deliverable',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Custom delivery settings
-                  Text(
-                    'Customize Delivery Pricing',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.getPrimaryTextColor(context),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildDeliverySettingField(
-                    context,
-                    label: 'Base Delivery Fee (MK)',
-                    controller: _baseFeeController,
-                    hint: 'e.g., 2000',
-                    icon: Icons.money,
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildDeliverySettingField(
-                    context,
-                    label: 'Fee per KM (MK)',
-                    controller: _feePerKmController,
-                    hint: 'e.g., 1000',
-                    icon: Icons.straighten,
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildDeliverySettingField(
-                    context,
-                    label: 'Free Delivery Radius (km)',
-                    controller: _freeDeliveryRadiusController,
-                    hint: 'e.g., 0 (set to 0 for no free delivery)',
-                    icon: Icons.celebration,
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  _buildDeliverySettingField(
-                    context,
-                    label: 'Maximum Delivery Radius (km)',
-                    controller: _maxDeliveryRadiusController,
-                    hint: 'e.g., 2.5',
-                    icon: Icons.radio_button_checked,
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.warning.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: AppTheme.warning, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Set maximum radius to limit delivery zone. Customers beyond this radius will not be able to order.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.getSecondaryTextColor(context),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  const Divider(color: AppTheme.deepCrimson),
-                  const SizedBox(height: 24),
-                  
-                  // ============================================
-                  // GROUP 4: SAVE BUTTON
-                  // ============================================
-                  Container(
-                    width: double.infinity,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryButtonGradient,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Text(
-                              'Save All Changes',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                ],
-              ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              authProvider.logout(context: context);
+              context.go('/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
             ),
-    );
-  }
-
-  Widget _buildFeeTierRow(String range, String fee) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            range,
-            style: const TextStyle(fontSize: 13),
-          ),
-          Text(
-            fee,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryRed,
-            ),
+            child: const Text('Logout'),
           ),
         ],
       ),
     );
   }
-
-  Widget _buildInfoField(
-    BuildContext context, {
-    required String label,
-    required TextEditingController controller,
-    required IconData icon,
-    int maxLines = 1,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.getSecondaryTextColor(context),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: AppTheme.getSurfaceColor(context),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-          ),
-          child: TextField(
-            controller: controller,
-            style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-            maxLines: maxLines,
-            keyboardType: keyboardType,
-            decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: AppTheme.primaryRed),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  
+  @override
+  Widget build(BuildContext context) {
+    final appProvider = Provider.of<AppProvider>(context);
+    
+    return Scaffold(
+      backgroundColor: AppTheme.getBackgroundColor(context),
+      appBar: AppBar(
+        title: const Text('Restaurant Profile'),
+        backgroundColor: AppTheme.getBackgroundColor(context),
+        actions: [
+          if (!_isEditing)
+            TextButton(
+              onPressed: () => setState(() => _isEditing = true),
+              child: const Text('Edit'),
             ),
+          if (_isEditing)
+            TextButton(
+              onPressed: _saveSettings,
+              child: const Text('Save'),
+            ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              // Restaurant Logo/Avatar
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryButtonGradient,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.primaryRed.withOpacity(0.5),
+                          width: 3,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.restaurant,
+                        size: 50,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (_isEditing)
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text('Change Logo'),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // ========== RESTAURANT INFORMATION ==========
+              _buildSectionHeader('Restaurant Information', Icons.restaurant),
+              const SizedBox(height: 12),
+              
+              _buildTextField(
+                controller: _nameController,
+                label: 'Restaurant Name',
+                icon: Icons.restaurant,
+                enabled: _isEditing,
+              ),
+              const SizedBox(height: 12),
+              
+              _buildTextField(
+                controller: _phoneController,
+                label: 'Phone Number',
+                icon: Icons.phone,
+                enabled: _isEditing,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              
+              _buildTextField(
+                controller: _addressController,
+                label: 'Address',
+                icon: Icons.location_on,
+                enabled: _isEditing,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              
+              _buildTextField(
+                controller: _descriptionController,
+                label: 'Description',
+                icon: Icons.description,
+                enabled: _isEditing,
+                maxLines: 3,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // ========== DELIVERY SETTINGS ==========
+              _buildSectionHeader('Delivery Settings', Icons.delivery_dining),
+              const SizedBox(height: 12),
+              
+              _buildTextField(
+                controller: _deliveryFeeController,
+                label: 'Delivery Fee (MK)',
+                icon: Icons.motorcycle,
+                enabled: _isEditing,
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              
+              _buildTextField(
+                controller: _minOrderController,
+                label: 'Minimum Order Amount (MK)',
+                icon: Icons.attach_money,
+                enabled: _isEditing,
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              
+              _buildTextField(
+                controller: _deliveryTimeController,
+                label: 'Est. Delivery Time (minutes)',
+                icon: Icons.access_time,
+                enabled: _isEditing,
+                keyboardType: TextInputType.number,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // ========== NOTIFICATION PREFERENCES (Frontend Only) ==========
+              _buildSectionHeader('Notifications', Icons.notifications),
+              const SizedBox(height: 12),
+              
+              _buildToggleCard(
+                title: 'Push Notifications',
+                subtitle: 'Receive real-time alerts on your device',
+                value: _pushNotifications,
+                onChanged: (value) => setState(() => _pushNotifications = value),
+              ),
+              const SizedBox(height: 8),
+              
+              _buildToggleCard(
+                title: 'Email Notifications',
+                subtitle: 'Receive order updates via email',
+                value: _emailNotifications,
+                onChanged: (value) => setState(() => _emailNotifications = value),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // ========== APPEARANCE (Frontend Only) ==========
+              _buildSectionHeader('Appearance', Icons.brightness_6),
+              const SizedBox(height: 12),
+              
+              _buildThemeSelector(context, appProvider),
+              const SizedBox(height: 12),
+              
+              _buildDropdownField(
+                label: 'Language',
+                icon: Icons.language,
+                value: _selectedLanguage,
+                items: _languages,
+                enabled: true,
+                onChanged: (value) => setState(() => _selectedLanguage = value!),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // ========== ACCOUNT ==========
+              _buildSectionHeader('Account', Icons.account_circle),
+              const SizedBox(height: 12),
+              
+              _buildSettingsTile(
+                title: 'Logout',
+                icon: Icons.logout,
+                iconColor: AppTheme.error,
+                textColor: AppTheme.error,
+                onTap: _showLogoutDialog,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // ========== SUPPORT ==========
+              _buildSectionHeader('Support', Icons.help_outline),
+              const SizedBox(height: 12),
+              
+              _buildSettingsTile(
+                title: 'App Version',
+                icon: Icons.info_outline,
+                trailing: const Text('1.0.0', style: TextStyle(fontSize: 14)),
+                onTap: () {},
+              ),
+              
+              const SizedBox(height: 32),
+            ],
           ),
         ),
+      ),
+    );
+  }
+  
+  Widget _buildThemeSelector(BuildContext context, AppProvider appProvider) {
+    return Card(
+      color: AppTheme.getCardColor(context),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.brightness_6),
+        title: const Text('Theme'),
+        subtitle: Text(_getThemeText(appProvider.themeMode)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _showThemeDialog(context, appProvider),
+      ),
+    );
+  }
+  
+  void _showThemeDialog(BuildContext context, AppProvider appProvider) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            const Text('Select Theme', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.light_mode),
+              title: const Text('Light Mode'),
+              trailing: appProvider.themeMode == ThemeMode.light ? const Icon(Icons.check, color: Colors.green) : null,
+              onTap: () {
+                appProvider.setThemeMode(ThemeMode.light);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.dark_mode),
+              title: const Text('Dark Mode'),
+              trailing: appProvider.themeMode == ThemeMode.dark ? const Icon(Icons.check, color: Colors.green) : null,
+              onTap: () {
+                appProvider.setThemeMode(ThemeMode.dark);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_suggest),
+              title: const Text('System Default'),
+              trailing: appProvider.themeMode == ThemeMode.system ? const Icon(Icons.check, color: Colors.green) : null,
+              onTap: () {
+                appProvider.setThemeMode(ThemeMode.system);
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  String _getThemeText(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light: return 'Light Mode';
+      case ThemeMode.dark: return 'Dark Mode';
+      case ThemeMode.system: return 'System Default';
+      default: return 'System Default';
+    }
+  }
+  
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppTheme.primaryRed),
+        const SizedBox(width: 8),
+        Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.getPrimaryTextColor(context))),
       ],
     );
   }
-
-  Widget _buildDeliverySettingField(
-    BuildContext context, {
-    required String label,
+  
+  Widget _buildTextField({
     required TextEditingController controller,
-    required String hint,
+    required String label,
     required IconData icon,
+    bool enabled = true,
+    TextInputType? keyboardType,
+    int maxLines = 1,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.getSecondaryTextColor(context),
-          ),
+    return TextFormField(
+      controller: controller,
+      enabled: enabled,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: AppTheme.getMutedTextColor(context)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.3)),
         ),
-        const SizedBox(height: 4),
-        Container(
-          decoration: BoxDecoration(
-            color: AppTheme.getSurfaceColor(context),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
-          ),
-          child: TextField(
-            controller: controller,
-            style: TextStyle(color: AppTheme.getPrimaryTextColor(context)),
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: AppTheme.primaryRed, size: 20),
-              hintText: hint,
-              hintStyle: TextStyle(
-                fontSize: 12,
-                color: AppTheme.getMutedTextColor(context),
-              ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-          ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppTheme.primaryRed, width: 2),
         ),
-      ],
+        filled: true,
+        fillColor: enabled ? null : AppTheme.getSurfaceColor(context).withOpacity(0.5),
+      ),
+      validator: (value) {
+        if (enabled && (value == null || value.trim().isEmpty)) {
+          return 'Please enter $label';
+        }
+        return null;
+      },
+    );
+  }
+  
+  Widget _buildDropdownField({
+    required String label,
+    required IconData icon,
+    required String value,
+    required List<String> items,
+    required bool enabled,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: AppTheme.getMutedTextColor(context)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppTheme.getMutedTextColor(context).withOpacity(0.3)),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          isDense: true,
+          items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+          onChanged: enabled ? onChanged : null,
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildToggleCard({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool>? onChanged,
+    Color? activeColor,
+    Color? inactiveColor,
+  }) {
+    return Card(
+      color: AppTheme.getCardColor(context),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+      ),
+      child: SwitchListTile(
+        title: Text(title, style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
+        subtitle: Text(subtitle, style: TextStyle(color: AppTheme.getSecondaryTextColor(context), fontSize: 12)),
+        value: value,
+        onChanged: onChanged,
+        activeColor: activeColor ?? AppTheme.primaryRed,
+        inactiveThumbColor: inactiveColor ?? Colors.grey,
+      ),
+    );
+  }
+  
+  Widget _buildSettingsTile({
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+    Color? iconColor,
+    Color? textColor,
+    Widget? trailing,
+  }) {
+    return Card(
+      color: AppTheme.getCardColor(context),
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: iconColor ?? AppTheme.getMutedTextColor(context)),
+        title: Text(title, style: TextStyle(color: textColor ?? AppTheme.getPrimaryTextColor(context))),
+        trailing: trailing ?? const Icon(Icons.chevron_right, size: 20),
+        onTap: onTap,
+      ),
     );
   }
 }

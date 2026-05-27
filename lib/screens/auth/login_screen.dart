@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/restaurant_provider.dart';
 import '../../models/models.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -67,7 +68,16 @@ class _LoginScreenState extends State<LoginScreen> {
         if (user.role == UserRole.customer) {
           context.go('/home');
         } else if (user.role == UserRole.restaurant) {
-          context.go('/restaurant');
+          // Check if restaurant exists for this owner
+          final restaurantProvider = Provider.of<RestaurantProvider>(context, listen: false);
+          await restaurantProvider.loadRestaurantInfo();
+          
+          if (restaurantProvider.restaurant == null) {
+            // No restaurant found, go to setup screen
+            context.go('/restaurant-setup');
+          } else {
+            context.go('/restaurant');
+          }
         } else if (user.role == UserRole.driver) {
           context.go('/driver');
         } else {
