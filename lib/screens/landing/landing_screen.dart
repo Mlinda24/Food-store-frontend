@@ -153,7 +153,7 @@ class LandingScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      ' Hungry? We\'ve Got This! ',
+                      '🍔 Hungry? We\'ve Got This! 🍕',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -214,20 +214,20 @@ class LandingScreen extends StatelessWidget {
 
   Widget _buildFeatureChip(BuildContext context, String text, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: AppTheme.primaryRed.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: AppTheme.primaryRed),
-          const SizedBox(width: 4),
+          Icon(icon, size: 8, color: AppTheme.primaryRed),
+          const SizedBox(width: 2),
           Text(
             text,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 8,
               fontWeight: FontWeight.w500,
               color: AppTheme.primaryRed,
             ),
