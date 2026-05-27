@@ -5,6 +5,7 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/registration_screen.dart';
 import '../screens/auth/role_selection_screen.dart';
 import '../screens/location_gate_screen.dart';
+import '../screens/landing/landing_screen.dart';
 import '../screens/customer/home_screen.dart';
 import '../screens/customer/restaurant_details_screen.dart';
 import '../screens/customer/checkout_screen.dart';
@@ -29,6 +30,12 @@ final GoRouter router = GoRouter(
       path: '/location-gate',
       name: 'location-gate',
       builder: (context, state) => const LocationGateScreen(),
+    ),
+    // Landing Screen
+    GoRoute(
+      path: '/landing',
+      name: 'landing',
+      builder: (context, state) => const LandingScreen(),
     ),
     // Auth Routes
     GoRoute(

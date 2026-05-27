@@ -9,8 +9,9 @@ import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.137.1:8000';
-  static const String mediaBaseUrl = 'http://192.168.137.1:8000';
+  // ✅ FIXED: Changed to localhost (127.0.0.1)
+  static const String baseUrl = 'http://127.0.0.1:8000';
+  static const String mediaBaseUrl = 'http://127.0.0.1:8000';
 
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
@@ -836,10 +837,6 @@ class ApiService {
   // GROUP 8: PAYMENT ENDPOINTS
   // ============================================
 
-  /// Initiates a PayChangu mobile money payment.
-  /// Sends order_id, method, and phone_number to the backend.
-  /// The backend (Django) calls PayChangu and returns a checkout_url.
-  /// Flutter then opens that URL in a WebView.
   Future<Map<String, dynamic>> initiatePayment({
     required double amount,
     required String phoneNumber,
@@ -877,9 +874,6 @@ class ApiService {
     }
   }
 
-  /// NEW: Simplified PayChangu payment initiation
-  /// This method doesn't require phone number or method upfront -
-  /// user selects method and enters phone on PayChangu checkout page
   Future<Map<String, dynamic>> initiateSimplePayment({
     required double amount,
     required String orderId,
@@ -911,7 +905,6 @@ class ApiService {
     }
   }
 
-  /// Alternative: PayChangu payment with paychangu method
   Future<Map<String, dynamic>> initiatePayChanguPayment({
     required double amount,
     required String orderId,
