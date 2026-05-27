@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../providers/driver_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../services/driver_service.dart';
 
 class DriverAnalyticsScreen extends StatefulWidget {
   const DriverAnalyticsScreen({super.key});
@@ -15,73 +15,44 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
   String _selectedPeriod = 'week';
   int _selectedChartIndex = 0;
 
-  bool _isLoading = true;
-  String? _error;
+  // ============================================================
+  // CHART DATA
+  // Derived from driverProvider.deliveryHistory (completed only)
+  // so in-session earnings always reflect immediately.
+  // ============================================================
 
-  // Data from API
-  Map<String, dynamic> _earningsSummary = {};
-  List<dynamic> _deliveryHistory = [];
-
-  // Computed chart data from history
-  Map<String, double> _weeklyBreakdown = {
-    'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0,
-  };
-  Map<int, double> _hourlyBreakdown = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    try {
-      final results = await Future.wait([
-        DriverService.getEarningsSummary(),
-        DriverService.getDeliveryHistory(),
-      ]);
-      _earningsSummary = results[0] as Map<String, dynamic>;
-      _deliveryHistory = results[1] as List<dynamic>;
-      _computeChartData();
-    } catch (e) {
-      _error = e.toString();
-    }
-    if (mounted) setState(() => _isLoading = false);
-  }
-
-  void _computeChartData() {
-    // Reset
-    _weeklyBreakdown = {
-      'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0,
+  Map<String, double> _buildWeeklyBreakdown(List history) {
+    final breakdown = {
+      'Mon': 0.0, 'Tue': 0.0, 'Wed': 0.0,
+      'Thu': 0.0, 'Fri': 0.0, 'Sat': 0.0, 'Sun': 0.0,
     };
-    _hourlyBreakdown = {};
-
-    final now = DateTime.now();
-    final weekAgo = now.subtract(const Duration(days: 7));
-
-    for (final order in _deliveryHistory) {
-      final createdStr = order['created'] ?? order['updated_at'] ?? '';
-      if (createdStr.isEmpty) continue;
-      final date = DateTime.tryParse(createdStr);
-      if (date == null) continue;
-
-      final fee = _toDouble(order['delivery_fee'] ?? order['earnings'] ?? 0);
-
-      // Weekly chart — last 7 days only
-      if (date.isAfter(weekAgo)) {
-        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        final dayName = days[date.weekday - 1];
-        _weeklyBreakdown[dayName] = (_weeklyBreakdown[dayName] ?? 0) + fee;
-      }
-
-      // Hourly chart — all history
-      _hourlyBreakdown[date.hour] =
-          (_hourlyBreakdown[date.hour] ?? 0) + fee;
+    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+    for (final order in history) {
+      if (order.status == 'declined') continue;
+      final date = _parseDate(order.estimatedTime);
+      if (date == null || date.isBefore(weekAgo)) continue;
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final dayName = days[date.weekday - 1];
+      breakdown[dayName] = (breakdown[dayName] ?? 0) + order.earnings;
     }
+    return breakdown;
+  }
+
+  Map<int, double> _buildHourlyBreakdown(List history) {
+    final breakdown = <int, double>{};
+    for (final order in history) {
+      if (order.status == 'declined') continue;
+      final date = _parseDate(order.estimatedTime);
+      if (date == null) continue;
+      breakdown[date.hour] = (breakdown[date.hour] ?? 0) + order.earnings;
+    }
+    return breakdown;
+  }
+
+  DateTime? _parseDate(String raw) {
+    // estimatedTime may be an ISO string or a human string like "~5 min ago".
+    // Only ISO strings are parseable into a DateTime.
+    return DateTime.tryParse(raw);
   }
 
   double _toDouble(dynamic v) {
@@ -91,32 +62,13 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     return double.tryParse(v.toString()) ?? 0;
   }
 
-  int _toInt(dynamic v) {
-    if (v == null) return 0;
-    if (v is int) return v;
-    return int.tryParse(v.toString()) ?? 0;
-  }
-
-  // Convenience getters from earnings summary
-  double get _totalEarnings => _toDouble(_earningsSummary['total_earnings']);
-  double get _todayEarnings => _toDouble(_earningsSummary['today_earnings']);
-  double get _weeklyEarnings => _toDouble(_earningsSummary['weekly_earnings']);
-  double get _monthlyEarnings => _toDouble(_earningsSummary['monthly_earnings']);
-  double get _averagePerDelivery => _toDouble(_earningsSummary['average_per_delivery']);
-  double get _acceptanceRate => _toDouble(_earningsSummary['acceptance_rate'] ?? _earningsSummary['acceptanceRate']);
-  double get _completionRate => _toDouble(_earningsSummary['completion_rate'] ?? _earningsSummary['completionRate']);
-  double get _averageRating => _toDouble(_earningsSummary['rating'] ?? _earningsSummary['average_rating']);
-  double get _averageDeliveryTime => _toDouble(_earningsSummary['average_delivery_time'] ?? _earningsSummary['averageDeliveryTime']);
-  double get _totalDistance => _toDouble(_earningsSummary['total_distance'] ?? _earningsSummary['totalDistance']);
-  int get _totalDeliveries => _toInt(_earningsSummary['total_deliveries'] ?? _deliveryHistory.length);
-
-  // Filter history by selected period
-  List<dynamic> get _filteredHistory {
+  List _filteredHistory(List history) {
+    // Completed only, filter by period
     final now = DateTime.now();
-    return _deliveryHistory.where((o) {
-      final createdStr = o['created'] ?? o['updated_at'] ?? '';
-      final date = DateTime.tryParse(createdStr);
-      if (date == null) return false;
+    return history.where((o) {
+      if (o.status == 'declined') return false;
+      final date = _parseDate(o.estimatedTime);
+      if (date == null) return true; // can't filter, include
       switch (_selectedPeriod) {
         case 'week':
           return date.isAfter(now.subtract(const Duration(days: 7)));
@@ -130,6 +82,11 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ── READ FROM PROVIDER – single source of truth ──────────────────────
+    final driverProvider = Provider.of<DriverProvider>(context);
+    final stats = driverProvider.stats;
+    final history = driverProvider.deliveryHistory.toList();
+
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDarkMode;
 
@@ -141,6 +98,27 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
         isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
     final mutedColor =
         isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+
+    // Pre-compute chart data from provider history
+    final weeklyBreakdown = _buildWeeklyBreakdown(history);
+    final hourlyBreakdown = _buildHourlyBreakdown(history);
+    final filtered = _filteredHistory(history);
+
+    // Stats come directly from provider (already include in-session earnings)
+    final totalEarnings = stats.totalEarnings;
+    final todayEarnings = stats.todayEarnings;
+    final totalDeliveries = stats.totalDeliveries;
+    final completedToday = stats.completedToday;
+    final rating = stats.rating;
+
+    // Declined count from provider
+    final declinedCount = driverProvider.declinedOrders.length;
+    final totalOffered = totalDeliveries + declinedCount;
+    final acceptanceRate = totalOffered > 0
+        ? (totalDeliveries / totalOffered) * 100
+        : 0.0;
+    final avgPerDelivery =
+        totalDeliveries > 0 ? totalEarnings / totalDeliveries : 0.0;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -158,7 +136,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              _loadData();
+              driverProvider.refresh();
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text('Refreshing analytics...'),
                 backgroundColor: AppTheme.success,
@@ -168,57 +146,67 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
           ),
         ],
       ),
-      body: _isLoading
+      body: driverProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.wifi_off,
-                          size: 48, color: AppTheme.error),
-                      const SizedBox(height: 12),
-                      Text(_error!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: secondaryTextColor)),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _loadData,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryRed),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _buildEarningsOverview(),
-                        const SizedBox(height: 16),
-                        _buildPeriodSelector(isDark, textColor),
-                        const SizedBox(height: 16),
-                        _buildEarningsChart(
-                            isDark, textColor, secondaryTextColor, mutedColor),
-                        const SizedBox(height: 16),
-                        _buildPerformanceMetrics(
-                            isDark, textColor, secondaryTextColor),
-                        const SizedBox(height: 16),
-                        _buildRecentDeliveries(
-                            isDark, textColor, secondaryTextColor, mutedColor),
-                      ],
+          : RefreshIndicator(
+              onRefresh: driverProvider.refresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // ── Earnings overview ──────────────────────────────
+                    _buildEarningsOverview(
+                      totalEarnings: totalEarnings,
+                      todayEarnings: todayEarnings,
+                      avgPerDelivery: avgPerDelivery,
+                      sessionEarnings: driverProvider.sessionEarnings,
                     ),
-                  ),
+                    const SizedBox(height: 16),
+
+                    // ── Period selector ────────────────────────────────
+                    _buildPeriodSelector(isDark, textColor),
+                    const SizedBox(height: 16),
+
+                    // ── Chart ──────────────────────────────────────────
+                    _buildEarningsChart(
+                      isDark, textColor, secondaryTextColor, mutedColor,
+                      weeklyBreakdown: weeklyBreakdown,
+                      hourlyBreakdown: hourlyBreakdown,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Performance metrics ────────────────────────────
+                    _buildPerformanceMetrics(
+                      isDark, textColor, secondaryTextColor,
+                      totalDeliveries: totalDeliveries,
+                      acceptanceRate: acceptanceRate,
+                      rating: rating,
+                      declinedCount: declinedCount,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Recent deliveries list ─────────────────────────
+                    _buildRecentDeliveries(
+                      isDark, textColor, secondaryTextColor, mutedColor,
+                      filtered: filtered,
+                    ),
+                  ],
                 ),
+              ),
+            ),
     );
   }
 
-  Widget _buildEarningsOverview() {
+  // ============================================================
+  // EARNINGS OVERVIEW
+  // ============================================================
+  Widget _buildEarningsOverview({
+    required double totalEarnings,
+    required double todayEarnings,
+    required double avgPerDelivery,
+    required double sessionEarnings,
+  }) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -231,7 +219,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
               style: TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 8),
           Text(
-            'MK${_totalEarnings.toInt()}',
+            'MK${totalEarnings.toInt()}',
             style: const TextStyle(
                 color: Colors.white,
                 fontSize: 36,
@@ -241,23 +229,10 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildOverviewItem('Today', 'MK${_todayEarnings.toInt()}'),
-              _buildOverviewItem('This Week', 'MK${_weeklyEarnings.toInt()}'),
-              _buildOverviewItem('This Month', 'MK${_monthlyEarnings.toInt()}'),
+              _buildOverviewItem('Today', 'MK${todayEarnings.toInt()}'),
+              _buildOverviewItem('This Session', 'MK${sessionEarnings.toInt()}'),
+              _buildOverviewItem('Avg / Delivery', 'MK${avgPerDelivery.toInt()}'),
             ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              'Avg. MK${_averagePerDelivery.toInt()} per delivery',
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
           ),
         ],
       ),
@@ -279,6 +254,9 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
+  // ============================================================
+  // PERIOD SELECTOR
+  // ============================================================
   Widget _buildPeriodSelector(bool isDark, Color textColor) {
     return Container(
       padding: const EdgeInsets.all(4),
@@ -325,15 +303,23 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildEarningsChart(bool isDark, Color textColor,
-      Color secondaryTextColor, Color mutedColor) {
+  // ============================================================
+  // EARNINGS CHART
+  // ============================================================
+  Widget _buildEarningsChart(
+    bool isDark,
+    Color textColor,
+    Color secondaryTextColor,
+    Color mutedColor, {
+    required Map<String, double> weeklyBreakdown,
+    required Map<int, double> hourlyBreakdown,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,8 +345,8 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
           SizedBox(
             height: 200,
             child: _selectedChartIndex == 0
-                ? _buildWeeklyChart(secondaryTextColor)
-                : _buildHourlyChart(secondaryTextColor, mutedColor),
+                ? _buildWeeklyChart(secondaryTextColor, weeklyBreakdown)
+                : _buildHourlyChart(secondaryTextColor, mutedColor, hourlyBreakdown),
           ),
         ],
       ),
@@ -373,8 +359,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     return GestureDetector(
       onTap: () => setState(() => _selectedChartIndex = index),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryRed
@@ -391,29 +376,26 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildWeeklyChart(Color secondaryTextColor) {
-    final hasData =
-        _weeklyBreakdown.values.any((v) => v > 0);
+  Widget _buildWeeklyChart(
+      Color secondaryTextColor, Map<String, double> weeklyBreakdown) {
+    final hasData = weeklyBreakdown.values.any((v) => v > 0);
     if (!hasData) {
       return Center(
           child: Text('No data for this week',
               style: TextStyle(color: secondaryTextColor)));
     }
-    final maxVal =
-        _weeklyBreakdown.values.reduce((a, b) => a > b ? a : b);
+    final maxVal = weeklyBreakdown.values.reduce((a, b) => a > b ? a : b);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       crossAxisAlignment: CrossAxisAlignment.end,
-      children: _weeklyBreakdown.entries.map((entry) {
-        final barHeight =
-            maxVal > 0 ? (entry.value / maxVal) * 150 : 0.0;
+      children: weeklyBreakdown.entries.map((entry) {
+        final barHeight = maxVal > 0 ? (entry.value / maxVal) * 150 : 0.0;
         return Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Text('MK${entry.value.toInt()}',
-                style: TextStyle(
-                    fontSize: 9, color: secondaryTextColor)),
+                style: TextStyle(fontSize: 9, color: secondaryTextColor)),
             const SizedBox(height: 4),
             Container(
               width: 35,
@@ -425,30 +407,28 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
             ),
             const SizedBox(height: 4),
             Text(entry.key,
-                style: TextStyle(
-                    fontSize: 12, color: secondaryTextColor)),
+                style: TextStyle(fontSize: 12, color: secondaryTextColor)),
           ],
         );
       }).toList(),
     );
   }
 
-  Widget _buildHourlyChart(
-      Color secondaryTextColor, Color mutedColor) {
-    if (_hourlyBreakdown.isEmpty) {
+  Widget _buildHourlyChart(Color secondaryTextColor, Color mutedColor,
+      Map<int, double> hourlyBreakdown) {
+    if (hourlyBreakdown.isEmpty) {
       return Center(
           child: Text('No hourly data available',
               style: TextStyle(color: secondaryTextColor)));
     }
-    final maxVal =
-        _hourlyBreakdown.values.reduce((a, b) => a > b ? a : b);
+    final maxVal = hourlyBreakdown.values.reduce((a, b) => a > b ? a : b);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: List.generate(24, (hour) {
-          final earnings = _hourlyBreakdown[hour] ?? 0;
+          final earnings = hourlyBreakdown[hour] ?? 0;
           final barHeight =
               earnings > 0 && maxVal > 0 ? (earnings / maxVal) * 150 : 5.0;
           return Container(
@@ -459,8 +439,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
               children: [
                 if (earnings > 0)
                   Text('MK${earnings.toInt()}',
-                      style: TextStyle(
-                          fontSize: 8, color: secondaryTextColor)),
+                      style: TextStyle(fontSize: 8, color: secondaryTextColor)),
                 const SizedBox(height: 4),
                 Container(
                   width: 25,
@@ -474,8 +453,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text('$hour:00',
-                    style: TextStyle(
-                        fontSize: 9, color: secondaryTextColor)),
+                    style: TextStyle(fontSize: 9, color: secondaryTextColor)),
               ],
             ),
           );
@@ -484,15 +462,24 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
+  // ============================================================
+  // PERFORMANCE METRICS
+  // ============================================================
   Widget _buildPerformanceMetrics(
-      bool isDark, Color textColor, Color secondaryTextColor) {
+    bool isDark,
+    Color textColor,
+    Color secondaryTextColor, {
+    required int totalDeliveries,
+    required double acceptanceRate,
+    required double rating,
+    required int declinedCount,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,50 +499,30 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
             childAspectRatio: 1.5,
             children: [
               _buildMetricCard(
+                  'Total Deliveries',
+                  '$totalDeliveries',
+                  Icons.delivery_dining,
+                  Colors.blue,
+                  isDark),
+              _buildMetricCard(
                   'Acceptance Rate',
-                  _acceptanceRate > 0
-                      ? '${_acceptanceRate.toStringAsFixed(1)}%'
+                  acceptanceRate > 0
+                      ? '${acceptanceRate.toStringAsFixed(1)}%'
                       : '—',
                   Icons.check_circle,
                   AppTheme.success,
                   isDark),
               _buildMetricCard(
-                  'Completion Rate',
-                  _completionRate > 0
-                      ? '${_completionRate.toStringAsFixed(1)}%'
-                      : '—',
-                  Icons.verified,
-                  AppTheme.success,
-                  isDark),
-              _buildMetricCard(
                   'Customer Rating',
-                  _averageRating > 0
-                      ? '${_averageRating.toStringAsFixed(1)} ★'
-                      : '—',
+                  rating > 0 ? '${rating.toStringAsFixed(1)} ★' : '—',
                   Icons.star,
                   AppTheme.yellow,
                   isDark),
               _buildMetricCard(
-                  'Avg Delivery Time',
-                  _averageDeliveryTime > 0
-                      ? '${_averageDeliveryTime.toStringAsFixed(0)} min'
-                      : '—',
-                  Icons.timer,
-                  AppTheme.warning,
-                  isDark),
-              _buildMetricCard(
-                  'Total Distance',
-                  _totalDistance > 0
-                      ? '${_totalDistance.toStringAsFixed(0)} km'
-                      : '—',
-                  Icons.route,
-                  AppTheme.primaryRed,
-                  isDark),
-              _buildMetricCard(
-                  'Total Deliveries',
-                  '$_totalDeliveries',
-                  Icons.delivery_dining,
-                  Colors.blue,
+                  'Declined Orders',
+                  '$declinedCount',
+                  Icons.cancel,
+                  AppTheme.error,
                   isDark),
             ],
           ),
@@ -602,17 +569,24 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
     );
   }
 
-  Widget _buildRecentDeliveries(bool isDark, Color textColor,
-      Color secondaryTextColor, Color mutedColor) {
-    final filtered = _filteredHistory.take(10).toList();
+  // ============================================================
+  // RECENT DELIVERIES  (completed only)
+  // ============================================================
+  Widget _buildRecentDeliveries(
+    bool isDark,
+    Color textColor,
+    Color secondaryTextColor,
+    Color mutedColor, {
+    required List filtered,
+  }) {
+    final items = filtered.take(10).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: AppTheme.getCardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -623,7 +597,7 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
                   fontWeight: FontWeight.bold,
                   color: textColor)),
           const SizedBox(height: 12),
-          if (filtered.isEmpty)
+          if (items.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
@@ -634,23 +608,11 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: filtered.length,
+              itemCount: items.length,
               separatorBuilder: (_, __) =>
                   const Divider(color: AppTheme.deepCrimson),
               itemBuilder: (context, index) {
-                final order = filtered[index];
-                final restaurantName = order['restaurant_name'] ??
-                    order['restaurant']?['name'] ??
-                    'Restaurant';
-                final customerName = order['customer_name'] ??
-                    order['customer']?['username'] ??
-                    'Customer';
-                final fee = _toDouble(
-                    order['delivery_fee'] ?? order['earnings'] ?? 0);
-                final createdStr =
-                    order['created'] ?? order['updated_at'] ?? '';
-                final date = DateTime.tryParse(createdStr);
-
+                final order = items[index];
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Container(
@@ -662,20 +624,21 @@ class _DriverAnalyticsScreenState extends State<DriverAnalyticsScreen> {
                           : AppTheme.lightSecondaryBackground,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.receipt,
-                        size: 20, color: mutedColor),
+                    child:
+                        Icon(Icons.receipt, size: 20, color: mutedColor),
                   ),
-                  title: Text(restaurantName,
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: textColor)),
+                  title: Text(
+                    order.restaurantName,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: textColor),
+                  ),
                   subtitle: Text(
-                    '$customerName${date != null ? ' • ${_formatDate(date)}' : ''}',
+                    order.customerName,
                     style: TextStyle(
                         fontSize: 11, color: secondaryTextColor),
                   ),
                   trailing: Text(
-                    'MK${fee.toInt()}',
+                    'MK${order.earnings.toInt()}',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryRed),

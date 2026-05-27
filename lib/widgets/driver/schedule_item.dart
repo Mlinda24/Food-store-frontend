@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../providers/theme_provider.dart';
 
 class ScheduleItem extends StatelessWidget {
   final String orderId;
   final String restaurant;
   final String customer;
-  final int time;
+  final String time;
   final String status;
   final VoidCallback? onTap;
 
@@ -21,6 +23,9 @@ class ScheduleItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -28,7 +33,7 @@ class ScheduleItem extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.secondaryBackground,
+          color: isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -37,7 +42,7 @@ class ScheduleItem extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppTheme.cardBackground,
+                color: isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.restaurant, size: 20, color: AppTheme.mutedText),
@@ -64,7 +69,7 @@ class ScheduleItem extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${time.toString()} min',
+                    time,
                     style: TextStyle(
                       fontSize: 10,
                       color: AppTheme.mutedText,
@@ -107,8 +112,8 @@ class ScheduleItem extends StatelessWidget {
         return AppTheme.warning;
       case 'Out for Delivery':
         return AppTheme.primaryRed;
-      case 'Scheduled':
-        return AppTheme.mutedText;
+      case 'Available':
+        return AppTheme.primaryRed;
       default:
         return AppTheme.mutedText;
     }
