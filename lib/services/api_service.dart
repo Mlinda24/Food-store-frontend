@@ -9,8 +9,8 @@ import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:8000';
-  static const String mediaBaseUrl = 'http://127.0.0.1:8000';
+  static const String baseUrl = 'http://192.168.137.1:8000';
+  static const String mediaBaseUrl = 'http://192.168.137.1:8000';
 
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
@@ -440,7 +440,8 @@ class ApiService {
   // GROUP 5: RESTAURANT OWNER ENDPOINTS
   // ============================================
 
-  Future<Map<String, dynamic>> createRestaurant(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> createRestaurant(
+      Map<String, dynamic> data) async {
     print('🏪 Creating restaurant with data: $data');
 
     final response = await http.post(
@@ -470,15 +471,15 @@ class ApiService {
     required File imageFile,
   }) async {
     print('🏪 Creating restaurant with image upload');
-    
+
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/api/owner/restaurants/'),
     );
-    
+
     final token = await getToken();
     request.headers['Authorization'] = 'Bearer $token';
-    
+
     request.fields['name'] = name;
     request.fields['address'] = address;
     request.fields['phone'] = phone;
@@ -486,10 +487,10 @@ class ApiService {
       request.fields['description'] = description;
     }
     request.fields['is_open'] = 'true';
-    
+
     final bytes = await imageFile.readAsBytes();
     final fileName = path.basename(imageFile.path);
-    
+
     final multipartFile = http.MultipartFile.fromBytes(
       'image',
       bytes,
@@ -497,13 +498,13 @@ class ApiService {
       contentType: MediaType('image', 'jpeg'),
     );
     request.files.add(multipartFile);
-    
+
     final response = await request.send();
     final responseBody = await http.Response.fromStream(response);
-    
+
     print('Create restaurant response: ${response.statusCode}');
     print('Create restaurant body: ${responseBody.body}');
-    
+
     if (response.statusCode == 201 || response.statusCode == 200) {
       return json.decode(responseBody.body);
     } else {
@@ -945,7 +946,7 @@ class ApiService {
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       List<dynamic> ordersData = data is List ? data : (data['results'] ?? []);
-      
+
       return ordersData.map((json) => Order.fromJson(json)).toList();
     } else if (response.statusCode == 401) {
       final refreshed = await refreshToken();
@@ -997,7 +998,7 @@ class ApiService {
   Future<Map<String, dynamic>> updateOrderStatus(
       String orderId, String status) async {
     print('🔄 Updating order #$orderId status to: $status');
-    
+
     final response = await http.patch(
       Uri.parse('$baseUrl/api/orders/orders/$orderId/update_status/'),
       headers: await getHeaders(),

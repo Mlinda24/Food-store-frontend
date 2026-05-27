@@ -12,7 +12,6 @@ import '../../widgets/customer/category_chip.dart';
 import '../../widgets/customer/featured_meal_card.dart';
 import '../../widgets/customer/delivery_status_card.dart';
 
-// Simple animation widgets
 class FadeInUp extends StatelessWidget {
   final Widget child;
   final int delay;
@@ -73,29 +72,26 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      GlobalKey<RefreshIndicatorState>();
 
   String _selectedCategory = 'All';
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  // Data from API
   List<Map<String, dynamic>> _featuredMeals = [];
   List<Map<String, dynamic>> _topRestaurants = [];
-  // Full list of all loaded menu items (used for infinite scroll display)
   List<Map<String, dynamic>> _allMenuItems = [];
-  // Complete list fetched from API (used as source for pagination)
   List<Map<String, dynamic>> _allMenuItemsSource = [];
   List<String> _categories = ['All'];
   bool _isLoading = true;
   String? _error;
 
-  // Pagination
   int _currentPage = 1;
   bool _hasMore = true;
   bool _isLoadingMore = false;
   static const int _pageSize = 10;
 
-  // Search
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
 
@@ -130,10 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ──────────────────────────────────────────────
-  // DATA LOADING
-  // ──────────────────────────────────────────────
-
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -141,10 +133,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      // Load cart from backend
       await context.read<CartProvider>().loadCart();
 
-      // Fetch restaurants
       final restaurantsData = await _apiService.getRestaurants();
       final List<Map<String, dynamic>> restaurants = [];
       for (var rest in restaurantsData) {
@@ -162,10 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       _topRestaurants = restaurants;
 
-      // Fetch ALL menu items (aggregated across every restaurant)
       await _fetchAllMenuItemsFromApi();
-
-      // Slice first page into the display list
       _applyFirstPage();
 
       setState(() {
@@ -180,11 +167,53 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Calls ApiService.getMenuItems() with no restaurantId so it aggregates
-  /// every restaurant's menu. Builds [_allMenuItemsSource] and [_categories].
+  Future<void> _refreshData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _currentPage = 1;
+      _hasMore = true;
+      _allMenuItems = [];
+      _allMenuItemsSource = [];
+    });
+
+    try {
+      await context.read<CartProvider>().loadCart();
+
+      final restaurantsData = await _apiService.getRestaurants();
+      final List<Map<String, dynamic>> restaurants = [];
+      for (var rest in restaurantsData) {
+        final imageUrl = _getImageUrl(rest['image']);
+        restaurants.add({
+          'id': rest['id'].toString(),
+          'name': rest['name'] ?? 'Restaurant',
+          'cuisine': _getCuisineString(rest['categories']),
+          'rating': _getRating(rest),
+          'type': 'restaurant',
+          'address': rest['address'] ?? '',
+          'is_open': rest['is_open'] ?? true,
+          'image': imageUrl,
+        });
+      }
+      _topRestaurants = restaurants;
+
+      await _fetchAllMenuItemsFromApi();
+      _applyFirstPage();
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+      print('Error refreshing home data: $e');
+    }
+  }
+
   Future<void> _fetchAllMenuItemsFromApi() async {
     try {
-      // getMenuItems() with no argument now fetches from ALL restaurants
       final rawItems = await _apiService.getMenuItems();
 
       final Set<String> categorySet = {'All'};
@@ -196,7 +225,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final String imageUrl = _getImageUrl(item['image']);
 
-        // restaurant_name is injected by getMenuItems() when fetching all
         final String restaurantName = item['restaurant_name']?.toString() ??
             _getRestaurantNameById(
               item['restaurant']?.toString() ?? '',
@@ -231,19 +259,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Slices the first [_pageSize] items from the source into the display list
-  /// and sets up featured meals.
   void _applyFirstPage() {
     _currentPage = 1;
     _allMenuItems = [];
 
-    final source = _filteredSource; // respects selected category
+    final source = _filteredSource;
     final end = source.length < _pageSize ? source.length : _pageSize;
     _allMenuItems = source.sublist(0, end);
     _hasMore = source.length > _pageSize;
     _currentPage = 2;
 
-    // Featured meals: first 6 available items from full source
     _featuredMeals = _allMenuItemsSource
         .where((item) => item['is_available'] == true)
         .take(6)
@@ -283,11 +308,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ──────────────────────────────────────────────
-  // HELPERS
-  // ──────────────────────────────────────────────
-
-  /// Source list filtered by the currently selected category.
   List<Map<String, dynamic>> get _filteredSource {
     if (_selectedCategory == 'All') return _allMenuItemsSource;
     return _allMenuItemsSource
@@ -310,9 +330,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (image == null) return '';
     if (image is String && image.isNotEmpty) {
       if (image.startsWith('http')) return image;
-      if (image.startsWith('/media/')) return 'http://127.0.0.1:8000$image';
-      if (image.startsWith('/')) return 'http://127.0.0.1:8000$image';
-      return 'http://127.0.0.1:8000/media/$image';
+      if (image.startsWith('/media/')) return 'http://192.168.137.1:8000$image';
+      if (image.startsWith('/')) return 'http://192.168.137.1:8000$image';
+      return 'http://192.168.137.1:8000/media/$image';
     }
     return '';
   }
@@ -349,22 +369,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return val.toStringAsFixed(0);
   }
 
-  // ──────────────────────────────────────────────
-  // CATEGORY SELECTION
-  // ──────────────────────────────────────────────
-
   void _onCategorySelected(String category) {
     setState(() {
       _selectedCategory = category;
     });
-    // Re-slice the display list for the new category
     _applyFirstPage();
-    setState(() {}); // trigger rebuild with new display list
   }
-
-  // ──────────────────────────────────────────────
-  // SEARCH
-  // ──────────────────────────────────────────────
 
   void _onSearchChanged(String query) {
     setState(() {
@@ -413,10 +423,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ──────────────────────────────────────────────
-  // NAV
-  // ──────────────────────────────────────────────
-
   void _onItemTapped(int index) async {
     switch (index) {
       case 0:
@@ -434,10 +440,6 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
     }
   }
-
-  // ──────────────────────────────────────────────
-  // ADD TO CART
-  // ──────────────────────────────────────────────
 
   Future<void> _addToCart(Map<String, dynamic> itemData) async {
     try {
@@ -468,9 +470,8 @@ class _HomeScreenState extends State<HomeScreen> {
             backgroundColor: AppTheme.success,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -483,18 +484,13 @@ class _HomeScreenState extends State<HomeScreen> {
             backgroundColor: AppTheme.error,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
     }
   }
-
-  // ──────────────────────────────────────────────
-  // BUILD
-  // ──────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -502,6 +498,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final userName = authProvider.currentUser?.name?.split('@')[0] ?? 'Guest';
     final currentNavIndex = _getNavIndex(context);
+    final featuredMeals = _selectedCategory == 'All'
+        ? _featuredMeals
+        : _allMenuItemsSource
+            .where((m) =>
+                m['category'] == _selectedCategory && m['is_available'] == true)
+            .take(6)
+            .toList();
 
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
@@ -514,13 +517,19 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _buildSearchBar(context, isDark),
             ),
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? _buildErrorWidget(context)
-                      : _isSearching
-                          ? _buildSearchResults(context)
-                          : _buildMainContent(context),
+              child: RefreshIndicator(
+                key: _refreshIndicatorKey,
+                color: AppTheme.primaryRed,
+                backgroundColor: AppTheme.getCardColor(context),
+                onRefresh: _refreshData,
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? _buildErrorWidget(context)
+                        : _isSearching
+                            ? _buildSearchResults(context)
+                            : _buildMainContent(context, featuredMeals),
+              ),
             ),
           ],
         ),
@@ -528,10 +537,6 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: _buildBottomNavBar(context, currentNavIndex),
     );
   }
-
-  // ──────────────────────────────────────────────
-  // HEADER WITH LOGO - FIXED VERSION
-  // ──────────────────────────────────────────────
 
   Widget _buildProfessionalHeader(
       BuildContext context, String userName, bool isDark) {
@@ -548,13 +553,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          // Logo Image - Clean, no shadows
           Container(
             width: 45,
             height: 45,
-            decoration: const BoxDecoration(
-              shape: BoxShape.rectangle,
-            ),
+            decoration: const BoxDecoration(shape: BoxShape.rectangle),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.asset(
@@ -573,20 +575,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // Brand Name and Tagline
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Foodie Express',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.getPrimaryTextColor(context),
-                    letterSpacing: 0.5,
-                  ),
-                ),
                 Text(
                   'Delivering happiness to your door',
                   style: TextStyle(
@@ -597,16 +589,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // Welcome Message
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 'Welcome back,',
                 style: TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.getSecondaryTextColor(context),
-                ),
+                    fontSize: 10,
+                    color: AppTheme.getSecondaryTextColor(context)),
               ),
               Row(
                 children: [
@@ -625,7 +615,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(width: 8),
-          // Notification Icon
           Container(
             decoration: BoxDecoration(
               color: AppTheme.primaryRed.withOpacity(0.1),
@@ -641,10 +630,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  // ──────────────────────────────────────────────
-  // SEARCH BAR
-  // ──────────────────────────────────────────────
 
   Widget _buildSearchBar(BuildContext context, bool isDark) {
     return AnimatedContainer(
@@ -686,10 +671,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ──────────────────────────────────────────────
-  // ERROR
-  // ──────────────────────────────────────────────
-
   Widget _buildErrorWidget(BuildContext context) {
     return Center(
       child: Column(
@@ -704,7 +685,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _loadData,
+            onPressed: _refreshData,
             style:
                 ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed),
             child: const Text('Try Again'),
@@ -714,20 +695,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ──────────────────────────────────────────────
-  // MAIN CONTENT
-  // ──────────────────────────────────────────────
-
-  Widget _buildMainContent(BuildContext context) {
-    // Featured meals always show from the full source list (not paginated)
-    final featuredMeals = _selectedCategory == 'All'
-        ? _featuredMeals
-        : _allMenuItemsSource
-            .where((m) =>
-                m['category'] == _selectedCategory && m['is_available'] == true)
-            .take(6)
-            .toList();
-
+  Widget _buildMainContent(
+      BuildContext context, List<Map<String, dynamic>> featuredMeals) {
     return NotificationListener<ScrollNotification>(
       onNotification: (scrollInfo) {
         if (scrollInfo.metrics.pixels >=
@@ -742,52 +711,20 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: _scrollController,
         child: Column(
           children: [
-            // Delivery Status Card
             const DeliveryStatusCard(),
-
-            // Categories
             if (_categories.length > 1) _buildCategoriesSection(context),
-
-            // Featured Restaurants
             if (_topRestaurants.isNotEmpty)
               _buildFeaturedRestaurantsSection(context),
-
-            // Featured Meals (horizontal scroll)
             if (featuredMeals.isNotEmpty)
               _buildFeaturedMealsSection(context, featuredMeals),
-
-            // All Menu Items (paginated grid)
             if (_allMenuItems.isNotEmpty)
-              _buildAllMenuItemsSection(context, _allMenuItems)
-            else if (!_isLoading)
-              Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  children: [
-                    Icon(Icons.no_food,
-                        size: 64, color: AppTheme.getMutedTextColor(context)),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No menu items available',
-                      style: TextStyle(
-                        color: AppTheme.getSecondaryTextColor(context),
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
+              _buildAllMenuItemsSection(context, _allMenuItems),
             const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
-
-  // ──────────────────────────────────────────────
-  // CATEGORIES
-  // ──────────────────────────────────────────────
 
   Widget _buildCategoriesSection(BuildContext context) {
     return Column(
@@ -833,10 +770,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ──────────────────────────────────────────────
-  // FEATURED RESTAURANTS
-  // ──────────────────────────────────────────────
-
   Widget _buildFeaturedRestaurantsSection(BuildContext context) {
     return FadeInUp(
       child: Column(
@@ -877,10 +810,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ──────────────────────────────────────────────
-  // FEATURED MEALS
-  // ──────────────────────────────────────────────
-
   Widget _buildFeaturedMealsSection(
       BuildContext context, List<Map<String, dynamic>> meals) {
     return FadeInUp(
@@ -894,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: AppTheme.primaryRed, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  '🔥 Featured Meals',
+                  'Featured Meals',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -904,30 +833,30 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          SizedBox(
-            height: 290,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: meals.length,
-              itemBuilder: (context, index) => Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: FeaturedMealCard(
-                  meal: meals[index],
-                  onTap: () =>
-                      context.push('/food-detail', extra: meals[index]),
-                ),
-              ),
+          // FIX: SingleChildScrollView + Row with crossAxisAlignment.start
+          // lets each card shrink-wrap its own content with no imposed height.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (int i = 0; i < meals.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: FeaturedMealCard(
+                      meal: meals[i],
+                      onTap: () =>
+                          context.push('/food-detail', extra: meals[i]),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-
-  // ──────────────────────────────────────────────
-  // ALL MENU ITEMS (paginated grid)
-  // ──────────────────────────────────────────────
 
   Widget _buildAllMenuItemsSection(
       BuildContext context, List<Map<String, dynamic>> items) {
@@ -941,7 +870,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(Icons.menu_book, color: AppTheme.primaryRed, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  '🍽️ All Menu Items',
+                  'All Menu Items',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -959,39 +888,40 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+          // FIX: Replace GridView (fixed aspect ratio = overflow/gaps) with
+          // a two-column layout that sizes each row to its tallest card.
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.75,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int i = 0; i < items.length; i += 2)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: _buildMenuItemCard(context, items[i]),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: i + 1 < items.length
+                                ? _buildMenuItemCard(context, items[i + 1])
+                                : const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            itemCount: items.length,
-            itemBuilder: (context, index) =>
-                _buildMenuItemCard(context, items[index]),
           ),
-          // Loading indicator
           if (_isLoadingMore)
             const Padding(
               padding: EdgeInsets.all(16),
-              child: Center(
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          // End of list message
-          if (!_hasMore && items.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '© 2026 Foodie Express. All rights reserved.',
-                style: TextStyle(
-                  color: AppTheme.getSecondaryTextColor(context),
-                  fontSize: 12,
-                ),
-              ),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             ),
         ],
       ),
@@ -1000,6 +930,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMenuItemCard(BuildContext context, Map<String, dynamic> item) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final imageUrl = item['image'] ?? '';
+    final isValidImageUrl = imageUrl.isNotEmpty &&
+        (imageUrl.startsWith('http') || imageUrl.startsWith('/media/'));
 
     return GestureDetector(
       onTap: () => context.push('/food-detail', extra: item),
@@ -1013,150 +947,120 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          // MainAxisSize.max so the card fills the IntrinsicHeight row height,
+          // making both cards in a row the same height. The image is pinned to
+          // 120px; only the details padding stretches to fill any extra space.
+          mainAxisSize: MainAxisSize.max,
           children: [
-            // Image
+            // Image — always exactly 120px tall
             ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Stack(
-                children: [
-                  Hero(
-                    tag: 'menu_${item['id']}',
-                    child: CachedNetworkImage(
-                      imageUrl: item['image'] ?? '',
-                      height: 120,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        height: 120,
-                        color: isDark
-                            ? AppTheme.darkSurface
-                            : AppTheme.lightBackground,
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        height: 120,
-                        color: isDark
-                            ? AppTheme.darkSurface
-                            : AppTheme.lightBackground,
-                        child: Icon(
+              child: SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: ColoredBox(
+                  color: isDark ? AppTheme.darkSurface : Colors.grey.shade200,
+                  child: isValidImageUrl
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          width: double.infinity,
+                          height: 120,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.primaryRed,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Icon(
+                            Icons.broken_image,
+                            size: 30,
+                            color: AppTheme.getMutedTextColor(context),
+                          ),
+                        )
+                      : Icon(
                           Icons.fastfood,
-                          size: 40,
+                          size: 30,
                           color: AppTheme.getMutedTextColor(context),
                         ),
-                      ),
-                    ),
-                  ),
-                  // Rating badge
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star, size: 10, color: Colors.amber),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${item['rating']}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Unavailable overlay
-                  if (!(item['is_available'] as bool? ?? true))
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black.withOpacity(0.6),
-                        child: const Center(
-                          child: Text(
-                            'Currently Unavailable',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
-            // Details
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item['name'],
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.getPrimaryTextColor(context),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item['restaurant'] ?? 'Foodie Express',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppTheme.getSecondaryTextColor(context),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        item['price'],
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryRed,
+            // Details — Expanded so it fills remaining height in the row,
+            // pushing price+button to the bottom of every card uniformly.
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Top: name + restaurant
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          item['name'],
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.getPrimaryTextColor(context),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryButtonGradient,
-                          shape: BoxShape.circle,
+                        const SizedBox(height: 2),
+                        Text(
+                          item['restaurant'] ?? 'Foodie Express',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.getSecondaryTextColor(context),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        child: IconButton(
-                          icon: const Icon(Icons.add_shopping_cart,
-                              size: 16, color: Colors.white),
-                          onPressed: (item['is_available'] as bool? ?? true)
+                      ],
+                    ),
+                    // Bottom: price + add button always aligned across both cards
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item['price'],
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryRed,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: (item['is_available'] as bool? ?? true)
                               ? () => _addToCart(item)
                               : null,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 28,
-                            minHeight: 28,
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryButtonGradient,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.add_shopping_cart,
+                              size: 16,
+                              color: (item['is_available'] as bool? ?? true)
+                                  ? Colors.white
+                                  : Colors.grey,
+                            ),
                           ),
-                          iconSize: 16,
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1164,10 +1068,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  // ──────────────────────────────────────────────
-  // SEARCH RESULTS
-  // ──────────────────────────────────────────────
 
   Widget _buildSearchResults(BuildContext context) {
     if (_searchResults.isEmpty) {
@@ -1235,10 +1135,6 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-
-  // ──────────────────────────────────────────────
-  // BOTTOM NAV
-  // ──────────────────────────────────────────────
 
   Widget _buildBottomNavBar(BuildContext context, int currentNavIndex) {
     return Consumer<CartProvider>(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../screens/customer/order_tracking_screen.dart';
 import 'package:go_router/go_router.dart';
 import '../screens/auth/login_screen.dart';
@@ -18,17 +19,42 @@ import '../screens/customer/settings_screen.dart';
 import '../screens/customer/food_detail_screen.dart';
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_profile_screen.dart';
-<<<<<<< HEAD
-import '../screens/restaurant/restaurant_setup_screen.dart';
-=======
 import '../screens/restaurant/withdraw_screen.dart';
->>>>>>> 760ea6c1047b37ad556e4e81863e7091d934f643
 import '../screens/driver/driver_dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
+import '../providers/auth_provider.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/location-gate',
+  redirect: (context, state) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isAuthenticated = authProvider.isAuthenticated;
+    final user = authProvider.currentUser;
+
+    final isAuthRoute = state.matchedLocation == '/login' ||
+        state.matchedLocation == '/register' ||
+        state.matchedLocation == '/role-selection';
+
+    final isPublicRoute = state.matchedLocation == '/location-gate' ||
+        state.matchedLocation == '/landing';
+
+    // If not authenticated and trying to access protected route
+    if (!isAuthenticated && !isAuthRoute && !isPublicRoute) {
+      return '/login';
+    }
+
+    // If authenticated and trying to access auth routes, redirect based on role
+    if (isAuthenticated && isAuthRoute) {
+      if (user != null) {
+        if (user.role == UserRole.customer) return '/home';
+        if (user.role == UserRole.restaurant) return '/restaurant';
+        if (user.role == UserRole.driver) return '/driver';
+      }
+    }
+
+    return null;
+  },
   routes: [
     // Location gate (first screen)
     GoRoute(
@@ -137,19 +163,11 @@ final GoRouter router = GoRouter(
       name: 'restaurant-profile',
       builder: (context, state) => const RestaurantProfileScreen(),
     ),
-<<<<<<< HEAD
-    // ✅ Restaurant Setup Route (for new restaurant owners)
-    GoRoute(
-      path: '/restaurant-setup',
-      name: 'restaurant-setup',
-      builder: (context, state) => const RestaurantSetupScreen(),
-=======
     // Withdraw Route (for restaurant owners)
     GoRoute(
       path: '/withdraw',
       name: 'withdraw',
       builder: (context, state) => const WithdrawScreen(),
->>>>>>> 760ea6c1047b37ad556e4e81863e7091d934f643
     ),
     // Driver Route
     GoRoute(

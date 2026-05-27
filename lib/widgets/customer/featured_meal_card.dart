@@ -21,7 +21,7 @@ class FeaturedMealCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: 170,
-        margin: const EdgeInsets.only(right: 12),
+        // FIX: no fixed height — card sizes to its own content
         decoration: BoxDecoration(
           gradient: AppTheme.cardGlowGradient(context),
           borderRadius: BorderRadius.circular(16),
@@ -31,6 +31,7 @@ class FeaturedMealCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // FIX: shrink-wrap content
           children: [
             ClipRRect(
               borderRadius: const BorderRadius.only(
@@ -45,34 +46,45 @@ class FeaturedMealCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
                         height: 120,
-                        color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
+                        color: isDark
+                            ? AppTheme.darkSurface
+                            : AppTheme.lightBackground,
                         child: const Center(
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       ),
                       errorWidget: (context, url, error) => Container(
                         height: 120,
-                        color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                        child: const Icon(Icons.fastfood, size: 40, color: Colors.grey),
+                        color: isDark
+                            ? AppTheme.darkSurface
+                            : AppTheme.lightBackground,
+                        child: const Icon(Icons.fastfood,
+                            size: 40, color: Colors.grey),
                       ),
                     )
                   : Container(
                       height: 120,
-                      color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-                      child: const Icon(Icons.fastfood, size: 40, color: Colors.grey),
+                      color: isDark
+                          ? AppTheme.darkSurface
+                          : AppTheme.lightBackground,
+                      child: const Icon(Icons.fastfood,
+                          size: 40, color: Colors.grey),
                     ),
             ),
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min, // FIX: shrink-wrap
                 children: [
                   Text(
                     meal['name'] ?? 'Menu Item',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+                      color: isDark
+                          ? AppTheme.darkPrimaryText
+                          : AppTheme.lightPrimaryText,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -86,16 +98,21 @@ class FeaturedMealCard extends StatelessWidget {
                         meal['rating']?.toString() ?? '4.0',
                         style: TextStyle(
                           fontSize: 11,
-                          color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                          color: isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText,
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        meal['price'] ?? 'MK0',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryRed,
+                      Flexible(
+                        child: Text(
+                          meal['price'] ?? 'MK0',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryRed,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],

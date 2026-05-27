@@ -29,7 +29,6 @@ class MenuItemCard extends StatelessWidget {
     try {
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-      // Call addItem with MenuItem object
       await cartProvider.addItem(
         item,
         restaurantId: restaurantId,
@@ -85,7 +84,6 @@ class MenuItemCard extends StatelessWidget {
       color: AppTheme.getCardColor(context),
       child: InkWell(
         onTap: () {
-          // Navigate to food detail
           final itemData = {
             'id': item.id,
             'name': item.name,
@@ -98,7 +96,6 @@ class MenuItemCard extends StatelessWidget {
             'category': item.category,
             'is_available': item.isAvailable,
           };
-          // Use context.push or handle navigation
           // context.push('/food-detail', extra: itemData);
         },
         borderRadius: BorderRadius.circular(16),
@@ -107,7 +104,7 @@ class MenuItemCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image with gradient overlay
+              // Image with availability overlay
               Stack(
                 children: [
                   ClipRRect(
@@ -169,7 +166,6 @@ class MenuItemCard extends StatelessWidget {
                             ),
                           ),
                   ),
-                  // Availability overlay
                   if (!item.isAvailable)
                     Positioned.fill(
                       child: Container(
@@ -192,10 +188,12 @@ class MenuItemCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 12),
-              // Details
+              // Details — use Expanded + intrinsic height, no fixed stretching
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize:
+                      MainAxisSize.min, // FIX: was missing, caused stretch
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -212,7 +210,6 @@ class MenuItemCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // Rating
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 3),
@@ -243,7 +240,6 @@ class MenuItemCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    // Restaurant name
                     Row(
                       children: [
                         Icon(
@@ -266,7 +262,6 @@ class MenuItemCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    // Description
                     Text(
                       item.description,
                       style: TextStyle(
@@ -277,12 +272,12 @@ class MenuItemCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 10),
-                    // Price and Add to Cart
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min, // FIX
                           children: [
                             Text(
                               'MK${item.price.toStringAsFixed(0)}',

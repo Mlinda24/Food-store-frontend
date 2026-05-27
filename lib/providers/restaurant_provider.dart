@@ -495,78 +495,6 @@ class RestaurantProvider extends ChangeNotifier {
   // ============================================
   // GROUP 5: RESTAURANT MANAGEMENT
   // ============================================
-<<<<<<< HEAD
-  
-  // Create a restaurant without image
-  Future<bool> createRestaurant({
-    required String name,
-    required String address,
-    required String phone,
-    String? description,
-  }) async {
-    _isLoading = true;
-    _safeNotify();
-    
-    try {
-      final data = {
-        'name': name,
-        'address': address,
-        'phone': phone,
-        if (description != null && description.isNotEmpty) 'description': description,
-        'is_open': true,
-      };
-      
-      final result = await _apiService.createRestaurant(data);
-      print('✅ Restaurant created: $result');
-      
-      await loadRestaurantInfo();
-      
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      print('❌ Error creating restaurant: $e');
-      return false;
-    } finally {
-      _isLoading = false;
-      _safeNotify();
-    }
-  }
-
-  // ✅ NEW: Create a restaurant with image upload
-  Future<bool> createRestaurantWithImage({
-    required String name,
-    required String address,
-    required String phone,
-    String? description,
-    required File imageFile,
-  }) async {
-    _isLoading = true;
-    _safeNotify();
-    
-    try {
-      final result = await _apiService.createRestaurantWithImage(
-        name: name,
-        address: address,
-        phone: phone,
-        description: description,
-        imageFile: imageFile,
-      );
-      print('✅ Restaurant created with image: $result');
-      
-      await loadRestaurantInfo();
-      
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      print('❌ Error creating restaurant with image: $e');
-      return false;
-    } finally {
-      _isLoading = false;
-      _safeNotify();
-    }
-  }
-=======
->>>>>>> 760ea6c1047b37ad556e4e81863e7091d934f643
 
   Future<bool> updateMyRestaurant(Map<String, dynamic> data) async {
     _isLoading = true;
@@ -688,11 +616,7 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-<<<<<<< HEAD
-  // GROUP 6: MENU ITEM MANAGEMENT
-=======
   // GROUP 6: WITHDRAWAL
->>>>>>> 760ea6c1047b37ad556e4e81863e7091d934f643
   // ============================================
 
   Future<bool> requestWithdraw({
@@ -812,24 +736,15 @@ class RestaurantProvider extends ChangeNotifier {
     }
   }
 
-<<<<<<< HEAD
-  Future<bool> toggleMenuItemAvailability(String menuItemId, bool isAvailable) async {
-=======
   Future<bool> toggleMenuItemAvailability(
       String menuItemId, bool isAvailable) async {
->>>>>>> 760ea6c1047b37ad556e4e81863e7091d934f643
     _isLoading = true;
     _safeNotify();
 
     try {
-<<<<<<< HEAD
-      print('🔄 Toggling menu item $menuItemId to ${isAvailable ? "Available" : "Unavailable"}');
-      
-=======
       print(
           '🔄 Toggling menu item $menuItemId to ${isAvailable ? "Available" : "Unavailable"}');
 
->>>>>>> 760ea6c1047b37ad556e4e81863e7091d934f643
       final updateData = {
         'is_available': isAvailable,
       };
