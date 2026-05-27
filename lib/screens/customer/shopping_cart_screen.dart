@@ -13,21 +13,21 @@ class ShoppingCartScreen extends StatelessWidget {
   String _resolveImageUrl(String? raw) {
     if (raw == null || raw.isEmpty) return '';
     if (raw.startsWith('http')) return raw;
-    if (raw.startsWith('/media/')) return 'http://192.168.137.1:8000$raw';
-    if (raw.startsWith('/')) return 'http://192.168.137.1:8000$raw';
-    return 'http://192.168.137.1:8000/media/$raw';
+    if (raw.startsWith('/media/')) return 'http://127.0.0.1:8000$raw';
+    if (raw.startsWith('/')) return 'http://127.0.0.1:8000$raw';
+    return 'http://127.0.0.1:8000/media/$raw';
   }
 
   void _updateQuantity(BuildContext context, CartItem item, int newQuantity) {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     if (newQuantity <= 0) {
-      cartProvider.removeItem(item.menuItemId);
+      _showRemoveConfirmation(context, item);
     } else {
       cartProvider.updateQuantity(item.menuItemId, newQuantity);
     }
   }
 
-  void _removeItem(BuildContext context, CartItem item) {
+  void _showRemoveConfirmation(BuildContext context, CartItem item) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -38,14 +38,13 @@ class ShoppingCartScreen extends StatelessWidget {
         ),
         title: Text('Remove Item',
             style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-        content: Text('Are you sure you want to remove ${item.name}?',
+        content: Text('Remove ${item.name} from cart?',
             style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('Cancel',
-                style:
-                    TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -82,14 +81,13 @@ class ShoppingCartScreen extends StatelessWidget {
         ),
         title: Text('Clear Cart',
             style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
-        content: Text('Are you sure you want to clear your entire cart?',
+        content: Text('Remove all items from your cart?',
             style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('Cancel',
-                style:
-                    TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -113,36 +111,112 @@ class ShoppingCartScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildItemImage(BuildContext context, String? rawImage, bool isDark) {
-    final url = _resolveImageUrl(rawImage);
+  Widget _buildRestaurantImage(BuildContext context, CartProvider cartProvider) {
+    final imageUrl = cartProvider.restaurantImageUrl;
+    
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
+          width: 50,
+          height: 50,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryButtonGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          errorWidget: (context, url, error) => Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryButtonGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                cartProvider.restaurantName![0].toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      return Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          gradient: AppTheme.primaryButtonGradient,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            cartProvider.restaurantName![0].toUpperCase(),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildItemImage(BuildContext context, CartItem item, bool isDark) {
+    // Try multiple sources for the image URL
+    String imageUrl = '';
+    
+    if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
+      imageUrl = item.imageUrl!;
+    } else if (item.image != null && item.image!.isNotEmpty) {
+      imageUrl = _resolveImageUrl(item.image);
+    }
+    
     final placeholder = Container(
       width: 60,
       height: 60,
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
+        gradient: AppTheme.primaryButtonGradient,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Icon(Icons.fastfood,
           size: 28,
-          color: isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText),
+          color: Colors.white),
     );
 
-    if (url.isEmpty) return placeholder;
-
+    if (imageUrl.isEmpty) {
+      return placeholder;
+    }
+    
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: CachedNetworkImage(
-        imageUrl: url,
+        imageUrl: imageUrl,
         width: 60,
         height: 60,
         fit: BoxFit.cover,
-        placeholder: (context, _) => Container(
-          width: 60,
-          height: 60,
-          color: isDark ? AppTheme.darkSurface : AppTheme.lightBackground,
-          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-        errorWidget: (context, _, __) => placeholder,
+        placeholder: (context, _) => placeholder,
+        errorWidget: (context, url, error) => placeholder,
       ),
     );
   }
@@ -157,20 +231,15 @@ class ShoppingCartScreen extends StatelessWidget {
         // ── Empty state ──────────────────────────────────────────────────────
         if (!cartProvider.hasItems) {
           return Scaffold(
-            backgroundColor:
-                isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+            backgroundColor: AppTheme.getBackgroundColor(context),
             appBar: AppBar(
               title: const Text('My Cart'),
-              backgroundColor:
-                  isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
-              foregroundColor:
-                  isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+              backgroundColor: AppTheme.getBackgroundColor(context),
+              foregroundColor: AppTheme.getPrimaryTextColor(context),
               elevation: 0,
               leading: IconButton(
                 icon: Icon(Icons.arrow_back,
-                    color: isDark
-                        ? AppTheme.darkPrimaryText
-                        : AppTheme.lightPrimaryText),
+                    color: AppTheme.getPrimaryTextColor(context)),
                 onPressed: () => context.go('/home'),
               ),
             ),
@@ -181,18 +250,14 @@ class ShoppingCartScreen extends StatelessWidget {
                   Icon(
                     Icons.shopping_cart_outlined,
                     size: 80,
-                    color: isDark
-                        ? AppTheme.darkMutedText
-                        : AppTheme.lightMutedText,
+                    color: AppTheme.getMutedTextColor(context),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'Your cart is empty',
                     style: TextStyle(
                       fontSize: 18,
-                      color: isDark
-                          ? AppTheme.darkSecondaryText
-                          : AppTheme.lightSecondaryText,
+                      color: AppTheme.getSecondaryTextColor(context),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -200,31 +265,18 @@ class ShoppingCartScreen extends StatelessWidget {
                     'Add items from restaurants to get started',
                     style: TextStyle(
                       fontSize: 14,
-                      color: isDark
-                          ? AppTheme.darkMutedText
-                          : AppTheme.lightMutedText,
+                      color: AppTheme.getMutedTextColor(context),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Container(
-                    width: 200,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryButtonGradient,
-                      borderRadius: BorderRadius.circular(22),
+                  ElevatedButton(
+                    onPressed: () => context.go('/home'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryRed,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30)),
                     ),
-                    child: ElevatedButton(
-                      onPressed: () => context.go('/home'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        shadowColor: Colors.transparent,
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(22)),
-                      ),
-                      child: const Text('Browse Restaurants'),
-                    ),
+                    child: const Text('Browse Restaurants'),
                   ),
                 ],
               ),
@@ -234,20 +286,15 @@ class ShoppingCartScreen extends StatelessWidget {
 
         // ── Cart with items ──────────────────────────────────────────────────
         return Scaffold(
-          backgroundColor:
-              isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
+          backgroundColor: AppTheme.getBackgroundColor(context),
           appBar: AppBar(
             title: const Text('My Cart'),
-            backgroundColor:
-                isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
-            foregroundColor:
-                isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText,
+            backgroundColor: AppTheme.getBackgroundColor(context),
+            foregroundColor: AppTheme.getPrimaryTextColor(context),
             elevation: 0,
             leading: IconButton(
               icon: Icon(Icons.arrow_back,
-                  color: isDark
-                      ? AppTheme.darkPrimaryText
-                      : AppTheme.lightPrimaryText),
+                  color: AppTheme.getPrimaryTextColor(context)),
               onPressed: () => context.go('/home'),
             ),
             actions: [
@@ -260,7 +307,7 @@ class ShoppingCartScreen extends StatelessWidget {
           ),
           body: Column(
             children: [
-              // ── Restaurant info banner ───────────────────────────────────
+              // ── Restaurant info banner with image ─────────────────────────
               if (cartProvider.restaurantName != null)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -273,20 +320,8 @@ class ShoppingCartScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppTheme.darkSurface
-                              : AppTheme.lightBackground,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Icons.restaurant,
-                            color: isDark
-                                ? AppTheme.darkMutedText
-                                : AppTheme.lightMutedText),
-                      ),
+                      // Restaurant image
+                      _buildRestaurantImage(context, cartProvider),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -297,9 +332,7 @@ class ShoppingCartScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? AppTheme.darkPrimaryText
-                                    : AppTheme.lightPrimaryText,
+                                color: AppTheme.getPrimaryTextColor(context),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -307,9 +340,7 @@ class ShoppingCartScreen extends StatelessWidget {
                               'Delivery: MK${cartProvider.deliveryFee.toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isDark
-                                    ? AppTheme.darkSecondaryText
-                                    : AppTheme.lightSecondaryText,
+                                color: AppTheme.getSecondaryTextColor(context),
                               ),
                             ),
                             if (!cartProvider.canDeliver)
@@ -346,7 +377,7 @@ class ShoppingCartScreen extends StatelessWidget {
                       child: Row(
                         children: [
                           // Item image
-                          _buildItemImage(context, item.image, isDark),
+                          _buildItemImage(context, item, isDark),
                           const SizedBox(width: 12),
                           // Item details
                           Expanded(
@@ -358,9 +389,7 @@ class ShoppingCartScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
-                                    color: isDark
-                                        ? AppTheme.darkPrimaryText
-                                        : AppTheme.lightPrimaryText,
+                                    color: AppTheme.getPrimaryTextColor(context),
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -370,8 +399,7 @@ class ShoppingCartScreen extends StatelessWidget {
                                   'MK${item.price.toStringAsFixed(0)} each',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color:
-                                        AppTheme.getSecondaryTextColor(context),
+                                    color: AppTheme.getSecondaryTextColor(context),
                                   ),
                                 ),
                               ],
@@ -381,9 +409,7 @@ class ShoppingCartScreen extends StatelessWidget {
                           // Quantity controls
                           Container(
                             decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppTheme.darkSurface
-                                  : AppTheme.lightBackground,
+                              color: AppTheme.getSurfaceColor(context),
                               borderRadius: BorderRadius.circular(25),
                             ),
                             child: Row(
@@ -402,9 +428,7 @@ class ShoppingCartScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
-                                    color: isDark
-                                        ? AppTheme.darkPrimaryText
-                                        : AppTheme.lightPrimaryText,
+                                    color: AppTheme.getPrimaryTextColor(context),
                                   ),
                                 ),
                                 IconButton(
@@ -420,7 +444,7 @@ class ShoppingCartScreen extends StatelessWidget {
                           ),
                           // Delete button
                           IconButton(
-                            onPressed: () => _removeItem(context, item),
+                            onPressed: () => _showRemoveConfirmation(context, item),
                             icon: Icon(Icons.delete_outline,
                                 size: 20, color: AppTheme.error),
                           ),
@@ -435,7 +459,7 @@ class ShoppingCartScreen extends StatelessWidget {
               Container(
                 padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
                 decoration: BoxDecoration(
-                  color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+                  color: AppTheme.getCardColor(context),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
@@ -454,18 +478,14 @@ class ShoppingCartScreen extends StatelessWidget {
                           'Subtotal (${cartProvider.itemCount} items)',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark
-                                ? AppTheme.darkSecondaryText
-                                : AppTheme.lightSecondaryText,
+                            color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                         Text(
                           'MK${cartProvider.subtotal.toStringAsFixed(0)}',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark
-                                ? AppTheme.darkSecondaryText
-                                : AppTheme.lightSecondaryText,
+                            color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                       ],
@@ -478,18 +498,14 @@ class ShoppingCartScreen extends StatelessWidget {
                           'Delivery Fee',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark
-                                ? AppTheme.darkSecondaryText
-                                : AppTheme.lightSecondaryText,
+                            color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                         Text(
                           'MK${cartProvider.deliveryFee.toStringAsFixed(0)}',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDark
-                                ? AppTheme.darkSecondaryText
-                                : AppTheme.lightSecondaryText,
+                            color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                       ],
@@ -523,9 +539,7 @@ class ShoppingCartScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? AppTheme.darkPrimaryText
-                                : AppTheme.lightPrimaryText,
+                            color: AppTheme.getPrimaryTextColor(context),
                           ),
                         ),
                         Text(
@@ -543,7 +557,7 @@ class ShoppingCartScreen extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: cartProvider.canDeliver
-                            ? () => context.go('/checkout')
+                            ? () => context.push('/checkout')
                             : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: cartProvider.canDeliver

@@ -5,31 +5,13 @@ import '../../config/theme.dart';
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
 
-  // Appetising meals with food images and ratings
+  // Appetising meals with food images and ratings (Grilled Chambo and Nsima with Beef removed)
   final List<Map<String, dynamic>> _featuredMeals = const [
-    {
-      'id': '1',
-      'name': 'Grilled Chambo',
-      'rating': 4.9,
-      'imageUrl': 'https://images.pexels.com/photos/462039/pexels-photo-462039.jpeg?w=400',
-    },
-    {
-      'id': '2',
-      'name': 'Nsima with Beef',
-      'rating': 4.8,
-      'imageUrl': 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?w=400',
-    },
     {
       'id': '3',
       'name': 'Spicy Chicken Wings',
       'rating': 4.7,
       'imageUrl': 'https://images.pexels.com/photos/60616/fried-chicken-chicken-fried-crunchy-60616.jpeg?w=400',
-    },
-    {
-      'id': '4',
-      'name': 'Zitumbuwa',
-      'rating': 4.6,
-      'imageUrl': 'https://images.pexels.com/photos/1092747/pexels-photo-1092747.jpeg?w=400',
     },
     {
       'id': '5',
@@ -48,12 +30,6 @@ class LandingScreen extends StatelessWidget {
       'name': 'Fish and Chips',
       'rating': 4.3,
       'imageUrl': 'https://images.pexels.com/photos/699953/pexels-photo-699953.jpeg?w=400',
-    },
-    {
-      'id': '8',
-      'name': 'Chicken Curry',
-      'rating': 4.7,
-      'imageUrl': 'https://images.pexels.com/photos/5639293/pexels-photo-5639293.jpeg?w=400',
     },
     {
       'id': '9',
@@ -76,13 +52,64 @@ class LandingScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Header with Login Button only
+            // Header with Logo and Login Button
             Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Login Button
+                  // Logo Section (Not Clickable)
+                  IgnorePointer(
+                    ignoring: true,
+                    child: Row(
+                      children: [
+                        // Logo Image
+                        Image.asset(
+                          'assets/images/logo.png',
+                          width: 40,
+                          height: 40,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                gradient: AppTheme.primaryButtonGradient,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.restaurant_menu,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        // Brand Name
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Foodie Express',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.getPrimaryTextColor(context),
+                              ),
+                            ),
+                            Text(
+                              'Delicious meals at your door',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: AppTheme.getSecondaryTextColor(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+          
                   Container(
                     decoration: BoxDecoration(
                       gradient: AppTheme.primaryButtonGradient,
@@ -97,14 +124,14 @@ class LandingScreen extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                        minimumSize: const Size(80, 40),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        minimumSize: const Size(70, 36),
                       ),
                       child: const Text(
                         'Login',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: 13,
                         ),
                       ),
                     ),
@@ -112,20 +139,70 @@ class LandingScreen extends StatelessWidget {
                 ],
               ),
             ),
-            // Meals Grid
-            Expanded(
-              child: GridView.builder(
+            // Hero Section - Catchy words (Not Clickable but visible)
+            IgnorePointer(
+              ignoring: true,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.85,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.cardGlowGradient(context),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
                 ),
-                itemCount: _featuredMeals.length,
-                itemBuilder: (context, index) {
-                  final meal = _featuredMeals[index];
-                  return _buildMealCard(context, meal);
+                child: Column(
+                  children: [
+                    Text(
+                      ' Hungry? We\'ve Got This! ',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.getPrimaryTextColor(context),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Order from the best restaurants in town',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.getSecondaryTextColor(context),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildFeatureChip(context, 'Fast Delivery', Icons.delivery_dining),
+                        _buildFeatureChip(context, 'Best Prices', Icons.money_off),
+                        _buildFeatureChip(context, '12/7 Service', Icons.access_time),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Meals Grid (Scrollable but not clickable)
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.75,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    itemCount: _featuredMeals.length,
+                    itemBuilder: (context, index) {
+                      final meal = _featuredMeals[index];
+                      return IgnorePointer(
+                        ignoring: true,
+                        child: _buildMealCard(context, meal),
+                      );
+                    },
+                  );
                 },
               ),
             ),
@@ -135,124 +212,153 @@ class LandingScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildFeatureChip(BuildContext context, String text, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryRed.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: AppTheme.primaryRed),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.primaryRed,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMealCard(BuildContext context, Map<String, dynamic> meal) {
     final String name = (meal['name'] ?? 'Unknown').toString();
     final double rating = (meal['rating'] ?? 0.0) as double;
     final String imageUrl = (meal['imageUrl'] ?? '').toString();
     
-    return GestureDetector(
-      onTap: () => context.push('/food-detail', extra: meal),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.getCardColor(context),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Meal Image
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: imageUrl.isNotEmpty
-                  ? Image.network(
-                      imageUrl,
-                      height: 140,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 140,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryRed.withOpacity(0.1),
-                          ),
-                          child: Icon(
-                            Icons.fastfood,
-                            size: 50,
-                            color: AppTheme.primaryRed.withOpacity(0.5),
-                          ),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          height: 140,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryRed.withOpacity(0.1),
-                          ),
-                          child: const Center(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.getCardColor(context),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Meal Image
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    height: 110,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 110,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryRed.withOpacity(0.1),
+                        ),
+                        child: Icon(
+                          Icons.fastfood,
+                          size: 40,
+                          color: AppTheme.primaryRed.withOpacity(0.5),
+                        ),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        height: 110,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryRed.withOpacity(0.1),
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            height: 24,
+                            width: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                             ),
                           ),
-                        );
-                      },
-                    )
-                  : Container(
-                      height: 140,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryRed.withOpacity(0.1),
-                      ),
-                      child: Icon(
-                        Icons.fastfood,
-                        size: 50,
-                        color: AppTheme.primaryRed.withOpacity(0.5),
-                      ),
-                    ),
-            ),
-            // Meal Details
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.getPrimaryTextColor(context),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 14, color: Colors.amber),
-                      const SizedBox(width: 4),
-                      Text(
-                        rating.toString(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.getSecondaryTextColor(context),
                         ),
+                      );
+                    },
+                  )
+                : Container(
+                    height: 110,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryRed.withOpacity(0.1),
+                    ),
+                    child: Icon(
+                      Icons.fastfood,
+                      size: 40,
+                      color: AppTheme.primaryRed.withOpacity(0.5),
+                    ),
+                  ),
+          ),
+          // Meal Details
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.getPrimaryTextColor(context),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.star, size: 12, color: Colors.amber),
+                    const SizedBox(width: 3),
+                    Text(
+                      rating.toString(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.getSecondaryTextColor(context),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '(${(rating * 20).toInt()}+ reviews)',
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        '(${(rating * 20).toInt()})',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 9,
                           color: AppTheme.getMutedTextColor(context),
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

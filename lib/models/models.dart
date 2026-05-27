@@ -103,8 +103,8 @@ class Restaurant {
       if (imageStr.isEmpty) return '';
       if (imageStr.startsWith('http')) return imageStr;
       if (imageStr.startsWith('/media/'))
-        return 'http://192.168.137.1:8000$imageStr';
-      return 'http://192.168.137.1:8000/media/$imageStr';
+        return 'http://127.0.0.1:8000$imageStr';
+      return 'http://127.0.0.1:8000/media/$imageStr';
     }
 
     return Restaurant(
@@ -176,8 +176,8 @@ class MenuItem {
       if (imageStr.isEmpty) return '';
       if (imageStr.startsWith('http')) return imageStr;
       if (imageStr.startsWith('/media/'))
-        return 'http://192.168.137.1:8000$imageStr';
-      return 'http://192.168.137.1:8000/media/$imageStr';
+        return 'http://127.0.0.1:8000$imageStr';
+      return 'http://127.0.0.1:8000/media/$imageStr';
     }
 
     String categoryValue = 'General';
@@ -232,6 +232,7 @@ class CartItem {
   int quantity;
   final double price;
   final String? image;
+  final String? imageUrl;
   final String restaurantId;
   final String restaurantName;
 
@@ -241,6 +242,7 @@ class CartItem {
     required this.quantity,
     required this.price,
     this.image,
+    this.imageUrl,
     required this.restaurantId,
     required this.restaurantName,
   });
@@ -267,18 +269,37 @@ class CartItem {
       if (imageStr.isEmpty) return '';
       if (imageStr.startsWith('http')) return imageStr;
       if (imageStr.startsWith('/media/'))
-        return 'http://192.168.137.1:8000$imageStr';
-      return 'http://192.168.137.1:8000/media/$imageStr';
+        return 'http://127.0.0.1:8000$imageStr';
+      return 'http://127.0.0.1:8000/media/$imageStr';
+    }
+
+    String? imageUrl;
+    String? imagePath;
+    
+    // Try to get image from menu_item_image
+    if (json['menu_item_image'] != null) {
+      imagePath = json['menu_item_image'].toString();
+      imageUrl = getImageUrl(imagePath);
+    }
+    
+    // Also check if menu_item_data has image
+    if (json['menu_item_data'] != null && json['menu_item_data'] is Map) {
+      final menuItemData = json['menu_item_data'] as Map;
+      if (menuItemData['image'] != null) {
+        imageUrl = getImageUrl(menuItemData['image']);
+        imagePath = menuItemData['image'].toString();
+      }
     }
 
     return CartItem(
-      menuItemId: toString(json['menu_item']),
+      menuItemId: toString(json['menu_item_id'] ?? json['menu_item']),
       name: toString(json['menu_item_name']),
       quantity: json['quantity'] ?? 1,
       price: toDouble(json['menu_item_price']),
-      image: getImageUrl(json['menu_item_image']),
-      restaurantId: toString(json['restaurant']),
-      restaurantName: '',
+      image: imagePath,
+      imageUrl: imageUrl,
+      restaurantId: toString(json['restaurant_id'] ?? json['restaurant']),
+      restaurantName: toString(json['restaurant_name'] ?? ''),
     );
   }
 }
@@ -328,6 +349,8 @@ extension OrderStatusExtension on OrderStatus {
         return OrderStatus.ready;
       case 'picked_up':
         return OrderStatus.pickedUp;
+      case 'on_the_way':
+        return OrderStatus.onTheWay;
       case 'delivered':
         return OrderStatus.delivered;
       case 'cancelled':
@@ -370,7 +393,7 @@ class OrderItemModel {
     }
 
     return OrderItemModel(
-      menuItemId: toString(json['menu_item']),
+      menuItemId: toString(json['menu_item_id'] ?? json['menu_item']),
       name: toString(json['menu_item_name']),
       quantity: json['quantity'] ?? 1,
       price: toDouble(json['price']),
@@ -396,6 +419,7 @@ class Order {
   final String? specialInstructions;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String? restaurantName;
 
   Order({
     required this.id,
@@ -412,6 +436,7 @@ class Order {
     this.specialInstructions,
     required this.createdAt,
     this.updatedAt,
+    this.restaurantName,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -447,10 +472,12 @@ class Order {
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(toString(json['updated_at']))
           : null,
+      restaurantName: toString(json['restaurant_name']),
     );
   }
 }
 
+// Rest of the models remain the same...
 class RestaurantOrder {
   final String id;
   final String customerName;
@@ -521,7 +548,7 @@ class RestaurantStats {
   final int monthlyOrders;
   final double walletBalance;
   final double totalWithdrawn;
-  final double totalEarned; // ADDED THIS FIELD
+  final double totalEarned;
 
   RestaurantStats({
     required this.todayEarnings,
@@ -534,7 +561,7 @@ class RestaurantStats {
     required this.monthlyOrders,
     required this.walletBalance,
     required this.totalWithdrawn,
-    required this.totalEarned, // ADDED THIS
+    required this.totalEarned,
   });
 
   factory RestaurantStats.empty() {
@@ -549,7 +576,7 @@ class RestaurantStats {
       monthlyOrders: 0,
       walletBalance: 0,
       totalWithdrawn: 0,
-      totalEarned: 0, // ADDED THIS
+      totalEarned: 0,
     );
   }
 
@@ -571,17 +598,17 @@ class RestaurantStats {
     }
 
     return RestaurantStats(
-      todayEarnings: toDouble(json['todayEarnings']),
-      todayOrders: toInt(json['todayOrders']),
-      totalEarnings: toDouble(json['totalEarnings']),
-      totalOrders: toInt(json['totalOrders']),
-      averageRating: toDouble(json['averageRating']),
-      activeOrders: toInt(json['activeOrders']),
-      monthlyEarnings: toDouble(json['monthlyEarnings']),
-      monthlyOrders: toInt(json['monthlyOrders']),
-      walletBalance: toDouble(json['walletBalance']),
-      totalWithdrawn: toDouble(json['totalWithdrawn']),
-      totalEarned: toDouble(json['totalEarned'] ?? 0), // ADDED THIS
+      todayEarnings: toDouble(json['todayEarnings'] ?? 0),
+      todayOrders: toInt(json['todayOrders'] ?? 0),
+      totalEarnings: toDouble(json['totalEarnings'] ?? 0),
+      totalOrders: toInt(json['totalOrders'] ?? 0),
+      averageRating: toDouble(json['averageRating'] ?? 0),
+      activeOrders: toInt(json['activeOrders'] ?? 0),
+      monthlyEarnings: toDouble(json['monthlyEarnings'] ?? 0),
+      monthlyOrders: toInt(json['monthlyOrders'] ?? 0),
+      walletBalance: toDouble(json['walletBalance'] ?? 0),
+      totalWithdrawn: toDouble(json['totalWithdrawn'] ?? 0),
+      totalEarned: toDouble(json['totalEarned'] ?? 0),
     );
   }
 }

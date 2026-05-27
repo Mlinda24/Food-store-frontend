@@ -114,21 +114,52 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    await _apiService.clearTokens();
-    _currentUser = null;
+    try {
+      await _apiService.clearTokens();
+      _currentUser = null;
 
-    // Clear cart after logout
-    if (context != null) {
-      try {
-        await Provider.of<CartProvider>(context, listen: false).clearCart();
-        print('Cart cleared after logout');
-      } catch (e) {
-        print('Error clearing cart after logout: $e');
+      // Clear cart after logout
+      if (context != null) {
+        try {
+          await Provider.of<CartProvider>(context, listen: false).clearCart();
+          print('Cart cleared after logout');
+        } catch (e) {
+          print('Error clearing cart after logout: $e');
+        }
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      
+      // ✅ Navigate to login screen after logout
+      if (context != null) {
+        // Use a microtask to ensure the widget tree is ready
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // Check if the context is still valid and mounted
+          if (context.mounted) {
+            // Navigate to login and clear all history
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/login',
+              (route) => false,
+            );
+          }
+        });
+      }
+    } catch (e) {
+      print('Error during logout: $e');
+      _isLoading = false;
+      notifyListeners();
+      
+      // Even if there's an error, try to navigate to login
+      if (context != null && context.mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/login',
+            (route) => false,
+          );
+        });
       }
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   void clearError() {

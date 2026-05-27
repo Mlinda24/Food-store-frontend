@@ -10,6 +10,7 @@ class CartProvider extends ChangeNotifier {
   List<CartItem> _items = [];
   String? _restaurantId;
   String? _restaurantName;
+  String? _restaurantImageUrl;
   bool _isLoading = false;
   
   // Delivery fee related fields
@@ -26,6 +27,9 @@ class CartProvider extends ChangeNotifier {
   double _lastCalculatedFee = 0.0;
   String? _lastRestaurantId;
 
+  // Cache for menu item images
+  final Map<String, String> _menuItemImageCache = {};
+
   // ============================================
   // GROUP 1: GETTERS
   // ============================================
@@ -33,6 +37,7 @@ class CartProvider extends ChangeNotifier {
   List<CartItem> get items => _items;
   String? get restaurantId => _restaurantId;
   String? get restaurantName => _restaurantName;
+  String? get restaurantImageUrl => _restaurantImageUrl;
   bool get isLoading => _isLoading;
   
   int get itemCount {
@@ -54,6 +59,84 @@ class CartProvider extends ChangeNotifier {
   double? get restaurantLatitude => _restaurantLatitude;
   double? get restaurantLongitude => _restaurantLongitude;
 
+  // Helper method to resolve image URLs (same as home page)
+  String _getImageUrl(dynamic image) {
+    if (image == null) return '';
+    String imageStr = image.toString();
+    if (imageStr.isEmpty) return '';
+    if (imageStr.startsWith('http')) return imageStr;
+    if (imageStr.startsWith('/media/')) return 'http://127.0.0.1:8000$imageStr';
+    return 'http://127.0.0.1:8000/media/$imageStr';
+  }
+
+  // Fetch restaurant using the same API as home page
+  Future<void> _fetchRestaurantDetails(String restaurantId) async {
+    print('🔍 Fetching restaurant details for ID: $restaurantId');
+    try {
+      final restaurant = await _apiService.getRestaurant(restaurantId);
+      print('📦 Restaurant data received: $restaurant');
+      
+      _restaurantName = restaurant['name'] ?? _restaurantName;
+      
+      // Get image using the same method as home page
+      if (restaurant.containsKey('image')) {
+        _restaurantImageUrl = _getImageUrl(restaurant['image']);
+        print('🏪 Restaurant image URL: $_restaurantImageUrl');
+      }
+      
+      // Get location if available
+      if (restaurant.containsKey('latitude')) {
+        _restaurantLatitude = double.tryParse(restaurant['latitude'].toString());
+      }
+      if (restaurant.containsKey('longitude')) {
+        _restaurantLongitude = double.tryParse(restaurant['longitude'].toString());
+      }
+      
+      _lastRestaurantId = restaurantId;
+      _safeNotify();
+    } catch (e) {
+      print('⚠️ Error fetching restaurant details: $e');
+    }
+  }
+
+  // Fetch menu item image using the same API as home page
+  Future<String?> _fetchMenuItemImage(String menuItemId, int restaurantId) async {
+    // Check cache first
+    if (_menuItemImageCache.containsKey(menuItemId)) {
+      return _menuItemImageCache[menuItemId];
+    }
+    
+    try {
+      // Use the same API that home page uses to get menu items
+      final menuItems = await _apiService.getRestaurantMenu(restaurantId);
+      
+      // Find the menu item with matching ID
+      for (var item in menuItems) {
+        if (item['id']?.toString() == menuItemId) {
+          String? imageUrl;
+          
+          // Use the same image URL extraction as home page
+          if (item['image_url'] != null && item['image_url'].toString().isNotEmpty) {
+            imageUrl = item['image_url'].toString();
+          } else if (item['image'] != null && item['image'].toString().isNotEmpty) {
+            imageUrl = _getImageUrl(item['image']);
+          }
+          
+          if (imageUrl != null && imageUrl.isNotEmpty) {
+            _menuItemImageCache[menuItemId] = imageUrl;
+            print('📸 Found image for menu item $menuItemId: $imageUrl');
+            return imageUrl;
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      print('⚠️ Error fetching image for menu item $menuItemId: $e');
+    }
+    
+    return null;
+  }
+
   // ============================================
   // GROUP 2: CART LOADING METHODS
   // ============================================
@@ -70,63 +153,54 @@ class CartProvider extends ChangeNotifier {
         final List<dynamic> itemsData = data['items'];
         print('   Items count: ${itemsData.length}');
         
-        _items = itemsData.map((itemData) {
-          // Handle two possible response structures
-          if (itemData.containsKey('menu_item')) {
-            // Nested structure: {menu_item: {...}, quantity: x}
-            final menuItem = itemData['menu_item'];
-            return CartItem(
-              menuItemId: menuItem['id'].toString(),
-              name: menuItem['name'] ?? 'Unknown',
-              quantity: itemData['quantity'] ?? 1,
-              price: (menuItem['price'] is int 
-                  ? (menuItem['price'] as int).toDouble() 
-                  : double.parse(menuItem['price'].toString())),
-              image: menuItem['image'] != null && menuItem['image'].toString().isNotEmpty 
-                  ? _apiService.getImageUrl(menuItem['image'].toString())
-                  : '',
-              restaurantId: menuItem['restaurant']?.toString() ?? '',
-              restaurantName: '',
-            );
-          } else {
-            // Flat structure: {menu_item_id: x, menu_item_name: y, quantity: z}
-            return CartItem(
-              menuItemId: itemData['menu_item_id']?.toString() ?? 
-                         itemData['id']?.toString() ?? '',
-              name: itemData['menu_item_name']?.toString() ?? 
-                    itemData['name']?.toString() ?? 
-                    'Unknown',
-              quantity: itemData['quantity'] ?? 1,
-              price: (itemData['menu_item_price'] != null)
-                  ? (itemData['menu_item_price'] is int 
-                      ? (itemData['menu_item_price'] as int).toDouble() 
-                      : double.parse(itemData['menu_item_price'].toString()))
-                  : (itemData['price'] is int 
-                      ? (itemData['price'] as int).toDouble() 
-                      : double.parse(itemData['price'].toString())),
-              image: itemData['image']?.toString() != null && itemData['image'].toString().isNotEmpty
-                  ? _apiService.getImageUrl(itemData['image'].toString())
-                  : '',
-              restaurantId: data['restaurant_id']?.toString() ?? '',
-              restaurantName: data['restaurant_name']?.toString() ?? '',
-            );
-          }
-        }).toList();
-        
-        // Update restaurant info from cart data
+        // Get restaurant ID from cart
         if (data.containsKey('restaurant_id') && data['restaurant_id'] != null) {
           _restaurantId = data['restaurant_id'].toString();
           _restaurantName = data['restaurant_name']?.toString();
           print('   Restaurant ID: $_restaurantId');
           print('   Restaurant Name: $_restaurantName');
-        } else if (_items.isNotEmpty) {
-          _restaurantId = _items.first.restaurantId;
+          
+          // Fetch restaurant details (including image) using the same API as home page
+          if (_restaurantId != null && _restaurantId != _lastRestaurantId) {
+            await _fetchRestaurantDetails(_restaurantId!);
+          }
         }
         
-        print('✅ Loaded ${_items.length} items, Subtotal: MK${subtotal.toStringAsFixed(0)}');
+        // Load all items with their images
+        List<CartItem> loadedItems = [];
         
-        if (_restaurantId != null && _restaurantId != _lastRestaurantId) {
-          await _loadRestaurantInfo();
+        for (var itemData in itemsData) {
+          String menuItemId = itemData['menu_item_id']?.toString() ?? '';
+          String name = itemData['menu_item_name']?.toString() ?? 'Unknown';
+          double price = double.parse(itemData['menu_item_price']?.toString() ?? '0');
+          int quantity = itemData['quantity'] ?? 1;
+          String? imageUrl;
+          
+          // Try to get image from the same API that home page uses
+          if (menuItemId.isNotEmpty && _restaurantId != null) {
+            imageUrl = await _fetchMenuItemImage(menuItemId, int.parse(_restaurantId!));
+          }
+          
+          loadedItems.add(CartItem(
+            menuItemId: menuItemId,
+            name: name,
+            quantity: quantity,
+            price: price,
+            image: imageUrl,
+            imageUrl: imageUrl,
+            restaurantId: _restaurantId ?? '',
+            restaurantName: _restaurantName ?? '',
+          ));
+        }
+        
+        _items = loadedItems;
+        
+        print('✅ Loaded ${_items.length} items, Subtotal: MK${subtotal.toStringAsFixed(0)}');
+        print('🏪 Restaurant image: $_restaurantImageUrl');
+        
+        // Print items with their image URLs for debugging
+        for (var item in _items) {
+          print('   - ${item.name}: imageUrl=${item.imageUrl}');
         }
       } else {
         print('⚠️ No items in cart or invalid format');
@@ -143,31 +217,6 @@ class CartProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       _safeNotify();
-    }
-  }
-
-  Future<void> _loadRestaurantInfo() async {
-    if (_restaurantId == null) return;
-    
-    if (_lastRestaurantId == _restaurantId && _restaurantLatitude != null) {
-      return;
-    }
-    
-    try {
-      final restaurant = await _apiService.getRestaurant(_restaurantId!);
-      _restaurantName = restaurant['name'] ?? _restaurantName;
-      _restaurantLatitude = restaurant['latitude'] != null 
-          ? double.parse(restaurant['latitude'].toString()) 
-          : null;
-      _restaurantLongitude = restaurant['longitude'] != null 
-          ? double.parse(restaurant['longitude'].toString()) 
-          : null;
-      _lastRestaurantId = _restaurantId;
-      
-      print('📍 Restaurant location loaded: $_restaurantLatitude, $_restaurantLongitude');
-      _safeNotify();
-    } catch (e) {
-      print('⚠️ Error loading restaurant info: $e');
     }
   }
 
@@ -321,7 +370,7 @@ class CartProvider extends ChangeNotifier {
       final cartData = await _apiService.getCart();
       final itemsList = cartData['items'] as List;
       final cartItem = itemsList.firstWhere(
-        (item) => item['menu_item_id'].toString() == menuItemId,
+        (item) => item['menu_item_id']?.toString() == menuItemId,
         orElse: () => null,
       );
       
@@ -329,6 +378,8 @@ class CartProvider extends ChangeNotifier {
         final cartItemId = cartItem['id'];
         final result = await _apiService.removeFromCart(cartItemId);
         if (result != null) {
+          // Clear cache for this item
+          _menuItemImageCache.remove(menuItemId);
           await loadCart();
           return true;
         }
@@ -345,7 +396,7 @@ class CartProvider extends ChangeNotifier {
       final cartData = await _apiService.getCart();
       final itemsList = cartData['items'] as List;
       final cartItem = itemsList.firstWhere(
-        (item) => item['menu_item_id'].toString() == menuItemId,
+        (item) => item['menu_item_id']?.toString() == menuItemId,
         orElse: () => null,
       );
       
@@ -374,6 +425,7 @@ class CartProvider extends ChangeNotifier {
     try {
       await _apiService.clearCart();
       _items = [];
+      _menuItemImageCache.clear();
       _clearRestaurantInfo();
       _resetDeliveryInfo();
       print('🗑️ Cart cleared');
@@ -381,6 +433,7 @@ class CartProvider extends ChangeNotifier {
     } catch (e) {
       print('❌ Error clearing cart: $e');
       _items = [];
+      _menuItemImageCache.clear();
       _clearRestaurantInfo();
       _resetDeliveryInfo();
       _safeNotify();
@@ -390,6 +443,7 @@ class CartProvider extends ChangeNotifier {
   void _clearRestaurantInfo() {
     _restaurantId = null;
     _restaurantName = null;
+    _restaurantImageUrl = null;
     _restaurantLatitude = null;
     _restaurantLongitude = null;
     _lastRestaurantId = null;
@@ -454,6 +508,7 @@ class CartProvider extends ChangeNotifier {
       specialInstructions: instructions,
       createdAt: DateTime.now(),
       updatedAt: null,
+      restaurantName: _restaurantName,
     );
   }
   
@@ -471,8 +526,10 @@ class CartProvider extends ChangeNotifier {
   
   void reset() {
     _items = [];
+    _menuItemImageCache.clear();
     _restaurantId = null;
     _restaurantName = null;
+    _restaurantImageUrl = null;
     _resetDeliveryInfo();
     _safeNotify();
   }
