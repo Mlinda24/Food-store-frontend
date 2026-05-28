@@ -1,13 +1,16 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/driver_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/driver/settings_tile.dart';
+import '../../widgets/custom/otp_verification_dialog.dart';
 
 // Model for a Withdrawal Account
 class WithdrawalAccount {
@@ -24,6 +27,22 @@ class WithdrawalAccount {
     required this.holderName,
     this.isDefault = false,
   });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'method': method,
+    'accountNumber': accountNumber,
+    'holderName': holderName,
+    'isDefault': isDefault,
+  };
+
+  factory WithdrawalAccount.fromJson(Map<String, dynamic> json) => WithdrawalAccount(
+    id: json['id'],
+    method: json['method'],
+    accountNumber: json['accountNumber'],
+    holderName: json['holderName'],
+    isDefault: json['isDefault'] ?? false,
+  );
 }
 
 class DriverSettingsScreen extends StatefulWidget {
@@ -39,9 +58,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   // Profile Data
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
-  String _driverName = 'John Driver';
-  String _driverEmail = 'driver@example.com';
-  String _driverPhone = '0999123456';
+  String _driverName = '';
+  String _driverEmail = '';
+  String _driverPhone = '';
   
   // Verification Status
   bool _isEmailVerified = false;
@@ -61,40 +80,90 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
+  // SharedPreferences keys
+  static const String _keyWithdrawalAccounts = 'withdrawal_accounts';
+  static const String _keyVehicleModel = 'vehicle_model';
+  static const String _keyVehiclePlate = 'vehicle_plate';
+  static const String _keyVehicleType = 'vehicle_type';
+  static const String _keyHasVehicle = 'has_vehicle';
+  static const String _keyProfileImage = 'profile_image_path';
+  static const String _keyDriverName = 'driver_name';
+  static const String _keyDriverPhone = 'driver_phone';
+
   @override
   void initState() {
     super.initState();
-    _loadWithdrawalAccounts();
-    _loadProfileData();
-    _loadVehicleData();
+    _loadAllData();
   }
 
-  void _loadWithdrawalAccounts() {
-    _withdrawalAccounts = [
-      WithdrawalAccount(
-        id: '1',
-        method: 'airtel',
-        accountNumber: '0999123456',
-        holderName: 'John Driver',
-        isDefault: true,
-      ),
-    ];
+  Future<void> _loadAllData() async {
+    await _loadWithdrawalAccounts();
+    await _loadVehicleData();
+    await _loadProfileData();
+  }
+
+  // ==================== LOAD DATA FROM STORAGE ====================
+  
+  Future<void> _loadWithdrawalAccounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? accountsJson = prefs.getString(_keyWithdrawalAccounts);
+    
+    if (accountsJson != null && accountsJson.isNotEmpty) {
+      try {
+        final List<dynamic> decoded = json.decode(accountsJson);
+        _withdrawalAccounts = decoded
+            .map((item) => WithdrawalAccount.fromJson(item as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        _withdrawalAccounts = [];
+      }
+    } else {
+      _withdrawalAccounts = [];
+    }
     setState(() {});
   }
 
-  void _loadProfileData() {
-    _driverName = 'John Driver';
-    _driverEmail = 'driver@example.com';
-    _driverPhone = '0999123456';
+  Future<void> _loadVehicleData() async {
+    final prefs = await SharedPreferences.getInstance();
+    _hasVehicleInfo = prefs.getBool(_keyHasVehicle) ?? false;
+    
+    if (_hasVehicleInfo) {
+      _selectedVehicleType = prefs.getString(_keyVehicleType) ?? 'Car';
+      _vehicleModelController.text = prefs.getString(_keyVehicleModel) ?? '';
+      _vehiclePlateController.text = prefs.getString(_keyVehiclePlate) ?? '';
+    } else {
+      _selectedVehicleType = 'Car';
+      _vehicleModelController.text = '';
+      _vehiclePlateController.text = '';
+    }
+    setState(() {});
   }
 
-  void _loadVehicleData() {
-    _vehicleModelController.text = 'Toyota Corolla';
-    _vehiclePlateController.text = 'MN 1234';
-    _hasVehicleInfo = true;
+  Future<void> _loadProfileData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    _driverName = authProvider.currentUser?.name ?? prefs.getString(_keyDriverName) ?? '';
+    _driverEmail = authProvider.currentUser?.email ?? '';
+    _driverPhone = prefs.getString(_keyDriverPhone) ?? '';
+    
+    final imagePath = prefs.getString(_keyProfileImage);
+    if (imagePath != null && imagePath.isNotEmpty) {
+      _profileImage = File(imagePath);
+    }
+    
+    setState(() {});
   }
 
-  void _saveVehicleInfo() {
+  // ==================== SAVE DATA TO STORAGE ====================
+  
+  Future<void> _saveWithdrawalAccounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final accountsJson = json.encode(_withdrawalAccounts.map((a) => a.toJson()).toList());
+    await prefs.setString(_keyWithdrawalAccounts, accountsJson);
+  }
+
+  Future<void> _saveVehicleInfo() async {
     if (_vehicleModelController.text.isEmpty || _vehiclePlateController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -105,6 +174,12 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       return;
     }
     
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyHasVehicle, true);
+    await prefs.setString(_keyVehicleType, _selectedVehicleType);
+    await prefs.setString(_keyVehicleModel, _vehicleModelController.text);
+    await prefs.setString(_keyVehiclePlate, _vehiclePlateController.text);
+    
     setState(() {
       _hasVehicleInfo = true;
       _showVehicleForm = false;
@@ -114,6 +189,52 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       const SnackBar(
         content: Text('Vehicle information saved successfully!'),
         backgroundColor: AppTheme.success,
+      ),
+    );
+  }
+
+  Future<void> _saveProfileData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyDriverName, _driverName);
+    await prefs.setString(_keyDriverPhone, _driverPhone);
+    
+    if (_profileImage != null) {
+      await prefs.setString(_keyProfileImage, _profileImage!.path);
+    }
+  }
+
+  void _deleteVehicleInfo() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Vehicle Info'),
+        content: const Text('Are you sure you want to delete your vehicle information?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove(_keyHasVehicle);
+              await prefs.remove(_keyVehicleType);
+              await prefs.remove(_keyVehicleModel);
+              await prefs.remove(_keyVehiclePlate);
+              
+              setState(() {
+                _hasVehicleInfo = false;
+                _vehicleModelController.clear();
+                _vehiclePlateController.clear();
+                _selectedVehicleType = 'Car';
+                _showVehicleForm = false;
+              });
+              
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Vehicle information deleted'), backgroundColor: AppTheme.success),
+              );
+            },
+            child: const Text('Delete', style: TextStyle(color: AppTheme.error)),
+          ),
+        ],
       ),
     );
   }
@@ -170,6 +291,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         setState(() {
           _profileImage = File(pickedFile.path);
         });
+        await _saveProfileData();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile picture updated!'), backgroundColor: AppTheme.success),
         );
@@ -228,6 +350,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                     setState(() {
                       _profileImage = null;
                     });
+                    _saveProfileData();
                   },
                 ),
               ],
@@ -261,104 +384,86 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     );
   }
 
+  // ==================== VERIFICATION METHODS ====================
+  
   void _verifyEmail() {
+    if (_driverEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add your email in profile first'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Verify Email'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('We sent a 6-digit code to your email:'),
-            const SizedBox(height: 8),
-            Text(_driverEmail, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryRed)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(6, (index) => 
-                SizedBox(
-                  width: 45,
-                  child: TextField(
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    style: const TextStyle(color: AppTheme.primaryText),
-                    decoration: const InputDecoration(
-                      counterText: '',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                )
-              ),
+      builder: (context) => OtpVerificationDialog(
+        title: 'Verify Email',
+        subtitle: 'Enter the 6-digit verification code sent to',
+        destination: _driverEmail,
+        onVerify: (otp) {
+          print('Verifying OTP: $otp');
+          setState(() {
+            _isEmailVerified = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Email verified successfully!'),
+              backgroundColor: AppTheme.success,
             ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _isEmailVerified = true;
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Email verified successfully!'), backgroundColor: AppTheme.success),
-              );
-            },
-            child: const Text('Verify'),
-          ),
-        ],
+          );
+        },
+        onResend: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Verification code resent!'),
+              backgroundColor: AppTheme.success,
+            ),
+          );
+        },
       ),
     );
   }
 
   void _verifyPhone() {
+    if (_driverPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add your phone number in profile first'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Verify Phone Number'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('We sent a 6-digit code to your phone:'),
-            const SizedBox(height: 8),
-            Text(_driverPhone, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryRed)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(6, (index) => 
-                SizedBox(
-                  width: 45,
-                  child: TextField(
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    style: const TextStyle(color: AppTheme.primaryText),
-                    decoration: const InputDecoration(
-                      counterText: '',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                )
-              ),
+      builder: (context) => OtpVerificationDialog(
+        title: 'Verify Phone Number',
+        subtitle: 'Enter the 6-digit verification code sent to',
+        destination: _driverPhone,
+        onVerify: (otp) {
+          print('Verifying OTP: $otp');
+          setState(() {
+            _isPhoneVerified = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Phone verified successfully!'),
+              backgroundColor: AppTheme.success,
             ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _isPhoneVerified = true;
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Phone verified successfully!'), backgroundColor: AppTheme.success),
-              );
-            },
-            child: const Text('Verify'),
-          ),
-        ],
+          );
+        },
+        onResend: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Verification code resent!'),
+              backgroundColor: AppTheme.success,
+            ),
+          );
+        },
       ),
     );
   }
@@ -423,6 +528,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                 _driverEmail = emailController.text;
                 _driverPhone = phoneController.text;
               });
+              _saveProfileData();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Profile updated!'), backgroundColor: AppTheme.success),
@@ -479,7 +585,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     _showAccountDialog(account: account);
   }
 
-  void _deleteWithdrawalAccount(WithdrawalAccount account) {
+  void _deleteWithdrawalAccount(WithdrawalAccount account) async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -488,13 +594,14 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               setState(() {
                 _withdrawalAccounts.removeWhere((acc) => acc.id == account.id);
                 if (account.isDefault && _withdrawalAccounts.isNotEmpty) {
                   _withdrawalAccounts.first.isDefault = true;
                 }
               });
+              await _saveWithdrawalAccounts();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Account removed successfully'), backgroundColor: AppTheme.error),
@@ -515,12 +622,13 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     return number;
   }
 
-  void _setDefaultAccount(WithdrawalAccount selectedAccount) {
+  void _setDefaultAccount(WithdrawalAccount selectedAccount) async {
     setState(() {
       for (var acc in _withdrawalAccounts) {
         acc.isDefault = (acc.id == selectedAccount.id);
       }
     });
+    await _saveWithdrawalAccounts();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Default withdrawal account updated to ${selectedAccount.method.toUpperCase()}'),
@@ -612,7 +720,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
             actions: [
               TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   String cleanedNumber = phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
                   String? validationError = _validatePhoneNumber(selectedMethod, cleanedNumber);
                   
@@ -645,6 +753,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       ));
                     }
                   });
+                  await _saveWithdrawalAccounts();
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -765,6 +874,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
     final mutedColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
     final secondaryBg = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
+    final displayName = _driverName.isNotEmpty ? _driverName : 'Driver';
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -810,7 +920,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(_driverName, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor)),
+                            child: Text(displayName, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor)),
                           ),
                           Container(
                             decoration: BoxDecoration(color: secondaryBg, borderRadius: BorderRadius.circular(20)),
@@ -828,7 +938,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                         children: [
                           Icon(Icons.email_outlined, size: 14, color: mutedColor),
                           const SizedBox(width: 4),
-                          Expanded(child: Text(_driverEmail, style: TextStyle(fontSize: 12, color: secondaryTextColor), overflow: TextOverflow.ellipsis)),
+                          Expanded(child: Text(_driverEmail.isNotEmpty ? _driverEmail : 'No email set', style: TextStyle(fontSize: 12, color: secondaryTextColor), overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                       const SizedBox(height: 2),
@@ -836,7 +946,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                         children: [
                           Icon(Icons.phone_android, size: 14, color: mutedColor),
                           const SizedBox(width: 4),
-                          Text(_driverPhone, style: TextStyle(fontSize: 12, color: secondaryTextColor)),
+                          Text(_driverPhone.isNotEmpty ? _driverPhone : 'No phone set', style: TextStyle(fontSize: 12, color: secondaryTextColor)),
                         ],
                       ),
                     ],
@@ -992,7 +1102,18 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       ],
                     ),
                   ),
-                  IconButton(icon: const Icon(Icons.edit, color: AppTheme.primaryRed), onPressed: _editVehicleInfo),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: AppTheme.primaryRed),
+                        onPressed: _editVehicleInfo,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: AppTheme.error),
+                        onPressed: _deleteVehicleInfo,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

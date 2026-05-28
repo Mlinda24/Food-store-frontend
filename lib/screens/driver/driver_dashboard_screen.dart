@@ -37,6 +37,18 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     {'icon': Icons.settings, 'label': 'Settings'},
   ];
 
+  // Get time-based greeting
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning';
+    } else if (hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -175,6 +187,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         final provider = Provider.of<DriverProvider>(context);
         final auth = Provider.of<AuthProvider>(context);
         final driverName = auth.currentUser?.name ?? 'Driver';
+        final greeting = _getGreeting();
 
         final bgColor = theme.isDarkMode ? AppTheme.darkBackground : AppTheme.lightBackground;
         final textColor = theme.isDarkMode ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
@@ -188,14 +201,28 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             appBar: AppBar(
               backgroundColor: bgColor,
               elevation: 0,
-              title: Text(driverName, style: TextStyle(color: textColor))),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    greeting,
+                    style: TextStyle(fontSize: 12, color: secondaryTextColor),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$driverName! 👋',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+                  ),
+                ],
+              ),
+            ),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
 
         return Scaffold(
           backgroundColor: bgColor,
-          appBar: _buildAppBar(provider, driverName, textColor, secondaryTextColor, theme),
+          appBar: _buildAppBar(provider, driverName, greeting, textColor, secondaryTextColor, bgColor),
           body: RefreshIndicator(
             onRefresh: provider.refresh,
             child: _selectedIndex == 0
@@ -221,25 +248,32 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  AppBar _buildAppBar(DriverProvider provider, String name, Color text, Color sub, ThemeProvider theme) {
-    final bgColor = theme.isDarkMode ? AppTheme.darkBackground : AppTheme.lightBackground;
-    
+  AppBar _buildAppBar(DriverProvider provider, String name, String greeting, Color textColor, Color subColor, Color bgColor) {
     return AppBar(
       backgroundColor: bgColor,
       elevation: 0,
-      title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
-        Text(
-          _selectedIndex == 0 ? 'Driver Dashboard' : _navItems[_selectedIndex]['label'] as String,
-          style: TextStyle(fontSize: 12, color: sub),
-        ),
-      ]),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            greeting,
+            style: TextStyle(fontSize: 12, color: subColor),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$name! 👋',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+          ),
+        ],
+      ),
       actions: [
         Container(
           margin: const EdgeInsets.only(right: 16),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: provider.isOnline ? AppTheme.success.withOpacity(0.2) : AppTheme.error.withOpacity(0.2),
+            color: provider.isOnline
+                ? AppTheme.success.withOpacity(0.2)
+                : AppTheme.error.withOpacity(0.2),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: provider.isOnline ? AppTheme.success : AppTheme.error),
           ),
