@@ -188,8 +188,12 @@ class ShoppingCartScreen extends StatelessWidget {
     
     if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
       imageUrl = item.imageUrl!;
+      print('🖼️ Using item.imageUrl: $imageUrl');
     } else if (item.image != null && item.image!.isNotEmpty) {
       imageUrl = _resolveImageUrl(item.image);
+      print('🖼️ Using item.image resolved: $imageUrl');
+    } else {
+      print('⚠️ No image URL for item: ${item.name}');
     }
     
     final placeholder = Container(
@@ -216,7 +220,10 @@ class ShoppingCartScreen extends StatelessWidget {
         height: 60,
         fit: BoxFit.cover,
         placeholder: (context, _) => placeholder,
-        errorWidget: (context, url, error) => placeholder,
+        errorWidget: (context, url, error) {
+          print('❌ Failed to load image: $url');
+          return placeholder;
+        },
       ),
     );
   }
@@ -228,6 +235,12 @@ class ShoppingCartScreen extends StatelessWidget {
 
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
+        // Debug: Print all cart items with their image URLs
+        print('📋 Cart has ${cartProvider.items.length} items:');
+        for (var item in cartProvider.items) {
+          print('   - ${item.name}: imageUrl=${item.imageUrl}, image=${item.image}');
+        }
+        
         // ── Empty state ──────────────────────────────────────────────────────
         if (!cartProvider.hasItems) {
           return Scaffold(
@@ -334,6 +347,8 @@ class ShoppingCartScreen extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.getPrimaryTextColor(context),
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -379,7 +394,7 @@ class ShoppingCartScreen extends StatelessWidget {
                           // Item image
                           _buildItemImage(context, item, isDark),
                           const SizedBox(width: 12),
-                          // Item details
+                          // Item details - reduced font size to prevent overflow
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,19 +402,20 @@ class ShoppingCartScreen extends StatelessWidget {
                                 Text(
                                   item.name,
                                   style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
                                     color: AppTheme.getPrimaryTextColor(context),
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'MK${item.price.toStringAsFixed(0)} each',
+                                  'MK${item.price.toStringAsFixed(0)}',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: AppTheme.getSecondaryTextColor(context),
+                                    fontWeight: FontWeight.w500,
+                                    color: AppTheme.primaryRed,
                                   ),
                                 ),
                               ],
@@ -410,7 +426,7 @@ class ShoppingCartScreen extends StatelessWidget {
                           Container(
                             decoration: BoxDecoration(
                               color: AppTheme.getSurfaceColor(context),
-                              borderRadius: BorderRadius.circular(25),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -418,15 +434,15 @@ class ShoppingCartScreen extends StatelessWidget {
                                 IconButton(
                                   onPressed: () => _updateQuantity(
                                       context, item, item.quantity - 1),
-                                  icon: const Icon(Icons.remove, size: 18),
+                                  icon: const Icon(Icons.remove, size: 16),
                                   color: AppTheme.primaryRed,
-                                  padding: const EdgeInsets.all(6),
+                                  padding: const EdgeInsets.all(4),
                                   constraints: const BoxConstraints(),
                                 ),
                                 Text(
                                   '${item.quantity}',
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: AppTheme.getPrimaryTextColor(context),
                                   ),
@@ -434,9 +450,9 @@ class ShoppingCartScreen extends StatelessWidget {
                                 IconButton(
                                   onPressed: () => _updateQuantity(
                                       context, item, item.quantity + 1),
-                                  icon: const Icon(Icons.add, size: 18),
+                                  icon: const Icon(Icons.add, size: 16),
                                   color: AppTheme.primaryRed,
-                                  padding: const EdgeInsets.all(6),
+                                  padding: const EdgeInsets.all(4),
                                   constraints: const BoxConstraints(),
                                 ),
                               ],
@@ -446,7 +462,7 @@ class ShoppingCartScreen extends StatelessWidget {
                           IconButton(
                             onPressed: () => _showRemoveConfirmation(context, item),
                             icon: Icon(Icons.delete_outline,
-                                size: 20, color: AppTheme.error),
+                                size: 18, color: AppTheme.error),
                           ),
                         ],
                       ),
@@ -475,36 +491,36 @@ class ShoppingCartScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Subtotal (${cartProvider.itemCount} items)',
+                          'Subtotal (${cartProvider.itemCount})',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                         Text(
                           'MK${cartProvider.subtotal.toStringAsFixed(0)}',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           'Delivery Fee',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                         Text(
                           'MK${cartProvider.deliveryFee.toStringAsFixed(0)}',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
@@ -512,17 +528,17 @@ class ShoppingCartScreen extends StatelessWidget {
                     ),
                     if (!cartProvider.canDeliver)
                       Padding(
-                        padding: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.only(top: 6),
                         child: Row(
                           children: [
                             Icon(Icons.warning,
-                                size: 16, color: AppTheme.error),
-                            const SizedBox(width: 8),
+                                size: 14, color: AppTheme.error),
+                            const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                'Delivery not available to your location',
+                                'Delivery not available',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: AppTheme.error,
                                 ),
                               ),
@@ -530,14 +546,14 @@ class ShoppingCartScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                    const Divider(height: 24),
+                    const Divider(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           'Total',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.getPrimaryTextColor(context),
                           ),
@@ -545,14 +561,14 @@ class ShoppingCartScreen extends StatelessWidget {
                         Text(
                           'MK${cartProvider.total.toStringAsFixed(0)}',
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.primaryRed,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -563,7 +579,7 @@ class ShoppingCartScreen extends StatelessWidget {
                           backgroundColor: cartProvider.canDeliver
                               ? AppTheme.primaryRed
                               : Colors.grey,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30)),
                         ),
@@ -572,7 +588,7 @@ class ShoppingCartScreen extends StatelessWidget {
                               ? 'Proceed to Checkout'
                               : 'Delivery Not Available',
                           style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                              fontSize: 14, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),

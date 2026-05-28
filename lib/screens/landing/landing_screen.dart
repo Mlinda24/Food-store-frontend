@@ -147,7 +147,7 @@ class LandingScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      '🍔 Hungry? We\'ve Got This! 🍕',
+                      ' Hungry? We\'ve Got This! ',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
