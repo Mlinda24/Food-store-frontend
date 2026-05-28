@@ -15,35 +15,47 @@ class DriverService {
       };
 
   // ============================================================
-  // STATUS
+  // STATUS - FIXED to use update_status endpoint
   // ============================================================
 
   static Future<Map<String, dynamic>> goOnline() async {
     final token = await _getToken();
     if (token == null) throw Exception('Not authenticated');
-    final response = await http.post(
-      Uri.parse('$_base/drivers/go_online/'),
+    
+    // Use the update_status endpoint with status 'online'
+    final response = await http.patch(
+      Uri.parse('$_base/drivers/update_status/'),
       headers: _headers(token),
+      body: json.encode({'status': 'online', 'is_available': true}),
     );
+    
     print('🟢 Go online - Status: ${response.statusCode}');
+    print('🟢 Go online - Response: ${response.body}');
+    
     if (response.statusCode == 200 || response.statusCode == 201) {
       return json.decode(response.body);
     }
-    throw Exception('Failed to go online');
+    throw Exception('Failed to go online: ${response.body}');
   }
 
   static Future<Map<String, dynamic>> goOffline() async {
     final token = await _getToken();
     if (token == null) throw Exception('Not authenticated');
-    final response = await http.post(
-      Uri.parse('$_base/drivers/go_offline/'),
+    
+    // Use the update_status endpoint with status 'offline'
+    final response = await http.patch(
+      Uri.parse('$_base/drivers/update_status/'),
       headers: _headers(token),
+      body: json.encode({'status': 'offline', 'is_available': false}),
     );
+    
     print('🔴 Go offline - Status: ${response.statusCode}');
+    print('🔴 Go offline - Response: ${response.body}');
+    
     if (response.statusCode == 200 || response.statusCode == 201) {
       return json.decode(response.body);
     }
-    throw Exception('Failed to go offline');
+    throw Exception('Failed to go offline: ${response.body}');
   }
 
   // ============================================================
@@ -57,6 +69,7 @@ class DriverService {
       Uri.parse('$_base/drivers/profile/'),
       headers: _headers(token),
     );
+    print('👤 Get profile - Status: ${response.statusCode}');
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception('Failed to load profile');
   }
@@ -91,7 +104,7 @@ class DriverService {
           'today_earnings': double.tryParse(data['today_earnings']?.toString() ?? '0') ?? 0,
           'total_earnings': double.tryParse(data['total_earnings']?.toString() ?? '0') ?? 0,
           'total_deliveries': int.tryParse(data['total_deliveries']?.toString() ?? '0') ?? 0,
-          'rating': double.tryParse(data['rating']?.toString() ?? '5.0') ?? 5.0,
+          'rating': double.tryParse(data['average_rating']?.toString() ?? '5.0') ?? 5.0,
           'today_deliveries': int.tryParse(data['today_deliveries']?.toString() ?? '0') ?? 0,
         };
       }
@@ -149,7 +162,7 @@ class DriverService {
   }
 
   // ============================================================
-  // AVAILABLE ORDERS - NO MOCK DATA
+  // AVAILABLE ORDERS
   // ============================================================
   static Future<List<dynamic>> getAvailableOrders() async {
     final token = await _getToken();
@@ -173,7 +186,7 @@ class DriverService {
       }
       return orders;
     }
-    throw Exception('Failed to load available orders');
+    throw Exception('Failed to load available orders: ${response.body}');
   }
 
   // ============================================================
@@ -207,6 +220,9 @@ class DriverService {
           }
         }
         return null;
+      }
+      if (response.statusCode == 404) {
+        return null; // No active delivery
       }
       return null;
     } catch (e) {
@@ -257,6 +273,6 @@ class DriverService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return json.decode(response.body);
     }
-    throw Exception('Failed to update status');
+    throw Exception('Failed to update status: ${response.body}');
   }
 }
