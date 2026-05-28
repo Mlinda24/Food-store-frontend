@@ -60,8 +60,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     }
   }
 
-  // REMOVED: _showSnackBar method - no more popup messages
-
   Future<void> _deleteMenuItem(MenuItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -112,10 +110,8 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     );
 
     if (confirmed == true && _isMounted && mounted) {
-      // Silent delete - no success message
       await context.read<RestaurantProvider>().deleteMenuItem(item.id);
       _loadData();
-      // NO SNACKBAR
     }
   }
 
@@ -125,7 +121,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
       final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
       return pickedFile;
     } catch (e) {
-      // Silent error - no snackbar
       return null;
     }
   }
@@ -144,8 +139,8 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: Image.network(
-        imageFile.path,
+      child: Image.file(
+        File(imageFile.path),
         fit: BoxFit.cover,
         width: double.infinity,
         errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
@@ -153,10 +148,12 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     );
   }
 
+  // FIXED: Use ApiService.getImageUrl for all image URLs
   Widget _buildImageWidget(MenuItem item) {
-    final imageToUse = item.imageUrl.isNotEmpty ? item.imageUrl : item.image;
+    // Use the ApiService to get the correct image URL (handles Cloudinary)
+    final imageUrl = _apiService.getImageUrl(item.imageUrl.isNotEmpty ? item.imageUrl : item.image);
     
-    if (imageToUse.isEmpty) {
+    if (imageUrl.isEmpty) {
       return Container(
         width: 60,
         height: 60,
@@ -165,19 +162,10 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
       );
     }
     
-    String fullUrl;
-    if (imageToUse.startsWith('http')) {
-      fullUrl = imageToUse;
-    } else if (imageToUse.startsWith('/media/')) {
-      fullUrl = 'http://192.168.137.1:8000$imageToUse';
-    } else {
-      fullUrl = 'http://192.168.137.1:8000/media/$imageToUse';
-    }
-    
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: Image.network(
-        fullUrl,
+        imageUrl,
         fit: BoxFit.cover,
         width: 60,
         height: 60,
@@ -332,17 +320,14 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
               ElevatedButton(
                 onPressed: () async {
                   if (nameCtrl.text.trim().isEmpty) {
-                    // Silent validation - no snackbar
                     return;
                   }
                   if (priceCtrl.text.trim().isEmpty) {
-                    // Silent validation - no snackbar
                     return;
                   }
                   
                   final priceValue = double.tryParse(priceCtrl.text.trim());
                   if (priceValue == null) {
-                    // Silent validation - no snackbar
                     return;
                   }
                   
@@ -377,13 +362,10 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                       dialogMounted = false;
                       Navigator.pop(context);
                       _loadData();
-                      // NO SNACKBAR
                     } else if (dialogMounted) {
-                      // Silent failure - no snackbar
                       setDialogState(() => isUploading = false);
                     }
                   } catch (e) {
-                    // Silent error - no snackbar
                     if (dialogMounted) {
                       setDialogState(() => isUploading = false);
                     }
@@ -548,17 +530,14 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
               ElevatedButton(
                 onPressed: () async {
                   if (nameCtrl.text.trim().isEmpty) {
-                    // Silent validation - no snackbar
                     return;
                   }
                   if (priceCtrl.text.trim().isEmpty) {
-                    // Silent validation - no snackbar
                     return;
                   }
                   
                   final priceValue = double.tryParse(priceCtrl.text.trim());
                   if (priceValue == null) {
-                    // Silent validation - no snackbar
                     return;
                   }
                   
@@ -580,9 +559,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
                     dialogMounted = false;
                     Navigator.pop(context);
                     _loadData();
-                    // NO SNACKBAR
                   } else if (dialogMounted) {
-                    // Silent failure - no snackbar
                     setDialogState(() => isUploading = false);
                   }
                 },
@@ -606,10 +583,8 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
   }
 
   Future<void> _toggleAvailability(MenuItem item) async {
-    // Use the dedicated toggle method from provider
     await context.read<RestaurantProvider>().toggleMenuItemAvailability(item.id, !item.isAvailable);
     _loadData();
-    // NO SNACKBAR - completely silent
   }
 
   List<MenuItem> get _filteredItems {
