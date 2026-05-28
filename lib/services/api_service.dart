@@ -25,6 +25,10 @@ class ApiService {
   static const String localBaseUrl = 'http://192.168.137.1:8000';
   static const String localMediaBaseUrl = 'http://192.168.137.1:8000';
 
+  // Cloudinary base URL for images
+  static const String _cloudinaryBaseUrl =
+      'https://res.cloudinary.com/dvtfdu0yq/image/upload';
+
   // Active URLs based on environment
   static String get baseUrl => useLocalDev ? localBaseUrl : prodBaseUrl;
   static String get mediaBaseUrl =>
@@ -37,49 +41,66 @@ class ApiService {
   // GROUP 1: STATIC UTILITY METHODS
   // ============================================
 
-  /// Static method to clean image URLs (replaces localhost variants with correct IP)
-  static String cleanImageUrlStatic(String? imagePath) {
-    if (imagePath == null || imagePath.isEmpty) {
-      return '';
-    }
-
-    String url = imagePath;
-
-    // Replace all localhost variations with the correct IP
-    if (url.contains('127.0.0.1')) {
-      url = url.replaceAll('127.0.0.1', '192.168.137.1');
-    }
-    if (url.contains('localhost')) {
-      url = url.replaceAll('localhost', '192.168.137.1');
-    }
-    if (url.contains('10.0.2.2')) {
-      url = url.replaceAll('10.0.2.2', '192.168.137.1');
-    }
-
-    return url;
-  }
-
-  /// Static method to get a clean image URL from a path
+  /// Static method to get a clean image URL from Cloudinary
   static String getImageUrlStatic(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) {
       return '';
     }
 
-    // First clean the URL
-    String url = cleanImageUrlStatic(imagePath);
+    String raw = imagePath.trim();
 
-    // If it's already a full URL (Cloudinary or any HTTPS URL), return as-is
-    if (url.startsWith('http')) {
-      return url;
+    // If it's already a Cloudinary URL or any HTTPS URL, return as-is
+    if (raw.startsWith('https://res.cloudinary.com')) {
+      return raw;
     }
 
-    // If it doesn't start with http, prepend the base URL
-    if (url.startsWith('/')) {
-      url = url.substring(1);
+    // For local development, handle localhost URLs
+    if (useLocalDev) {
+      if (raw.startsWith('http')) {
+        // Replace localhost variants
+        return raw
+            .replaceAll('127.0.0.1', '192.168.137.1')
+            .replaceAll('localhost', '192.168.137.1')
+            .replaceAll('10.0.2.2', '192.168.137.1');
+      }
+      if (raw.startsWith('/media/')) {
+        return '$localMediaBaseUrl$raw';
+      }
+      if (raw.startsWith('/')) {
+        return '$localMediaBaseUrl$raw';
+      }
+      return '$localMediaBaseUrl/media/$raw';
     }
-    url = '$mediaBaseUrl/$url';
 
-    return url;
+    // PRODUCTION: Build Cloudinary URL
+    // Strip any leading path components
+    String cleaned = raw;
+
+    // Remove /media/ prefix if present
+    if (cleaned.startsWith('/media/')) {
+      cleaned = cleaned.substring(7);
+    }
+    if (cleaned.startsWith('media/')) {
+      cleaned = cleaned.substring(6);
+    }
+
+    // Remove leading slash
+    if (cleaned.startsWith('/')) {
+      cleaned = cleaned.substring(1);
+    }
+
+    // Remove file extension to get Cloudinary public_id
+    if (cleaned.contains('.')) {
+      cleaned = cleaned.substring(0, cleaned.lastIndexOf('.'));
+    }
+
+    // Return Cloudinary URL
+    return '$_cloudinaryBaseUrl/v1/$cleaned';
+  }
+
+  /// Static method to clean image URLs - kept for backward compatibility
+  static String cleanImageUrlStatic(String? imagePath) {
+    return getImageUrlStatic(imagePath);
   }
 
   // ============================================
@@ -108,7 +129,6 @@ class ApiService {
     final token = await getToken();
     return {
       if (token != null) 'Authorization': 'Bearer $token',
-      // Don't set Content-Type for multipart - it will be set automatically
     };
   }
 
@@ -572,7 +592,6 @@ class ApiService {
       Uri.parse('$baseUrl/api/owner/restaurants/'),
     );
 
-    // Add headers correctly - don't set Content-Type
     request.headers['Authorization'] = 'Bearer $token';
 
     final myRestaurant = await getMyRestaurant();
@@ -834,7 +853,6 @@ class ApiService {
       Uri.parse('$baseUrl/api/owner/menu-items/'),
     );
 
-    // Add headers correctly - don't set Content-Type
     request.headers['Authorization'] = 'Bearer $token';
 
     final myRestaurant = await getMyRestaurant();
@@ -967,11 +985,11 @@ class ApiService {
       if (data['items'] != null) {
         for (var item in data['items']) {
           if (item['image'] != null) {
-            item['image'] = cleanImageUrlStatic(item['image']);
+            item['image'] = getImageUrlStatic(item['image']);
           }
           if (item['menu_item'] != null && item['menu_item']['image'] != null) {
             item['menu_item']['image'] =
-                cleanImageUrlStatic(item['menu_item']['image']);
+                getImageUrlStatic(item['menu_item']['image']);
           }
         }
       }
@@ -1588,7 +1606,7 @@ class ApiService {
   // ============================================
 
   String cleanImageUrl(String? imagePath) {
-    return cleanImageUrlStatic(imagePath);
+    return getImageUrlStatic(imagePath);
   }
 
   String getImageUrl(String? imagePath) {
