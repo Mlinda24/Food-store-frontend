@@ -31,7 +31,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final Map<String, TextEditingController> _itemInstructions = {};
   bool _isLoading = false;
   bool _isProcessingPayment = false;
-  bool _isPlacingOrder = false; // Add flag to prevent duplicate submissions
+  bool _isPlacingOrder = false;
   Order? _pendingOrder;
 
   // Delivery
@@ -224,7 +224,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // ─── Place Order & Payment Flow ──────────────────────────────
 
   Future<void> _placeOrder() async {
-    // Prevent multiple simultaneous submissions
     if (_isPlacingOrder) {
       print('⏳ Order already in progress, ignoring duplicate call');
       return;
@@ -308,7 +307,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       print('💳 Total to pay: MK$total');
       print('💳 Order ID: ${order.id}');
 
-      // Use simple payment - PayChangu handles everything
       final result = await _paymentProvider.initiateSimplePayment(
         amount: total,
         orderId: order.id,
@@ -329,7 +327,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       setState(() => _isProcessingPayment = false);
 
-      // Open PayChangu checkout page in WebView
       final webViewResult =
           await Navigator.of(context).push<Map<String, dynamic>>(
         MaterialPageRoute(
@@ -341,13 +338,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       );
 
-      // User cancelled or closed WebView
       if (webViewResult == null || webViewResult['status'] == 'cancelled') {
         _showError('Payment was cancelled. Your order has not been confirmed.');
         return;
       }
 
-      // Payment submitted — poll for confirmation
       if (webViewResult['status'] == 'submitted') {
         setState(() => _isProcessingPayment = true);
         final ref = webViewResult['reference'] as String? ?? reference ?? '';
@@ -440,7 +435,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _completeOrder(String orderId) async {
-    // Only clear cart AFTER successful payment
     final cartProvider = context.read<CartProvider>();
     await cartProvider.clearCart();
 
@@ -602,6 +596,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  void _goBack() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      context.go('/home');
+    }
+  }
+
   // ─── Build ────────────────────────────────────────────────────
 
   @override
@@ -626,7 +628,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     color: isDark
                         ? AppTheme.darkPrimaryText
                         : AppTheme.lightPrimaryText),
-                onPressed: () => Navigator.pop(context),
+                onPressed: _goBack, // Fixed back button
               ),
             ),
             body: const Center(child: CircularProgressIndicator()),
@@ -649,7 +651,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     color: isDark
                         ? AppTheme.darkPrimaryText
                         : AppTheme.lightPrimaryText),
-                onPressed: () => Navigator.pop(context),
+                onPressed: _goBack, // Fixed back button
               ),
             ),
             body: Center(
@@ -713,7 +715,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   color: isDark
                       ? AppTheme.darkPrimaryText
                       : AppTheme.lightPrimaryText),
-              onPressed: () => Navigator.pop(context),
+              onPressed: _goBack, // Fixed back button
             ),
           ),
           body: Stack(
