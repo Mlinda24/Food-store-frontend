@@ -11,7 +11,6 @@ import '../screens/customer/restaurant_details_screen.dart';
 import '../screens/customer/checkout_screen.dart';
 import '../screens/customer/shopping_cart_screen.dart';
 import '../screens/customer/my_orders_screen.dart';
-import '../screens/customer/order_tracking_screen.dart';
 import '../screens/customer/search_screen.dart';
 import '../screens/customer/customer_profile_screen.dart';
 import '../screens/customer/settings_screen.dart';
@@ -19,12 +18,12 @@ import '../screens/customer/food_detail_screen.dart';
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_profile_screen.dart';
 import '../screens/restaurant/withdraw_screen.dart';
-import '../screens/restaurant/restaurant_setup_screen.dart'; // Add this import
+import '../screens/restaurant/restaurant_setup_screen.dart';
 import '../screens/driver/driver_dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
 import '../providers/auth_provider.dart';
-import '../providers/restaurant_provider.dart'; // Add this import
+import '../providers/restaurant_provider.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/landing',
@@ -33,6 +32,8 @@ final GoRouter router = GoRouter(
     final restaurantProvider =
         Provider.of<RestaurantProvider>(context, listen: false);
 
+    await Future.delayed(Duration.zero);
+    
     final isAuthenticated = authProvider.isAuthenticated;
     final user = authProvider.currentUser;
 
@@ -52,16 +53,13 @@ final GoRouter router = GoRouter(
       if (user != null) {
         if (user.role == UserRole.customer) return '/home';
         if (user.role == UserRole.restaurant) {
-          // Check if restaurant owner has a restaurant
           try {
             await restaurantProvider.loadRestaurantInfo();
             if (restaurantProvider.restaurant == null) {
-              // No restaurant found, go to setup
               return '/restaurant-setup';
             }
             return '/restaurant';
           } catch (e) {
-            // Error loading restaurant, go to setup
             return '/restaurant-setup';
           }
         }
@@ -178,7 +176,6 @@ final GoRouter router = GoRouter(
       name: 'restaurant-profile',
       builder: (context, state) => const RestaurantProfileScreen(),
     ),
-    // Withdraw Route (for restaurant owners)
     GoRoute(
       path: '/withdraw',
       name: 'withdraw',

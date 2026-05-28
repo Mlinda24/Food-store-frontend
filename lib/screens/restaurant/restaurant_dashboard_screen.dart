@@ -403,8 +403,6 @@ class _DashboardContent extends StatelessWidget {
     );
   }
 
-  /// Balance card: icon on top-left, value + labels below, withdraw button
-  /// at the bottom spanning full width — no horizontal row competition.
   Widget _buildStatCardWithWithdraw(
     BuildContext context, {
     required String title,
@@ -424,7 +422,6 @@ class _DashboardContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icon only — no horizontal competition with button
           Container(
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
@@ -434,7 +431,6 @@ class _DashboardContent extends StatelessWidget {
             child: Icon(icon, size: 16, color: color),
           ),
           const SizedBox(height: 10),
-          // Value
           Text(
             value,
             style: TextStyle(
@@ -444,7 +440,6 @@ class _DashboardContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 3),
-          // Title
           Text(
             title,
             style: TextStyle(
@@ -453,7 +448,6 @@ class _DashboardContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          // Subtitle
           Text(
             subtitle,
             style: TextStyle(
@@ -462,27 +456,6 @@ class _DashboardContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          // Withdraw button — full width, no row overflow risk
-          SizedBox(
-            width: double.infinity,
-            height: 30,
-            child: ElevatedButton.icon(
-              onPressed: onWithdraw,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.zero,
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ).copyWith(
-                backgroundColor: WidgetStateProperty.all(Colors.transparent),
-              ),
-              icon: const SizedBox.shrink(),
-              label: const SizedBox.shrink(),
-            ),
-          ),
-          // Use DecoratedBox + GestureDetector to keep gradient on button
           GestureDetector(
             onTap: onWithdraw,
             child: Container(
@@ -593,10 +566,10 @@ class _SettingsContent extends StatefulWidget {
 }
 
 class __SettingsContentState extends State<_SettingsContent> {
-  void _showLogoutDialog(BuildContext context) {
+  Future<void> _showLogoutDialog(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    showDialog(
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.getCardColor(context),
@@ -609,50 +582,35 @@ class __SettingsContentState extends State<_SettingsContent> {
         content: Text('Are you sure you want to logout?',
             style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
         actions: [
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      side: BorderSide(
-                          color: AppTheme.getMutedTextColor(context)
-                              .withOpacity(0.5)),
-                    ),
-                  ),
-                  child: Text('Cancel',
-                      style: TextStyle(
-                          color: AppTheme.getSecondaryTextColor(context))),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    authProvider.logout();
-                    context.go('/login');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.error,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text('Logout',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel',
+                style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            ),
+            child: const Text('Logout'),
           ),
         ],
-        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
       ),
     );
+
+    if (confirm == true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Logging out...'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+      
+      await authProvider.logout(context: context);
+    }
   }
 
   @override

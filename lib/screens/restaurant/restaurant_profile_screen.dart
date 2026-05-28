@@ -37,6 +37,18 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
     _loadRestaurantData();
   }
   
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _descriptionController.dispose();
+    _deliveryFeeController.dispose();
+    _minOrderController.dispose();
+    _deliveryTimeController.dispose();
+    super.dispose();
+  }
+  
   Future<void> _loadRestaurantData() async {
     final provider = Provider.of<RestaurantProvider>(context, listen: false);
     await provider.loadRestaurantInfo();
@@ -110,15 +122,15 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
     );
     
     if (confirm == true) {
-      // Show loading indicator
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Logging out...'),
-          duration: Duration(seconds: 1),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Logging out...'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
       
-      // Perform logout
       await authProvider.logout(context: context);
     }
   }
