@@ -138,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final restaurantsData = await _apiService.getRestaurants();
       final List<Map<String, dynamic>> restaurants = [];
       for (var rest in restaurantsData) {
-        final imageUrl = _getImageUrl(rest['image']);
+        final imageUrl = _apiService.getImageUrl(rest['image']);
         restaurants.add({
           'id': rest['id'].toString(),
           'name': rest['name'] ?? 'Restaurant',
@@ -183,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final restaurantsData = await _apiService.getRestaurants();
       final List<Map<String, dynamic>> restaurants = [];
       for (var rest in restaurantsData) {
-        final imageUrl = _getImageUrl(rest['image']);
+        final imageUrl = _apiService.getImageUrl(rest['image']);
         restaurants.add({
           'id': rest['id'].toString(),
           'name': rest['name'] ?? 'Restaurant',
@@ -223,7 +223,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final String itemCategory = _getCategoryName(item['category']);
         categorySet.add(itemCategory);
 
-        final String imageUrl = _getImageUrl(item['image']);
+        // FIXED: Use ApiService.getImageUrl for all images
+        final String imageUrl = _apiService.getImageUrl(item['image']);
 
         final String restaurantName = item['restaurant_name']?.toString() ??
             _getRestaurantNameById(
@@ -324,17 +325,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return double.tryParse(restaurant['rating'] as String) ?? 4.5;
     }
     return 4.5;
-  }
-
-  String _getImageUrl(dynamic image) {
-    if (image == null) return '';
-    if (image is String && image.isNotEmpty) {
-      if (image.startsWith('http')) return image;
-      if (image.startsWith('/media/')) return 'http://192.168.137.1:8000$image';
-      if (image.startsWith('/')) return 'http://192.168.137.1:8000$image';
-      return 'http://192.168.137.1:8000/media/$image';
-    }
-    return '';
   }
 
   String _getCategoryName(dynamic category) {
@@ -833,8 +823,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // FIX: SingleChildScrollView + Row with crossAxisAlignment.start
-          // lets each card shrink-wrap its own content with no imposed height.
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -888,8 +876,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // FIX: Replace GridView (fixed aspect ratio = overflow/gaps) with
-          // a two-column layout that sizes each row to its tallest card.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
@@ -930,10 +916,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMenuItemCard(BuildContext context, Map<String, dynamic> item) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final imageUrl = item['image'] ?? '';
-    final isValidImageUrl = imageUrl.isNotEmpty &&
-        (imageUrl.startsWith('http') || imageUrl.startsWith('/media/'));
 
     return GestureDetector(
       onTap: () => context.push('/food-detail', extra: item),
@@ -947,12 +930,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          // MainAxisSize.max so the card fills the IntrinsicHeight row height,
-          // making both cards in a row the same height. The image is pinned to
-          // 120px; only the details padding stretches to fill any extra space.
           mainAxisSize: MainAxisSize.max,
           children: [
-            // Image — always exactly 120px tall
             ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(16)),
@@ -961,7 +940,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 child: ColoredBox(
                   color: isDark ? AppTheme.darkSurface : Colors.grey.shade200,
-                  child: isValidImageUrl
+                  child: imageUrl.isNotEmpty
                       ? CachedNetworkImage(
                           imageUrl: imageUrl,
                           width: double.infinity,
@@ -987,8 +966,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            // Details — Expanded so it fills remaining height in the row,
-            // pushing price+button to the bottom of every card uniformly.
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
@@ -996,7 +973,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Top: name + restaurant
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -1023,7 +999,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    // Bottom: price + add button always aligned across both cards
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [

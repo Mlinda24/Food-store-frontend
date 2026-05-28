@@ -16,6 +16,7 @@ import '../../services/api_service.dart';
 import '../../services/location_service.dart';
 import '../../utils/delivery_fee_calculator.dart';
 import '../payment/paychangu_webview_screen.dart';
+import '../../providers/restaurant_provider.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -222,10 +223,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  // ─── Payment Flow (Order Created After Successful Payment) ──────────────
+  // ─── Payment Flow (Order Created FIRST, THEN Payment) ──────────────
 
   Future<void> _startPayment() async {
-    if (_isProcessingPayment || _isPlacingOrder) {
+    if (_isProcessingPayment || _isPlacingOrder || _isCreatingOrder) {
       print('⏳ Payment already in progress, ignoring duplicate call');
       return;
     }
@@ -244,29 +245,63 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
+      // STEP 1: CREATE ORDER FIRST
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📝 STEP 1: Creating order...');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      final deliveryAddress = _getDeliveryAddress();
+
+      final Map<String, String> instructions = {};
+      _itemInstructions.forEach((key, controller) {
+        if (controller.text.isNotEmpty) instructions[key] = controller.text;
+      });
+
+      final instructionsText = instructions.isNotEmpty
+          ? 'Item Instructions: ${instructions.entries.map((e) => 'Item ${e.key}: ${e.value}').join('; ')}'
+          : '';
+
+      final restaurantId = cartProvider.items.first.restaurantId;
+
+      final orderData = {
+        'restaurant_id': int.parse(restaurantId),
+        'delivery_address': deliveryAddress,
+        'note': instructionsText,
+        'latitude': _currentLocation?.latitude,
+        'longitude': _currentLocation?.longitude,
+      };
+
+      print('📤 Order data: $orderData');
+
+      final orderProvider = context.read<OrderProvider>();
+      final placedOrder = await orderProvider.placeOrder(orderData);
+
+      if (placedOrder == null) {
+        throw Exception('Failed to create order');
+      }
+
+      final orderId = placedOrder.id;
+      print('✅ Order created with ID: $orderId');
+
+      // STEP 2: INITIATE PAYMENT WITH REAL ORDER ID
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('💳 STEP 2: Initiating real payment for order: $orderId');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
       final total = cartProvider.subtotal +
           (_calculatedDeliveryFee ?? cartProvider.deliveryFee);
 
-      print('💳 Total to pay: MK$total');
-
-      // First initiate payment - this will NOT create the order yet
+      // Real PayChangu payment with real order ID
       final result = await _paymentProvider.initiateSimplePayment(
         amount: total,
-        orderId:
-            'temp', // Temporary ID, will be replaced after successful payment
+        orderId: orderId, // Use REAL order ID, not 'temp'
       );
 
       final checkoutUrl = result['checkout_url'] as String?;
       final paymentReference = result['reference'] as String?;
 
-      print('💳 Checkout URL: $checkoutUrl');
-      print('💳 Payment Reference: $paymentReference');
-
       if (checkoutUrl == null || checkoutUrl.isEmpty) {
-        _showError(
-            'Payment service did not return a checkout URL. Please try again.');
-        setState(() => _isProcessingPayment = false);
-        return;
+        throw Exception('Payment service did not return a checkout URL');
       }
 
       setState(() => _isProcessingPayment = false);
@@ -279,13 +314,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             checkoutUrl: checkoutUrl,
             reference: paymentReference ?? '',
             amount: total,
+            orderId: orderId, // Pass order ID for wallet sync
           ),
         ),
       );
 
-      // User cancelled or closed WebView
       if (webViewResult == null || webViewResult['status'] == 'cancelled') {
-        _showError('Payment was cancelled. Your order was not created.');
+        _showError('Payment was cancelled. Order #$orderId is pending.');
+        context.go('/my-orders');
         return;
       }
 
@@ -293,30 +329,53 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         setState(() => _isProcessingPayment = true);
         final ref =
             webViewResult['reference'] as String? ?? paymentReference ?? '';
+        final orderIdForSync = webViewResult['order_id'] as String? ?? orderId;
 
         // Poll for payment confirmation
-        final paymentConfirmed = await _pollPaymentStatus(ref);
+        bool paymentConfirmed = await _pollPaymentStatus(ref);
+
+        // If polling fails, try manual confirmation
+        if (!paymentConfirmed) {
+          print('⚠️ Polling failed, trying manual confirmation...');
+          try {
+            final manualResult =
+                await _apiService.manualConfirmPayment(orderIdForSync);
+            paymentConfirmed = manualResult['status'] == 'completed';
+            if (paymentConfirmed) {
+              print('✅ Manual confirmation successful');
+              // Sync wallet after manual confirmation
+              await _syncWalletAfterPayment(orderIdForSync);
+            }
+          } catch (e) {
+            print('❌ Manual confirmation failed: $e');
+          }
+        }
+
         setState(() => _isProcessingPayment = false);
 
         if (paymentConfirmed) {
-          // ONLY AFTER PAYMENT IS CONFIRMED, create the order
-          await _createOrderAfterPayment();
+          // Update order status to confirmed
+          await _apiService.updateOrderStatus(orderIdForSync, 'confirmed');
+          await _completeOrder(orderIdForSync);
         } else {
-          _showError('Payment verification failed. Please contact support.');
+          _showError(
+              'Payment verification failed. Order #$orderIdForSync is pending.');
+          context.go('/my-orders');
         }
       } else if (webViewResult['status'] == 'failed') {
-        _showError('Payment failed. Please try again.');
+        _showError('Payment failed. Order #$orderId is pending.');
+        context.go('/my-orders');
       }
     } catch (e) {
       setState(() => _isProcessingPayment = false);
-      _showError('Payment error: ${e.toString()}');
-      print('❌ Payment error: $e');
+      _showError('Error: ${e.toString()}');
+      print('❌ Error: $e');
     }
   }
 
   Future<bool> _pollPaymentStatus(String reference) async {
     print('🔄 Polling payment status for reference: $reference');
-    for (int attempt = 1; attempt <= 15; attempt++) {
+    for (int attempt = 1; attempt <= 10; attempt++) {
       await Future.delayed(const Duration(seconds: 2));
       if (!mounted) return false;
       try {
@@ -344,77 +403,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return false;
   }
 
-  Future<void> _createOrderAfterPayment() async {
-    if (_isCreatingOrder) {
-      print('⏳ Order creation already in progress');
-      return;
-    }
-
-    setState(() {
-      _isCreatingOrder = true;
-      _isLoading = true;
-    });
-
-    final cartProvider = context.read<CartProvider>();
-    final orderProvider = context.read<OrderProvider>();
-    final authProvider = context.read<AuthProvider>();
-
-    if (authProvider.currentUser == null) {
-      setState(() {
-        _isCreatingOrder = false;
-        _isLoading = false;
-      });
-      _showError('Please login first');
-      context.go('/login');
-      return;
-    }
-
-    final deliveryAddress = _getDeliveryAddress();
-
-    final Map<String, String> instructions = {};
-    _itemInstructions.forEach((key, controller) {
-      if (controller.text.isNotEmpty) instructions[key] = controller.text;
-    });
-
-    final instructionsText = instructions.isNotEmpty
-        ? 'Item Instructions: ${instructions.entries.map((e) => 'Item ${e.key}: ${e.value}').join('; ')}'
-        : '';
-
-    final restaurantId = cartProvider.items.first.restaurantId;
-
-    final orderData = {
-      'restaurant_id': int.parse(restaurantId),
-      'delivery_address': deliveryAddress,
-      'note': instructionsText,
-      'latitude': _currentLocation?.latitude,
-      'longitude': _currentLocation?.longitude,
-    };
-
+  Future<void> _syncWalletAfterPayment(String orderId) async {
     try {
-      final placedOrder = await orderProvider.placeOrder(orderData);
-      setState(() => _isLoading = false);
-
-      if (placedOrder != null && mounted) {
-        _pendingOrder = placedOrder;
-        await _completeOrder(placedOrder.id);
-      } else if (mounted) {
-        _showError('Failed to create order. Please contact support.');
+      print('🔄 Syncing wallet for order: $orderId');
+      final result = await _apiService.checkAndUpdateWallet(orderId);
+      if (result['updated'] == true || result['already_updated'] == true) {
+        print(
+            '✅ Wallet synced successfully! Balance: ${result['wallet_balance']}');
+      } else {
+        print('⚠️ Wallet sync returned: ${result['message']}');
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      _showError('Error creating order: $e');
-      print('❌ Order creation error: $e');
-    } finally {
-      setState(() {
-        _isCreatingOrder = false;
-      });
+      print('❌ Wallet sync failed: $e');
     }
   }
 
   Future<void> _completeOrder(String orderId) async {
-    // Clear cart AFTER successful order creation
+    // Clear cart AFTER successful payment
     final cartProvider = context.read<CartProvider>();
     await cartProvider.clearCart();
+
+    // Refresh wallet balance in restaurant provider if available
+    try {
+      final restaurantProvider =
+          Provider.of<RestaurantProvider>(context, listen: false);
+      await restaurantProvider.loadStats();
+      await restaurantProvider.loadRestaurantData();
+    } catch (e) {
+      print('⚠️ Could not refresh restaurant data: $e');
+    }
 
     final notificationProvider =
         Provider.of<NotificationProvider>(context, listen: false);
@@ -431,59 +448,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showPaymentPendingDialog(String reference) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Payment Pending'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.pending_outlined, size: 48, color: Colors.orange),
-            const SizedBox(height: 16),
-            const Text(
-              'Your payment is being processed. '
-              'Please check your order status later.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text('Ref: $reference',
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              setState(() => _isProcessingPayment = true);
-              final confirmed = await _pollPaymentStatus(reference);
-              setState(() => _isProcessingPayment = false);
-              if (confirmed && mounted) {
-                await _createOrderAfterPayment();
-              } else if (mounted) {
-                _showError(
-                    'Payment not yet confirmed. Check your orders for updates.');
-              }
-            },
-            child: const Text('Check Again'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryRed,
-                foregroundColor: Colors.white),
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.go('/orders');
-            },
-            child: const Text('View My Orders'),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ─── UI Widgets ───────────────────────────────────────────────
 
   Widget _buildDeliveryInfoCard() {
@@ -498,7 +462,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.1),
+          color: Colors.grey.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Row(
@@ -519,7 +483,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.warning.withValues(alpha: 0.1),
+          color: AppTheme.warning.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppTheme.warning),
         ),
@@ -549,7 +513,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.error.withValues(alpha: 0.1),
+          color: AppTheme.error.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppTheme.error),
         ),
@@ -585,7 +549,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.success.withValues(alpha: 0.1),
+        color: AppTheme.success.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.success),
       ),
@@ -777,7 +741,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         }
                         final instructionController =
                             _itemInstructions[item.menuItemId]!;
-                        final imageUrl = item.image ?? '';
+                        // Use ApiService to get the correct image URL
+                        final imageUrl = _apiService.getImageUrl(item.image);
 
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -786,8 +751,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             gradient: AppTheme.cardGlowGradient(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: AppTheme.deepCrimson
-                                    .withValues(alpha: 0.3)),
+                                color: AppTheme.deepCrimson.withOpacity(0.3)),
                           ),
                           child: Column(
                             children: [
@@ -889,7 +853,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                       color: AppTheme.deepCrimson
-                                          .withValues(alpha: 0.3)),
+                                          .withOpacity(0.3)),
                                 ),
                                 child: Row(
                                   children: [
@@ -936,8 +900,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: BorderSide(
-                              color:
-                                  AppTheme.deepCrimson.withValues(alpha: 0.3))),
+                              color: AppTheme.deepCrimson.withOpacity(0.3))),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -975,7 +938,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         gradient: AppTheme.cardGlowGradient(context),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: AppTheme.deepCrimson.withValues(alpha: 0.3)),
+                            color: AppTheme.deepCrimson.withOpacity(0.3)),
                       ),
                       child: Column(
                         children: [
@@ -1028,7 +991,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Place order button - Now initiates payment first
+                    // Place order button - Creates order first, then payment
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -1083,7 +1046,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             Text(
                               _isCreatingOrder
                                   ? 'Creating your order...'
-                                  : 'Processing Payment...',
+                                  : _isProcessingPayment
+                                      ? 'Processing Payment...'
+                                      : 'Please wait...',
                               style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),

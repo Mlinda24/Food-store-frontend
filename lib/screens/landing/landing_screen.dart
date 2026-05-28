@@ -182,15 +182,22 @@ class LandingScreen extends StatelessWidget {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  // Calculate dynamic card height based on screen width
+                  final cardWidth = (constraints.maxWidth - 24) /
+                      2; // 2 columns with 12 spacing
+                  final imageHeight =
+                      cardWidth * 0.9; // Make image proportional
+
                   return GridView.builder(
                     padding: const EdgeInsets.all(12),
                     physics: const BouncingScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.75,
+                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 200,
+                      mainAxisExtent:
+                          imageHeight + 50, // Image height + text area
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
+                      childAspectRatio: 0.8,
                     ),
                     itemCount: _featuredMeals.length,
                     itemBuilder: (context, index) {
@@ -252,20 +259,21 @@ class LandingScreen extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Important: Prevents extra space
           children: [
-            // Meal Image
+            // Meal Image - Fixed height relative to card
             ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(14)),
               child: imageUrl.isNotEmpty
                   ? Image.network(
                       imageUrl,
-                      height: 110,
+                      height: 140,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          height: 110,
+                          height: 140,
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: AppTheme.primaryRed.withOpacity(0.1),
@@ -280,7 +288,7 @@ class LandingScreen extends StatelessWidget {
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
                         return Container(
-                          height: 110,
+                          height: 140,
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: AppTheme.primaryRed.withOpacity(0.1),
@@ -298,7 +306,7 @@ class LandingScreen extends StatelessWidget {
                       },
                     )
                   : Container(
-                      height: 110,
+                      height: 140,
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: AppTheme.primaryRed.withOpacity(0.1),
@@ -310,9 +318,9 @@ class LandingScreen extends StatelessWidget {
                       ),
                     ),
             ),
-            // Meal Details - Ratings Removed
+            // Meal Details - Fixed padding
             Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               child: Text(
                 name,
                 style: TextStyle(

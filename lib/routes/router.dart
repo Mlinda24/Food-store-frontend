@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/registration_screen.dart';
 import '../screens/auth/role_selection_screen.dart';
-import '../screens/location_gate_screen.dart';
 import '../screens/landing/landing_screen.dart';
 import '../screens/customer/home_screen.dart';
 import '../screens/customer/restaurant_details_screen.dart';
@@ -20,15 +19,20 @@ import '../screens/customer/food_detail_screen.dart';
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_profile_screen.dart';
 import '../screens/restaurant/withdraw_screen.dart';
+import '../screens/restaurant/restaurant_setup_screen.dart'; // Add this import
 import '../screens/driver/driver_dashboard_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
 import '../providers/auth_provider.dart';
+import '../providers/restaurant_provider.dart'; // Add this import
 
 final GoRouter router = GoRouter(
-  initialLocation: '/location-gate',
-  redirect: (context, state) {
+  initialLocation: '/landing',
+  redirect: (context, state) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final restaurantProvider =
+        Provider.of<RestaurantProvider>(context, listen: false);
+
     final isAuthenticated = authProvider.isAuthenticated;
     final user = authProvider.currentUser;
 
@@ -36,8 +40,7 @@ final GoRouter router = GoRouter(
         state.matchedLocation == '/register' ||
         state.matchedLocation == '/role-selection';
 
-    final isPublicRoute = state.matchedLocation == '/location-gate' ||
-        state.matchedLocation == '/landing';
+    final isPublicRoute = state.matchedLocation == '/landing';
 
     // If not authenticated and trying to access protected route
     if (!isAuthenticated && !isAuthRoute && !isPublicRoute) {
@@ -48,7 +51,20 @@ final GoRouter router = GoRouter(
     if (isAuthenticated && isAuthRoute) {
       if (user != null) {
         if (user.role == UserRole.customer) return '/home';
-        if (user.role == UserRole.restaurant) return '/restaurant';
+        if (user.role == UserRole.restaurant) {
+          // Check if restaurant owner has a restaurant
+          try {
+            await restaurantProvider.loadRestaurantInfo();
+            if (restaurantProvider.restaurant == null) {
+              // No restaurant found, go to setup
+              return '/restaurant-setup';
+            }
+            return '/restaurant';
+          } catch (e) {
+            // Error loading restaurant, go to setup
+            return '/restaurant-setup';
+          }
+        }
         if (user.role == UserRole.driver) return '/driver';
       }
     }
@@ -56,12 +72,6 @@ final GoRouter router = GoRouter(
     return null;
   },
   routes: [
-    // Location gate (first screen)
-    GoRoute(
-      path: '/location-gate',
-      name: 'location-gate',
-      builder: (context, state) => const LocationGateScreen(),
-    ),
     // Landing Screen
     GoRoute(
       path: '/landing',
@@ -157,6 +167,11 @@ final GoRouter router = GoRouter(
       path: '/restaurant',
       name: 'restaurant',
       builder: (context, state) => const RestaurantDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/restaurant-setup',
+      name: 'restaurant-setup',
+      builder: (context, state) => const RestaurantSetupScreen(),
     ),
     GoRoute(
       path: '/restaurant-profile',

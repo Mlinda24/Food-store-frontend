@@ -122,6 +122,51 @@ class PaymentProvider extends ChangeNotifier {
     }
   }
 
+  /// Test payment method (bypasses PayChangu for development)
+  Future<Map<String, dynamic>> initiateTestPayment({
+    required double amount,
+    required String orderId,
+  }) async {
+    _isProcessing = true;
+    _error = null;
+    _safeNotify();
+
+    print('🧪 Initiating TEST payment:');
+    print('   Amount: MK$amount');
+    print('   Order ID: $orderId');
+
+    try {
+      // Simulate network delay
+      await Future.delayed(const Duration(seconds: 1));
+
+      final result = {
+        'status': 'success',
+        'message': 'Test payment successful (bypassing PayChangu)',
+        'transaction_id': 'TEST_${DateTime.now().millisecondsSinceEpoch}',
+        'payment_url': null,
+        'reference': 'TEST_REF_$orderId',
+        'order_id': orderId,
+      };
+
+      // Store current payment if the response has enough data
+      try {
+        _currentPayment = Payment.fromJson(result);
+      } catch (_) {
+        // fromJson may fail if checkout_url fields differ — non-fatal
+      }
+
+      _isProcessing = false;
+      _safeNotify();
+      return result;
+    } catch (e) {
+      _error = e.toString();
+      _isProcessing = false;
+      _safeNotify();
+      print('❌ Test payment initiation failed: $e');
+      rethrow;
+    }
+  }
+
   /// Alternative method using paychangu method
   Future<Map<String, dynamic>> initiatePayChanguPayment({
     required double amount,

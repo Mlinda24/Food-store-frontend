@@ -17,7 +17,8 @@ class RestaurantDetailsScreen extends StatefulWidget {
   const RestaurantDetailsScreen({super.key, this.restaurantData});
 
   @override
-  State<RestaurantDetailsScreen> createState() => _RestaurantDetailsScreenState();
+  State<RestaurantDetailsScreen> createState() =>
+      _RestaurantDetailsScreenState();
 }
 
 class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
@@ -105,7 +106,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         final fee = DeliveryFeeCalculator.calculateFee(distanceInMeters);
         final canDeliver = DeliveryFeeCalculator.canDeliver(distanceInMeters);
         final tier = DeliveryFeeCalculator.getDeliveryTier(distanceInMeters);
-        final deliveryTime = DeliveryFeeCalculator.calculateDeliveryTime(distanceInMeters);
+        final deliveryTime =
+            DeliveryFeeCalculator.calculateDeliveryTime(distanceInMeters);
 
         if (!mounted) return;
 
@@ -124,10 +126,12 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           canDeliver: canDeliver,
           tier: tier,
         );
-        cartProvider.setRestaurantLocation(lat: restaurantLat, lng: restaurantLng);
+        cartProvider.setRestaurantLocation(
+            lat: restaurantLat, lng: restaurantLng);
         cartProvider.setCalculatedDeliveryFee(fee > 0 ? fee : 2000.0);
 
-        print('✅ Delivery fee synced with CartProvider: MK${fee.toStringAsFixed(0)} for ${DeliveryFeeCalculator.formatDistance(distanceInMeters)}');
+        print(
+            '✅ Delivery fee synced with CartProvider: MK${fee.toStringAsFixed(0)} for ${DeliveryFeeCalculator.formatDistance(distanceInMeters)}');
       } else {
         if (!mounted) return;
         setState(() {
@@ -163,27 +167,38 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         print('   Restaurant Name: ${data['name']}');
         print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+        // Get the image URL using ApiService
+        final imageUrl = _apiService.getImageUrl(data['image']);
+
         restaurant = Restaurant(
           id: data['id'].toString(),
           name: data['name'] ?? '',
           description: data['description'] ?? '',
-          image: data['image'] ?? '',
+          image: imageUrl, // Use cleaned image URL
           address: data['address'] ?? '',
           phone: data['phone'] ?? '',
           rating: (data['rating'] ?? 4.5).toDouble(),
           deliveryTime: data['delivery_time'] ?? data['deliveryTime'] ?? 30,
-          deliveryFee: (data['delivery_fee'] ?? data['deliveryFee'] ?? 2000.0).toDouble(),
-          minOrderAmount: (data['min_order_amount'] ?? data['minOrderAmount'] ?? 10.0).toDouble(),
-          categories: data['categories'] != null ? List<String>.from(data['categories']) : [],
+          deliveryFee: (data['delivery_fee'] ?? data['deliveryFee'] ?? 2000.0)
+              .toDouble(),
+          minOrderAmount:
+              (data['min_order_amount'] ?? data['minOrderAmount'] ?? 10.0)
+                  .toDouble(),
+          categories: data['categories'] != null
+              ? List<String>.from(data['categories'])
+              : [],
           isOpen: data['is_open'] ?? data['isOpen'] ?? true,
         );
 
-        await _apiService.getRestaurant(restaurant!.id);
         await _loadMenuItems();
 
         if (_currentLocation != null) {
           await _calculateDeliveryFee();
         }
+
+        setState(() {
+          _isLoading = false;
+        });
       } else {
         if (!mounted) return;
         setState(() {
@@ -214,8 +229,9 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
 
       for (var itemData in menuItemsData) {
         try {
-          final String itemName =
-              itemData['name']?.toString() ?? itemData['item_name']?.toString() ?? 'Unknown';
+          final String itemName = itemData['name']?.toString() ??
+              itemData['item_name']?.toString() ??
+              'Unknown';
 
           final double itemPrice = (itemData['price'] != null)
               ? (itemData['price'] is int
@@ -227,10 +243,13 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
               itemData['menu_item_id']?.toString() ??
               DateTime.now().millisecondsSinceEpoch.toString();
 
-          final String itemDescription = itemData['description']?.toString() ?? '';
-          final String itemImage = itemData['image']?.toString() ?? '';
-          final String itemCategory =
-              itemData['category_name']?.toString() ?? itemData['category']?.toString() ?? 'General';
+          final String itemDescription =
+              itemData['description']?.toString() ?? '';
+          // Use ApiService to clean image URL
+          final String itemImage = _apiService.getImageUrl(itemData['image']);
+          final String itemCategory = itemData['category_name']?.toString() ??
+              itemData['category']?.toString() ??
+              'General';
           final bool itemIsAvailable =
               itemData['is_available'] == true || itemData['available'] == true;
 
@@ -256,7 +275,6 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
 
       setState(() {
         _menuItems = parsedItems;
-        _isLoading = false;
       });
 
       final Set<String> categorySet = {'All'};
@@ -276,7 +294,6 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       if (!mounted) return;
       setState(() {
         _error = 'Failed to load menu: $e';
-        _isLoading = false;
         _menuItems = [];
       });
     }
@@ -286,7 +303,9 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     if (_selectedCategory == 'All') {
       return _menuItems;
     }
-    return _menuItems.where((item) => item.category == _selectedCategory).toList();
+    return _menuItems
+        .where((item) => item.category == _selectedCategory)
+        .toList();
   }
 
   void _navigateToFoodDetail(MenuItem item) {
@@ -297,6 +316,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
       'name': item.name,
       'description': item.description,
       'price': formattedPrice,
+      'price_value': item.price,
       'image': item.image,
       'category': item.category,
       'restaurantId': item.restaurantId,
@@ -323,7 +343,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           backgroundColor: AppTheme.getBackgroundColor(context),
           elevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: AppTheme.getPrimaryTextColor(context)),
+            icon: Icon(Icons.arrow_back,
+                color: AppTheme.getPrimaryTextColor(context)),
             onPressed: _goBack,
           ),
         ),
@@ -338,7 +359,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           backgroundColor: AppTheme.getBackgroundColor(context),
           elevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: AppTheme.getPrimaryTextColor(context)),
+            icon: Icon(Icons.arrow_back,
+                color: AppTheme.getPrimaryTextColor(context)),
             onPressed: _goBack,
           ),
         ),
@@ -348,13 +370,17 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
             children: [
               Icon(Icons.error_outline, size: 64, color: AppTheme.error),
               const SizedBox(height: 16),
-              Text('Error loading restaurant', style: TextStyle(color: AppTheme.error)),
+              Text('Error loading restaurant',
+                  style: TextStyle(color: AppTheme.error)),
               const SizedBox(height: 8),
-              Text(_error!, style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+              Text(_error!,
+                  style: TextStyle(
+                      color: AppTheme.getSecondaryTextColor(context))),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _loadData,
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryRed),
                 child: const Text('Retry'),
               ),
             ],
@@ -371,8 +397,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         backgroundColor: AppTheme.getBackgroundColor(context),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.getPrimaryTextColor(context)),
-          // FIX: canPop handles both cases — pushed from home (can pop) or deep-linked (go home)
+          icon: Icon(Icons.arrow_back,
+              color: AppTheme.getPrimaryTextColor(context)),
           onPressed: _goBack,
         ),
         title: Text(
@@ -385,7 +411,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: AppTheme.getPrimaryTextColor(context)),
+            icon: Icon(Icons.refresh,
+                color: AppTheme.getPrimaryTextColor(context)),
             onPressed: () {
               _loadData();
               _getUserLocation();
@@ -406,21 +433,24 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                     _buildRestaurantHeader(),
                     const SizedBox(height: 16),
                     _buildDeliveryInfoCard(),
-                    if (_categories.isNotEmpty && _categories.length > 1) _buildCategoryFilter(),
+                    if (_categories.isNotEmpty && _categories.length > 1)
+                      _buildCategoryFilter(),
                     filteredItems.isEmpty
                         ? Padding(
                             padding: const EdgeInsets.all(32),
                             child: Column(
                               children: [
                                 Icon(Icons.restaurant_menu,
-                                    size: 64, color: AppTheme.getMutedTextColor(context)),
+                                    size: 64,
+                                    color: AppTheme.getMutedTextColor(context)),
                                 const SizedBox(height: 16),
                                 Text(
                                   'No menu items available',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w500,
-                                    color: AppTheme.getPrimaryTextColor(context),
+                                    color:
+                                        AppTheme.getPrimaryTextColor(context),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -428,7 +458,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                                   'Check back later for updates',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: AppTheme.getSecondaryTextColor(context),
+                                    color:
+                                        AppTheme.getSecondaryTextColor(context),
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -436,7 +467,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                                   onPressed: _loadMenuItems,
                                   icon: const Icon(Icons.refresh),
                                   label: const Text('Refresh Menu'),
-                                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed),
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryRed),
                                 ),
                               ],
                             ),
@@ -466,8 +498,10 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   Widget _buildDeliveryInfoCard() {
-    final displayDeliveryTime = _calculatedDeliveryTime ?? restaurant?.deliveryTime ?? 30;
-    final deliveryTimeFormatted = DeliveryFeeCalculator.formatDeliveryTime(displayDeliveryTime);
+    final displayDeliveryTime =
+        _calculatedDeliveryTime ?? restaurant?.deliveryTime ?? 30;
+    final deliveryTimeFormatted =
+        DeliveryFeeCalculator.formatDeliveryTime(displayDeliveryTime);
 
     if (_isLoadingLocation) {
       return Container(
@@ -479,7 +513,10 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         ),
         child: const Row(
           children: [
-            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2)),
             SizedBox(width: 12),
             Text('Calculating delivery...'),
           ],
@@ -509,7 +546,9 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Enable location to see accurate delivery info',
-                    style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.getSecondaryTextColor(context)),
                   ),
                 ],
               ),
@@ -538,11 +577,14 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Outside Delivery Zone',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.error)),
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: AppTheme.error)),
                   const SizedBox(height: 4),
                   Text(
                     'We only deliver within 2.5 km radius',
-                    style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.getSecondaryTextColor(context)),
                   ),
                 ],
               ),
@@ -570,21 +612,26 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Delivery Available', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Delivery Available',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     if (_distanceInMeters != null) ...[
                       Text(
                         'Distance: ${DeliveryFeeCalculator.formatDistance(_distanceInMeters!)}',
-                        style: TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.getSecondaryTextColor(context)),
                       ),
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.access_time, size: 12, color: AppTheme.primaryRed),
+                          Icon(Icons.access_time,
+                              size: 12, color: AppTheme.primaryRed),
                           const SizedBox(width: 4),
                           Text(
                             'Est. Time: $deliveryTimeFormatted',
-                            style:
-                                TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.getSecondaryTextColor(context)),
                           ),
                         ],
                       ),
@@ -606,7 +653,9 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   if (_deliveryTier != null)
                     Text(
                       _deliveryTier!,
-                      style: TextStyle(fontSize: 10, color: AppTheme.getSecondaryTextColor(context)),
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.getSecondaryTextColor(context)),
                     ),
                 ],
               ),
@@ -618,7 +667,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Min Order: MK${restaurant!.minOrderAmount.toStringAsFixed(0)}',
+              Text(
+                  'Min Order: MK${restaurant!.minOrderAmount.toStringAsFixed(0)}',
                   style: const TextStyle(fontSize: 12)),
               Row(
                 children: [
@@ -635,8 +685,13 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   Widget _buildRestaurantHeader() {
-    final displayDeliveryTime = _calculatedDeliveryTime ?? restaurant?.deliveryTime ?? 30;
-    final deliveryTimeFormatted = DeliveryFeeCalculator.formatDeliveryTime(displayDeliveryTime);
+    final displayDeliveryTime =
+        _calculatedDeliveryTime ?? restaurant?.deliveryTime ?? 30;
+    final deliveryTimeFormatted =
+        DeliveryFeeCalculator.formatDeliveryTime(displayDeliveryTime);
+
+    // Get the cleaned image URL
+    final imageUrl = restaurant!.image;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -656,16 +711,17 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 height: 80,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  image: restaurant!.image.isNotEmpty
+                  image: imageUrl.isNotEmpty
                       ? DecorationImage(
-                          image: NetworkImage(_apiService.getImageUrl(restaurant!.image)),
+                          image: NetworkImage(imageUrl),
                           fit: BoxFit.cover,
                         )
                       : null,
                   color: AppTheme.getSurfaceColor(context),
                 ),
-                child: restaurant!.image.isEmpty
-                    ? Icon(Icons.restaurant, size: 40, color: AppTheme.getMutedTextColor(context))
+                child: imageUrl.isEmpty
+                    ? Icon(Icons.restaurant,
+                        size: 40, color: AppTheme.getMutedTextColor(context))
                     : null,
               ),
               const SizedBox(width: 16),
@@ -695,12 +751,15 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Icon(Icons.access_time, size: 14, color: AppTheme.getSecondaryTextColor(context)),
+                        Icon(Icons.access_time,
+                            size: 14,
+                            color: AppTheme.getSecondaryTextColor(context)),
                         const SizedBox(width: 4),
                         Text(
                           deliveryTimeFormatted,
-                          style:
-                              TextStyle(fontSize: 12, color: AppTheme.getSecondaryTextColor(context)),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.getSecondaryTextColor(context)),
                         ),
                       ],
                     ),
@@ -708,13 +767,15 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                     Row(
                       children: [
                         Icon(Icons.location_on,
-                            size: 12, color: AppTheme.getSecondaryTextColor(context)),
+                            size: 12,
+                            color: AppTheme.getSecondaryTextColor(context)),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             restaurant!.address,
                             style: TextStyle(
-                                fontSize: 11, color: AppTheme.getSecondaryTextColor(context)),
+                                fontSize: 11,
+                                color: AppTheme.getSecondaryTextColor(context)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -726,12 +787,14 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                       Row(
                         children: [
                           Icon(Icons.phone,
-                              size: 12, color: AppTheme.getSecondaryTextColor(context)),
+                              size: 12,
+                              color: AppTheme.getSecondaryTextColor(context)),
                           const SizedBox(width: 4),
                           Text(
                             restaurant!.phone,
                             style: TextStyle(
-                                fontSize: 11, color: AppTheme.getSecondaryTextColor(context)),
+                                fontSize: 11,
+                                color: AppTheme.getSecondaryTextColor(context)),
                           ),
                         ],
                       ),
@@ -757,7 +820,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: restaurant!.isOpen ? AppTheme.success : AppTheme.error,
+                    color:
+                        restaurant!.isOpen ? AppTheme.success : AppTheme.error,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -767,7 +831,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: restaurant!.isOpen ? AppTheme.success : AppTheme.error,
+                    color:
+                        restaurant!.isOpen ? AppTheme.success : AppTheme.error,
                   ),
                 ),
               ],
@@ -803,12 +868,15 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                 border: isSelected
                     ? null
                     : Border.all(
-                        color: AppTheme.getMutedTextColor(context).withOpacity(0.3)),
+                        color: AppTheme.getMutedTextColor(context)
+                            .withOpacity(0.3)),
               ),
               child: Text(
                 category,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : AppTheme.getSecondaryTextColor(context),
+                  color: isSelected
+                      ? Colors.white
+                      : AppTheme.getSecondaryTextColor(context),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),

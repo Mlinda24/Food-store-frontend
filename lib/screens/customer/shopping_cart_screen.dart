@@ -5,17 +5,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../config/theme.dart';
 import '../../providers/cart_provider.dart';
 import '../../models/models.dart';
+import '../../services/api_service.dart';
 
 class ShoppingCartScreen extends StatelessWidget {
   const ShoppingCartScreen({super.key});
 
-  /// Ensures any image path (relative or absolute) becomes a full http URL.
-  String _resolveImageUrl(String? raw) {
-    if (raw == null || raw.isEmpty) return '';
-    if (raw.startsWith('http')) return raw;
-    if (raw.startsWith('/media/')) return 'http://127.0.0.1:8000$raw';
-    if (raw.startsWith('/')) return 'http://127.0.0.1:8000$raw';
-    return 'http://127.0.0.1:8000/media/$raw';
+  /// Gets a clean image URL using the ApiService
+  String _getCleanImageUrl(String? raw) {
+    // Use ApiService to get the correct URL (handles both local and production)
+    return ApiService.getImageUrlStatic(raw);
   }
 
   void _updateQuantity(BuildContext context, CartItem item, int newQuantity) {
@@ -44,7 +42,8 @@ class ShoppingCartScreen extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('Cancel',
-                style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                style:
+                    TextStyle(color: AppTheme.getSecondaryTextColor(context))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -87,7 +86,8 @@ class ShoppingCartScreen extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('Cancel',
-                style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                style:
+                    TextStyle(color: AppTheme.getSecondaryTextColor(context))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -111,10 +111,12 @@ class ShoppingCartScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRestaurantImage(BuildContext context, CartProvider cartProvider) {
-    final imageUrl = cartProvider.restaurantImageUrl;
-    
-    if (imageUrl != null && imageUrl.isNotEmpty) {
+  Widget _buildRestaurantImage(
+      BuildContext context, CartProvider cartProvider) {
+    // Use ApiService to get the correct image URL
+    String imageUrl = _getCleanImageUrl(cartProvider.restaurantImageUrl);
+
+    if (imageUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: CachedNetworkImage(
@@ -183,19 +185,15 @@ class ShoppingCartScreen extends StatelessWidget {
   }
 
   Widget _buildItemImage(BuildContext context, CartItem item, bool isDark) {
-    // Try multiple sources for the image URL
-    String imageUrl = '';
-    
-    if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
-      imageUrl = item.imageUrl!;
-      print('🖼️ Using item.imageUrl: $imageUrl');
-    } else if (item.image != null && item.image!.isNotEmpty) {
-      imageUrl = _resolveImageUrl(item.image);
-      print('🖼️ Using item.image resolved: $imageUrl');
-    } else {
+    // Use ApiService to get the correct image URL
+    String imageUrl = _getCleanImageUrl(item.imageUrl ?? item.image);
+
+    if (imageUrl.isEmpty) {
       print('⚠️ No image URL for item: ${item.name}');
+    } else {
+      print('🖼️ Using image URL: $imageUrl');
     }
-    
+
     final placeholder = Container(
       width: 60,
       height: 60,
@@ -203,15 +201,13 @@ class ShoppingCartScreen extends StatelessWidget {
         gradient: AppTheme.primaryButtonGradient,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(Icons.fastfood,
-          size: 28,
-          color: Colors.white),
+      child: Icon(Icons.fastfood, size: 28, color: Colors.white),
     );
 
     if (imageUrl.isEmpty) {
       return placeholder;
     }
-    
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: CachedNetworkImage(
@@ -238,9 +234,10 @@ class ShoppingCartScreen extends StatelessWidget {
         // Debug: Print all cart items with their image URLs
         print('📋 Cart has ${cartProvider.items.length} items:');
         for (var item in cartProvider.items) {
-          print('   - ${item.name}: imageUrl=${item.imageUrl}, image=${item.image}');
+          print(
+              '   - ${item.name}: imageUrl=${item.imageUrl}, image=${item.image}');
         }
-        
+
         // ── Empty state ──────────────────────────────────────────────────────
         if (!cartProvider.hasItems) {
           return Scaffold(
@@ -404,7 +401,8 @@ class ShoppingCartScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppTheme.getPrimaryTextColor(context),
+                                    color:
+                                        AppTheme.getPrimaryTextColor(context),
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -444,7 +442,8 @@ class ShoppingCartScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
-                                    color: AppTheme.getPrimaryTextColor(context),
+                                    color:
+                                        AppTheme.getPrimaryTextColor(context),
                                   ),
                                 ),
                                 IconButton(
@@ -460,7 +459,8 @@ class ShoppingCartScreen extends StatelessWidget {
                           ),
                           // Delete button
                           IconButton(
-                            onPressed: () => _showRemoveConfirmation(context, item),
+                            onPressed: () =>
+                                _showRemoveConfirmation(context, item),
                             icon: Icon(Icons.delete_outline,
                                 size: 18, color: AppTheme.error),
                           ),

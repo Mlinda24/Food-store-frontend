@@ -106,7 +106,78 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 3: RESTAURANT DATA LOADING
+  // GROUP 3: RESTAURANT CREATION (NEW)
+  // ============================================
+
+  Future<bool> createRestaurant({
+    required String name,
+    required String address,
+    required String phone,
+    String? description,
+    File? imageFile,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    _safeNotify();
+
+    try {
+      Map<String, dynamic> result;
+
+      if (imageFile != null) {
+        // Create with image
+        result = await _apiService.createRestaurantWithImage(
+          name: name,
+          address: address,
+          phone: phone,
+          description: description,
+          imageFile: imageFile,
+        );
+      } else {
+        // Create without image
+        result = await _apiService.createRestaurant({
+          'name': name,
+          'address': address,
+          'phone': phone,
+          'description': description ?? '',
+        });
+      }
+
+      if (result.isNotEmpty) {
+        // Parse the created restaurant
+        _restaurant = Restaurant(
+          id: result['id']?.toString() ?? '',
+          name: result['name']?.toString() ?? name,
+          description: result['description']?.toString() ?? description ?? '',
+          image: result['image']?.toString() ?? '',
+          address: result['address']?.toString() ?? address,
+          phone: result['phone']?.toString() ?? phone,
+          rating: _toDouble(result['rating']),
+          deliveryTime: _toInt(result['delivery_time']),
+          deliveryFee: _toDouble(result['delivery_fee']),
+          minOrderAmount: _toDouble(result['min_order_amount']),
+          categories: ['All'],
+          isOpen: result['is_open'] ?? true,
+        );
+
+        _isLoading = false;
+        _safeNotify();
+        return true;
+      }
+
+      _isLoading = false;
+      _safeNotify();
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      _safeNotify();
+      print('❌ Error creating restaurant: $e');
+      return false;
+    }
+  }
+
+  // ============================================
+  // GROUP 4: RESTAURANT DATA LOADING
   // ============================================
 
   Future<void> loadRestaurantData() async {
@@ -339,7 +410,7 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 4: RESTAURANT ORDERS
+  // GROUP 5: RESTAURANT ORDERS
   // ============================================
 
   Future<void> loadRestaurantOrders() async {
@@ -493,7 +564,7 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 5: RESTAURANT MANAGEMENT
+  // GROUP 6: RESTAURANT MANAGEMENT
   // ============================================
 
   Future<bool> updateMyRestaurant(Map<String, dynamic> data) async {
@@ -616,7 +687,7 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 6: WITHDRAWAL
+  // GROUP 7: WITHDRAWAL
   // ============================================
 
   Future<bool> requestWithdraw({
@@ -662,7 +733,7 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 7: MENU ITEM MANAGEMENT
+  // GROUP 8: MENU ITEM MANAGEMENT
   // ============================================
 
   Future<bool> addMenuItemWithImage({
@@ -781,7 +852,7 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 8: UTILITY METHODS
+  // GROUP 9: UTILITY METHODS
   // ============================================
 
   void clearError() {

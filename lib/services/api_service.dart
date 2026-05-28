@@ -9,14 +9,81 @@ import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  static const String baseUrl = 'https://food-store-backend-4eo6.onrender.com';
-  static const String mediaBaseUrl = 'http://192.168.137.1:8000';
+  // ============================================
+  // ENVIRONMENT CONFIGURATION
+  // ============================================
+  // Set this to false for production, true for local development
+  static const bool useLocalDev = false;
+
+  // Production URLs (Render)
+  static const String prodBaseUrl =
+      'https://food-store-backend-4eo6.onrender.com';
+  static const String prodMediaBaseUrl =
+      'https://food-store-backend-4eo6.onrender.com';
+
+  // Local Development URLs
+  static const String localBaseUrl = 'http://192.168.137.1:8000';
+  static const String localMediaBaseUrl = 'http://192.168.137.1:8000';
+
+  // Active URLs based on environment
+  static String get baseUrl => useLocalDev ? localBaseUrl : prodBaseUrl;
+  static String get mediaBaseUrl =>
+      useLocalDev ? localMediaBaseUrl : prodMediaBaseUrl;
 
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
 
   // ============================================
-  // GROUP 1: TOKEN MANAGEMENT
+  // GROUP 1: STATIC UTILITY METHODS
+  // ============================================
+
+  /// Static method to clean image URLs (replaces localhost variants with correct IP)
+  static String cleanImageUrlStatic(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return '';
+    }
+
+    String url = imagePath;
+
+    // Replace all localhost variations with the correct IP
+    if (url.contains('127.0.0.1')) {
+      url = url.replaceAll('127.0.0.1', '192.168.137.1');
+    }
+    if (url.contains('localhost')) {
+      url = url.replaceAll('localhost', '192.168.137.1');
+    }
+    if (url.contains('10.0.2.2')) {
+      url = url.replaceAll('10.0.2.2', '192.168.137.1');
+    }
+
+    return url;
+  }
+
+  /// Static method to get a clean image URL from a path
+  static String getImageUrlStatic(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return '';
+    }
+
+    // First clean the URL
+    String url = cleanImageUrlStatic(imagePath);
+
+    // If it's already a full URL (Cloudinary or any HTTPS URL), return as-is
+    if (url.startsWith('http')) {
+      return url;
+    }
+
+    // If it doesn't start with http, prepend the base URL
+    if (url.startsWith('/')) {
+      url = url.substring(1);
+    }
+    url = '$mediaBaseUrl/$url';
+
+    return url;
+  }
+
+  // ============================================
+  // GROUP 2: TOKEN MANAGEMENT
   // ============================================
 
   Future<String?> getToken() async {
@@ -40,8 +107,8 @@ class ApiService {
   Future<Map<String, String>> getMultipartHeaders() async {
     final token = await getToken();
     return {
-      'Content-Type': 'multipart/form-data',
       if (token != null) 'Authorization': 'Bearer $token',
+      // Don't set Content-Type for multipart - it will be set automatically
     };
   }
 
@@ -50,6 +117,7 @@ class ApiService {
     await prefs.setString(_accessTokenKey, accessToken);
     await prefs.setString(_refreshTokenKey, refreshToken);
     print('✅ Tokens saved');
+    print('   Base URL: $baseUrl');
   }
 
   Future<void> clearTokens() async {
@@ -95,24 +163,44 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 2: AUTH ENDPOINTS
+  // GROUP 3: AUTH ENDPOINTS
   // ============================================
 
   Future<Map<String, dynamic>> login(String username, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/auth/login/'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'username': username, 'password': password}),
-    );
+    final url = Uri.parse('$baseUrl/api/auth/login/');
+    print('🔐 Login URL: $url');
+    print('📤 Username: $username');
 
-    print('Login response status: ${response.statusCode}');
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'username': username, 'password': password}),
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw Exception('Connection timeout'),
+          );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = json.decode(response.body);
-      await saveTokens(data['access'], data['refresh']);
-      return data;
-    } else {
-      throw Exception('Login failed: ${response.statusCode}');
+      print('Login response status: ${response.statusCode}');
+      print('Login response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        await saveTokens(data['access'], data['refresh']);
+        return data;
+      } else if (response.statusCode == 401) {
+        throw Exception('Invalid username or password');
+      } else {
+        throw Exception('Login failed: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception(
+          'Cannot connect to server. Make sure the server is running at $baseUrl');
+    } catch (e) {
+      print('❌ Login error: $e');
+      rethrow;
     }
   }
 
@@ -133,7 +221,9 @@ class ApiService {
         phone: data['phone'] ?? '',
         role: data['role'] == 'restaurant'
             ? UserRole.restaurant
-            : UserRole.customer,
+            : data['role'] == 'driver'
+                ? UserRole.driver
+                : UserRole.customer,
         isActive: true,
         createdAt: DateTime.now(),
       );
@@ -199,7 +289,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 3: CUSTOMER RESTAURANT ENDPOINTS
+  // GROUP 4: CUSTOMER RESTAURANT ENDPOINTS
   // ============================================
 
   Future<List<dynamic>> getRestaurants() async {
@@ -295,7 +385,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 4: CUSTOMER MENU ENDPOINTS
+  // GROUP 5: CUSTOMER MENU ENDPOINTS
   // ============================================
 
   Future<List<dynamic>> getRestaurantMenu(int restaurantId) async {
@@ -437,7 +527,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 5: RESTAURANT OWNER ENDPOINTS
+  // GROUP 6: RESTAURANT OWNER ENDPOINTS
   // ============================================
 
   Future<Map<String, dynamic>> createRestaurant(
@@ -472,13 +562,25 @@ class ApiService {
   }) async {
     print('🏪 Creating restaurant with image upload');
 
+    final token = await getToken();
+    if (token == null) {
+      throw Exception('Not authenticated');
+    }
+
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/api/owner/restaurants/'),
     );
 
-    final token = await getToken();
+    // Add headers correctly - don't set Content-Type
     request.headers['Authorization'] = 'Bearer $token';
+
+    final myRestaurant = await getMyRestaurant();
+    final restaurantId = myRestaurant['id']?.toString();
+
+    if (restaurantId == null) {
+      throw Exception('No restaurant found for this user');
+    }
 
     request.fields['name'] = name;
     request.fields['address'] = address;
@@ -499,6 +601,10 @@ class ApiService {
     );
     request.files.add(multipartFile);
 
+    print('📤 Sending multipart request to: ${request.url}');
+    print('📤 Fields: ${request.fields}');
+    print('📤 Has file: ${request.files.length}');
+
     final response = await request.send();
     final responseBody = await http.Response.fromStream(response);
 
@@ -508,7 +614,8 @@ class ApiService {
     if (response.statusCode == 201 || response.statusCode == 200) {
       return json.decode(responseBody.body);
     } else {
-      throw Exception('Failed to create restaurant: ${response.statusCode}');
+      throw Exception(
+          'Failed to create restaurant: ${response.statusCode} - ${responseBody.body}');
     }
   }
 
@@ -717,12 +824,17 @@ class ApiService {
   }) async {
     print('📸 Creating menu item with image upload');
 
+    final token = await getToken();
+    if (token == null) {
+      throw Exception('Not authenticated');
+    }
+
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/api/owner/menu-items/'),
     );
 
-    final token = await getToken();
+    // Add headers correctly - don't set Content-Type
     request.headers['Authorization'] = 'Bearer $token';
 
     final myRestaurant = await getMyRestaurant();
@@ -737,6 +849,7 @@ class ApiService {
     request.fields['price'] = price.toString();
     request.fields['category'] = category;
     request.fields['restaurant'] = restaurantId;
+    request.fields['is_available'] = 'true';
 
     final bytes = await imageFile.readAsBytes();
     final fileName = path.basename(imageFile.path);
@@ -749,15 +862,21 @@ class ApiService {
     );
     request.files.add(multipartFile);
 
+    print('📤 Sending multipart request to: ${request.url}');
+    print('📤 Fields: ${request.fields}');
+    print('📤 Has file: ${request.files.length}');
+
     final response = await request.send();
     final responseBody = await http.Response.fromStream(response);
 
     print('Create menu item response: ${response.statusCode}');
+    print('Create menu item body: ${responseBody.body}');
 
     if (response.statusCode == 201 || response.statusCode == 200) {
       return json.decode(responseBody.body);
     } else {
-      throw Exception('Failed to create menu item: ${response.statusCode}');
+      throw Exception(
+          'Failed to create menu item: ${response.statusCode} - ${responseBody.body}');
     }
   }
 
@@ -821,7 +940,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 6: CART ENDPOINTS
+  // GROUP 7: CART ENDPOINTS
   // ============================================
 
   Future<Map<String, dynamic>> getCart() async {
@@ -843,6 +962,20 @@ class ApiService {
       print('✅ Cart loaded successfully');
       print('   Items in cart: ${data['items']?.length ?? 0}');
       print('   Total price: ${data['total_price']}');
+
+      // Clean image URLs in cart items
+      if (data['items'] != null) {
+        for (var item in data['items']) {
+          if (item['image'] != null) {
+            item['image'] = cleanImageUrlStatic(item['image']);
+          }
+          if (item['menu_item'] != null && item['menu_item']['image'] != null) {
+            item['menu_item']['image'] =
+                cleanImageUrlStatic(item['menu_item']['image']);
+          }
+        }
+      }
+
       return data;
     } else if (response.statusCode == 401) {
       print('⚠️ Token expired, refreshing...');
@@ -912,7 +1045,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 7: ORDER ENDPOINTS
+  // GROUP 8: ORDER ENDPOINTS
   // ============================================
 
   Future<List<dynamic>> getOrders() async {
@@ -934,7 +1067,6 @@ class ApiService {
     }
   }
 
-  // Get my orders (for customer)
   Future<List<Order>> getMyOrders() async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/orders/my_orders/'),
@@ -1019,13 +1151,12 @@ class ApiService {
     }
   }
 
-  // Customer marks order as delivered/received
   Future<Map<String, dynamic>> markOrderAsDelivered(String orderId) async {
     return updateOrderStatus(orderId, 'delivered');
   }
 
   // ============================================
-  // GROUP 8: PAYMENT ENDPOINTS
+  // GROUP 9: PAYMENT ENDPOINTS
   // ============================================
 
   Future<Map<String, dynamic>> initiatePayment({
@@ -1040,28 +1171,39 @@ class ApiService {
     print('   Phone: $phoneNumber');
     print('   Amount (for reference): MK$amount');
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/payments/initiate/'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'order_id': orderId,
-        'method': method.value,
-        'phone_number': phoneNumber,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/payments/initiate/'),
+        headers: await getHeaders(),
+        body: json.encode({
+          'order_id': int.tryParse(orderId) ?? orderId,
+          'method': method.value,
+          'phone_number': phoneNumber,
+        }),
+      );
 
-    print('💳 Initiate payment response: ${response.statusCode}');
-    print('💳 Initiate payment body: ${response.body}');
+      print('💳 Initiate payment response: ${response.statusCode}');
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return json.decode(response.body);
-    } else {
-      Map<String, dynamic> error = {};
-      try {
-        error = json.decode(response.body);
-      } catch (_) {}
-      throw Exception(error['error'] ??
-          'Payment initiation failed: ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        print('✅ Payment initiated successfully');
+        return data;
+      } else {
+        String errorMessage = 'Payment initiation failed';
+        try {
+          final error = json.decode(response.body);
+          errorMessage = error['error'] ?? error['message'] ?? errorMessage;
+        } catch (_) {
+          if (response.body.contains('ValueError')) {
+            errorMessage =
+                'Server configuration error. Please try again later.';
+          }
+        }
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      print('❌ Payment initiation error: $e');
+      rethrow;
     }
   }
 
@@ -1072,27 +1214,52 @@ class ApiService {
     print('💳 Initiating simple payment:');
     print('   Order ID: $orderId');
     print('   Amount: MK$amount');
+    print('   Server: $baseUrl');
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/payments/initiate_simple/'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'order_id': orderId,
-      }),
-    );
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/payments/initiate_simple/'),
+            headers: await getHeaders(),
+            body: json.encode({
+              'order_id': int.tryParse(orderId) ?? orderId,
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw Exception('Payment initiation timeout'),
+          );
 
-    print('💳 Initiate payment response: ${response.statusCode}');
-    print('💳 Initiate payment body: ${response.body}');
+      print('💳 Initiate simple payment response: ${response.statusCode}');
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return json.decode(response.body);
-    } else {
-      Map<String, dynamic> error = {};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        print('✅ Simple payment initiated successfully');
+        return data;
+      } else {
+        print(
+            '⚠️ Simple payment endpoint failed, trying regular payment endpoint...');
+        return await initiatePayment(
+          amount: amount,
+          phoneNumber: '',
+          orderId: orderId,
+          method: PaymentMethod.paychangu,
+        );
+      }
+    } catch (e) {
+      print('❌ Simple payment initiation failed: $e');
       try {
-        error = json.decode(response.body);
-      } catch (_) {}
-      throw Exception(error['error'] ??
-          'Payment initiation failed: ${response.statusCode}');
+        print('🔄 Fallback: Trying regular payment endpoint...');
+        return await initiatePayment(
+          amount: amount,
+          phoneNumber: '',
+          orderId: orderId,
+          method: PaymentMethod.paychangu,
+        );
+      } catch (fallbackError) {
+        print('❌ Fallback also failed: $fallbackError');
+        rethrow;
+      }
     }
   }
 
@@ -1100,79 +1267,168 @@ class ApiService {
     required double amount,
     required String orderId,
   }) async {
-    print('💳 Initiating PayChangu payment (simplified):');
+    print('💳 Initiating PayChangu payment:');
     print('   Order ID: $orderId');
     print('   Amount: MK$amount');
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/payments/initiate/'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'order_id': orderId,
-        'method': 'paychangu',
-        'phone_number': '',
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/payments/initiate/'),
+        headers: await getHeaders(),
+        body: json.encode({
+          'order_id': int.tryParse(orderId) ?? orderId,
+          'method': 'paychangu',
+          'phone_number': '',
+        }),
+      );
 
-    print('💳 Initiate payment response: ${response.statusCode}');
-    print('💳 Initiate payment body: ${response.body}');
+      print('💳 PayChangu payment response: ${response.statusCode}');
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return json.decode(response.body);
-    } else {
-      Map<String, dynamic> error = {};
-      try {
-        error = json.decode(response.body);
-      } catch (_) {}
-      throw Exception(error['error'] ??
-          'Payment initiation failed: ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        print('✅ PayChangu payment initiated successfully');
+        return data;
+      } else if (response.statusCode == 500) {
+        throw Exception(
+            'Payment service not configured. Please contact support.');
+      } else {
+        String errorMessage = 'Payment initiation failed';
+        try {
+          final error = json.decode(response.body);
+          errorMessage = error['error'] ?? error['message'] ?? errorMessage;
+        } catch (_) {
+          if (response.body.contains('ValueError')) {
+            errorMessage =
+                'Payment configuration error. Please try again later.';
+          }
+        }
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      print('❌ PayChangu payment error: $e');
+      rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> verifyPayment(String transactionId) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/payments/$transactionId/status/'),
-      headers: await getHeaders(),
-    );
+  Future<Map<String, dynamic>> initiateTestPayment({
+    required double amount,
+    required String orderId,
+  }) async {
+    print('🧪 Initiating TEST payment:');
+    print('   Order ID: $orderId');
+    print('   Amount: MK$amount');
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to verify payment: ${response.statusCode}');
+    await Future.delayed(const Duration(seconds: 1));
+
+    return {
+      'status': 'success',
+      'message': 'Test payment successful',
+      'transaction_id': 'TEST_${DateTime.now().millisecondsSinceEpoch}',
+      'payment_url': null,
+      'reference': 'TEST_REF_$orderId',
+      'order_id': orderId,
+    };
+  }
+
+  Future<Map<String, dynamic>> verifyPayment(String transactionId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/payments/$transactionId/status/'),
+        headers: await getHeaders(),
+      );
+
+      print('📊 Verify payment response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to verify payment: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Verification error: $e');
+      rethrow;
     }
   }
 
   Future<Map<String, dynamic>> getPaymentStatusByReference(
       String reference) async {
-    final response = await http.get(
-      Uri.parse(
-          '$baseUrl/api/payments/status_by_reference/?reference=$reference'),
-      headers: await getHeaders(),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse(
+            '$baseUrl/api/payments/status_by_reference/?reference=$reference'),
+        headers: await getHeaders(),
+      );
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to get payment status: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to get payment status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Get payment status error: $e');
+      rethrow;
     }
   }
 
   Future<List<dynamic>> getMyPayments() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/payments/my_payments/'),
-      headers: await getHeaders(),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/payments/my_payments/'),
+        headers: await getHeaders(),
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data is List ? data : [];
-    } else {
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data is List ? data : [];
+      } else {
+        return [];
+      }
+    } catch (e) {
+      print('❌ Get my payments error: $e');
       return [];
     }
   }
 
   // ============================================
-  // GROUP 9: WITHDRAWAL & WALLET ENDPOINTS
+  // GROUP 10: MANUAL PAYMENT CONFIRMATION & WALLET SYNC
+  // ============================================
+
+  Future<Map<String, dynamic>> manualConfirmPayment(String orderId) async {
+    print('🔧 Manual confirming payment for order: $orderId');
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/payments/test_confirm_payment/'),
+      headers: await getHeaders(),
+      body: json.encode({'order_id': int.parse(orderId)}),
+    );
+
+    print('Manual confirmation response: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Manual confirmation failed: ${response.statusCode}');
+  }
+
+  Future<Map<String, dynamic>> checkAndUpdateWallet(String orderId) async {
+    print('🔄 Checking and updating wallet for order: $orderId');
+
+    final response = await http.get(
+      Uri.parse(
+          '$baseUrl/api/payments/check_and_update_wallet/?order_id=$orderId'),
+      headers: await getHeaders(),
+    );
+
+    print('Wallet sync response: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    throw Exception('Wallet sync failed: ${response.statusCode}');
+  }
+
+  // ============================================
+  // GROUP 11: WITHDRAWAL & WALLET ENDPOINTS
   // ============================================
 
   Future<Map<String, dynamic>> requestWithdrawal({
@@ -1243,7 +1499,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 10: NOTIFICATION ENDPOINTS
+  // GROUP 12: NOTIFICATION ENDPOINTS
   // ============================================
 
   Future<List<dynamic>> getNotifications() async {
@@ -1328,16 +1584,14 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 11: UTILITY METHODS
+  // GROUP 13: INSTANCE UTILITY METHODS
   // ============================================
 
+  String cleanImageUrl(String? imagePath) {
+    return cleanImageUrlStatic(imagePath);
+  }
+
   String getImageUrl(String? imagePath) {
-    if (imagePath == null || imagePath.isEmpty) {
-      return '';
-    }
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    return '$mediaBaseUrl$imagePath';
+    return getImageUrlStatic(imagePath);
   }
 }
