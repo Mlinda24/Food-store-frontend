@@ -14,70 +14,111 @@ class DeliveryStatusCard extends StatefulWidget {
 class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
   final ApiService _apiService = ApiService();
   bool _isProcessing = false;
+  Order? _activeOrder;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActiveOrder();
+  }
+
+  Future<void> _loadActiveOrder() async {
+    try {
+      final orders = await _apiService.getMyOrders();
+      
+      for (var order in orders) {
+        if (order.status == OrderStatus.onTheWay || 
+            order.status == OrderStatus.delivered ||
+            order.status == OrderStatus.confirmed ||
+            order.status == OrderStatus.preparing) {
+          if (mounted) {
+            setState(() {
+              _activeOrder = order;
+            });
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      print('Error loading active order: $e');
+      if (mounted) {
+        setState(() {
+          _activeOrder = null;
+        });
+      }
+    }
+  }
 
   Future<void> _markOrderAsDelivered() async {
+    if (_isProcessing) return;
+    
+    final orderToDeliver = _activeOrder;
+    if (orderToDeliver == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No active order found'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+    
     setState(() {
       _isProcessing = true;
     });
 
     try {
-      // Get the customer's orders
-      final orders = await _apiService.getMyOrders();
-      
-      print('📦 Found ${orders.length} orders');
-      
-      // Find order that is onTheWay or delivered (ready to be marked as received)
-      final activeOrder = orders.firstWhere(
-        (order) => order.status == OrderStatus.onTheWay || 
-                   order.status == OrderStatus.delivered,
-        orElse: () => throw Exception('No active order found'),
-      );
+      print('✅ Found active order #${orderToDeliver.id} with status: ${orderToDeliver.status}');
 
-      print('✅ Found active order #${activeOrder.id} with status: ${activeOrder.status}');
+      String itemNames = '';
+      if (orderToDeliver.items.isNotEmpty) {
+        List<String> names = orderToDeliver.items.map((item) => item.name).toList();
+        itemNames = names.join(', ');
+        if (itemNames.length > 30) {
+          itemNames = itemNames.substring(0, 27) + '...';
+        }
+      }
 
-      // Show confirmation dialog
       final confirm = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (BuildContext dialogContext) => AlertDialog(
           backgroundColor: AppTheme.getCardColor(context),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
           ),
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.check_circle_outline, color: AppTheme.success),
-              const SizedBox(width: 10),
-              Text(
-                'Confirm Delivery',
-                style: TextStyle(
-                  color: AppTheme.getPrimaryTextColor(context),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              SizedBox(width: 10),
+              Text('Confirm Delivery'),
             ],
           ),
           content: Text(
-            'Have you received your order #${activeOrder.id}?',
+            'Have you received your order?\n\nOrder #${orderToDeliver.id}\n$itemNames',
             style: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
+            textAlign: TextAlign.center,
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: Text(
                 'Not Yet',
                 style: TextStyle(color: AppTheme.getSecondaryTextColor(context)),
               ),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.success,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              child: const Text('Yes, Delivered'),
+              child: const Text('Yes, Received'),
             ),
           ],
         ),
@@ -90,28 +131,31 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
         return;
       }
 
-      // Update order status to "delivered"
-      await _apiService.updateOrderStatus(activeOrder.id.toString(), 'delivered');
+      await _apiService.updateOrderStatus(orderToDeliver.id.toString(), 'delivered');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Order #${activeOrder.id} marked as delivered!'),
+            content: Text('✅ Order #${orderToDeliver.id} marked as delivered! Restaurant owner has been notified.'),
             backgroundColor: AppTheme.success,
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
           ),
         );
         
-        // Refresh the page
+        setState(() {
+          _activeOrder = null;
+          _isProcessing = false;
+        });
+        
         context.go('/home');
       }
     } catch (e) {
       print('Error marking order as delivered: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No active orders to mark as delivered'),
+          const SnackBar(
+            content: Text('Failed to mark order as delivered'),
             backgroundColor: AppTheme.error,
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
@@ -122,6 +166,23 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
         _isProcessing = false;
       });
     }
+  }
+
+  String _getOrderSummary() {
+    if (_activeOrder == null) {
+      return 'No active orders';
+    }
+    
+    String itemNames = '';
+    if (_activeOrder!.items.isNotEmpty) {
+      List<String> names = _activeOrder!.items.map((item) => item.name).toList();
+      itemNames = names.join(', ');
+      if (itemNames.length > 25) {
+        itemNames = itemNames.substring(0, 22) + '...';
+      }
+    }
+    
+    return '$itemNames (Order #${_activeOrder!.id})';
   }
 
   @override
@@ -153,8 +214,8 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Fast Delivery Service',
+                Text(
+                  'Your Order',
                   style: TextStyle(
                     color: AppTheme.primaryText,
                     fontSize: 14,
@@ -162,39 +223,45 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  'Get your favorite food delivered in 30-45 minutes',
-                  style: TextStyle(
-                    color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                    fontSize: 11,
+                Padding(
+                  padding: const EdgeInsets.only(left: 8), // Push left by 8px (approx 0.3cm)
+                  child: Text(
+                    _activeOrder != null ? _getOrderSummary() : 'No active orders',
+                    style: TextStyle(
+                      color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                      fontSize: 11,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-          GestureDetector(
-            onTap: _isProcessing ? null : _markOrderAsDelivered,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: _isProcessing ? Colors.grey : AppTheme.primaryRed,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: _isProcessing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+          if (_activeOrder != null)
+            GestureDetector(
+              onTap: _isProcessing ? null : _markOrderAsDelivered,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _isProcessing ? Colors.grey : AppTheme.primaryRed,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: _isProcessing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Received',
+                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
-                    )
-                  : const Text(
-                      'Received',
-                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
+              ),
             ),
-          ),
         ],
       ),
     );

@@ -9,7 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.137.1:8000';
+  static const String baseUrl = 'https://food-store-backend-4eo6.onrender.com';
   static const String mediaBaseUrl = 'http://192.168.137.1:8000';
 
   static const String _accessTokenKey = 'access_token';
@@ -662,6 +662,164 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getRestaurantWalletBalance() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/restaurants/wallet_balance/'),
+      headers: await getHeaders(),
+    );
+
+    print('Get wallet balance response: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to get wallet balance');
+    }
+  }
+
+  Future<Map<String, dynamic>> createMenuItem(
+      Map<String, dynamic> itemData) async {
+    print('➕ Create menu item');
+
+    final myRestaurant = await getMyRestaurant();
+    final restaurantId = myRestaurant['id']?.toString();
+
+    if (restaurantId == null) {
+      throw Exception(
+          'No restaurant found for this user. Please register a restaurant first.');
+    }
+
+    final dataWithRestaurant = Map<String, dynamic>.from(itemData);
+    dataWithRestaurant['restaurant'] = int.parse(restaurantId);
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/owner/menu-items/'),
+      headers: await getHeaders(),
+      body: json.encode(dataWithRestaurant),
+    );
+
+    print('Create menu item response: ${response.statusCode}');
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+      return data is Map<String, dynamic> ? data : {'success': true};
+    } else {
+      throw Exception('Failed to create menu item: ${response.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> createMenuItemWithImage({
+    required String name,
+    required String description,
+    required double price,
+    required String category,
+    required XFile imageFile,
+  }) async {
+    print('📸 Creating menu item with image upload');
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/owner/menu-items/'),
+    );
+
+    final token = await getToken();
+    request.headers['Authorization'] = 'Bearer $token';
+
+    final myRestaurant = await getMyRestaurant();
+    final restaurantId = myRestaurant['id']?.toString();
+
+    if (restaurantId == null) {
+      throw Exception('No restaurant found for this user');
+    }
+
+    request.fields['name'] = name;
+    request.fields['description'] = description;
+    request.fields['price'] = price.toString();
+    request.fields['category'] = category;
+    request.fields['restaurant'] = restaurantId;
+
+    final bytes = await imageFile.readAsBytes();
+    final fileName = path.basename(imageFile.path);
+
+    final multipartFile = http.MultipartFile.fromBytes(
+      'image',
+      bytes,
+      filename: fileName,
+      contentType: MediaType('image', 'jpeg'),
+    );
+    request.files.add(multipartFile);
+
+    final response = await request.send();
+    final responseBody = await http.Response.fromStream(response);
+
+    print('Create menu item response: ${response.statusCode}');
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return json.decode(responseBody.body);
+    } else {
+      throw Exception('Failed to create menu item: ${response.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateMenuItem(
+      String id, Map<String, dynamic> itemData) async {
+    print('✏️ Update menu item');
+    print('   ID: $id');
+    print('   Data to update: $itemData');
+
+    final cleanedData = Map<String, dynamic>.from(itemData);
+
+    cleanedData.remove('id');
+    cleanedData.remove('restaurant');
+    cleanedData.remove('restaurant_id');
+    cleanedData.remove('restaurant_name');
+    cleanedData.remove('created');
+    cleanedData.remove('category_name');
+
+    if (cleanedData.containsKey('is_available')) {
+      cleanedData['is_available'] = cleanedData['is_available'] == true;
+    }
+
+    if (cleanedData.containsKey('category') &&
+        cleanedData['category'] == null) {
+      cleanedData['category'] = null;
+    }
+
+    print('   Cleaned data: $cleanedData');
+
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/owner/menu-items/$id/'),
+      headers: await getHeaders(),
+      body: json.encode(cleanedData),
+    );
+
+    print('Update response status: ${response.statusCode}');
+    print('Update response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+      print('✅ Menu item updated successfully');
+      return data is Map<String, dynamic> ? data : {'success': true};
+    } else if (response.statusCode == 400) {
+      final error = json.decode(response.body);
+      print('❌ Validation errors: $error');
+      throw Exception('Validation error: ${error.toString()}');
+    } else {
+      throw Exception('Failed to update menu item: ${response.statusCode}');
+    }
+  }
+
+  Future<void> deleteMenuItem(String id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/owner/menu-items/$id/'),
+      headers: await getHeaders(),
+    );
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to delete menu item: ${response.statusCode}');
+    }
+  }
+
   // ============================================
   // GROUP 6: CART ENDPOINTS
   // ============================================
@@ -1014,7 +1172,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 9: WITHDRAWAL & WALLET ENDPOINTS (FIXED URLs)
+  // GROUP 9: WITHDRAWAL & WALLET ENDPOINTS
   // ============================================
 
   Future<Map<String, dynamic>> requestWithdrawal({
@@ -1027,9 +1185,8 @@ class ApiService {
     print('   Phone: $phoneNumber');
     print('   Provider: $provider');
 
-    // FIXED: Correct URL - matches Django URL patterns
     final response = await http.post(
-      Uri.parse('$baseUrl/api/owner/restaurants/withdraw/'),
+      Uri.parse('$baseUrl/api/restaurants/withdraw/'),
       headers: await getHeaders(),
       body: json.encode({
         'amount': amount.toString(),
@@ -1054,9 +1211,8 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getWalletBalance() async {
-    // FIXED: Correct URL
     final response = await http.get(
-      Uri.parse('$baseUrl/api/owner/restaurants/wallet_balance/'),
+      Uri.parse('$baseUrl/api/restaurants/wallet_balance/'),
       headers: await getHeaders(),
     );
 
@@ -1072,9 +1228,8 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getWalletTransactions() async {
-    // FIXED: Correct URL
     final response = await http.get(
-      Uri.parse('$baseUrl/api/owner/restaurants/wallet/'),
+      Uri.parse('$baseUrl/api/restaurants/wallet/'),
       headers: await getHeaders(),
     );
 
@@ -1088,160 +1243,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 10: MENU ITEM MANAGEMENT (ADDED)
-  // ============================================
-
-  Future<Map<String, dynamic>> createMenuItem(
-      Map<String, dynamic> itemData) async {
-    print('➕ Create menu item');
-
-    final myRestaurant = await getMyRestaurant();
-    final restaurantId = myRestaurant['id']?.toString();
-
-    if (restaurantId == null) {
-      throw Exception(
-          'No restaurant found for this user. Please register a restaurant first.');
-    }
-
-    final dataWithRestaurant = Map<String, dynamic>.from(itemData);
-    dataWithRestaurant['restaurant'] = int.parse(restaurantId);
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/owner/menu-items/'),
-      headers: await getHeaders(),
-      body: json.encode(dataWithRestaurant),
-    );
-
-    print('Create menu item response: ${response.statusCode}');
-    print('Create menu item body: ${response.body}');
-
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      final dynamic data = json.decode(response.body);
-      return data is Map<String, dynamic> ? data : {'success': true};
-    } else {
-      throw Exception('Failed to create menu item: ${response.statusCode}');
-    }
-  }
-
-  Future<Map<String, dynamic>> createMenuItemWithImage({
-    required String name,
-    required String description,
-    required double price,
-    required String category,
-    required XFile imageFile,
-  }) async {
-    print('📸 Creating menu item with image upload');
-
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/api/owner/menu-items/'),
-    );
-
-    final token = await getToken();
-    request.headers['Authorization'] = 'Bearer $token';
-
-    final myRestaurant = await getMyRestaurant();
-    final restaurantId = myRestaurant['id']?.toString();
-
-    if (restaurantId == null) {
-      throw Exception('No restaurant found for this user');
-    }
-
-    request.fields['name'] = name;
-    request.fields['description'] = description;
-    request.fields['price'] = price.toString();
-    request.fields['category'] = category;
-    request.fields['restaurant'] = restaurantId;
-
-    final bytes = await imageFile.readAsBytes();
-    final fileName = path.basename(imageFile.path);
-
-    final multipartFile = http.MultipartFile.fromBytes(
-      'image',
-      bytes,
-      filename: fileName,
-      contentType: MediaType('image', 'jpeg'),
-    );
-    request.files.add(multipartFile);
-
-    final response = await request.send();
-    final responseBody = await http.Response.fromStream(response);
-
-    print('Create menu item response: ${response.statusCode}');
-    print('Create menu item body: ${responseBody.body}');
-
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      return json.decode(responseBody.body);
-    } else {
-      throw Exception('Failed to create menu item: ${response.statusCode}');
-    }
-  }
-
-  Future<Map<String, dynamic>> updateMenuItem(
-      String id, Map<String, dynamic> itemData) async {
-    print('✏️ Update menu item');
-    print('   ID: $id');
-    print('   Data to update: $itemData');
-
-    final cleanedData = Map<String, dynamic>.from(itemData);
-
-    cleanedData.remove('id');
-    cleanedData.remove('restaurant');
-    cleanedData.remove('restaurant_id');
-    cleanedData.remove('restaurant_name');
-    cleanedData.remove('created');
-    cleanedData.remove('category_name');
-
-    if (cleanedData.containsKey('is_available')) {
-      cleanedData['is_available'] = cleanedData['is_available'] == true;
-    }
-
-    if (cleanedData.containsKey('category') &&
-        cleanedData['category'] == null) {
-      cleanedData['category'] = null;
-    }
-
-    print('   Cleaned data: $cleanedData');
-
-    final response = await http.patch(
-      Uri.parse('$baseUrl/api/owner/menu-items/$id/'),
-      headers: await getHeaders(),
-      body: json.encode(cleanedData),
-    );
-
-    print('Update response status: ${response.statusCode}');
-    print('Update response body: ${response.body}');
-
-    if (response.statusCode == 200) {
-      final dynamic data = json.decode(response.body);
-      print('✅ Menu item updated successfully');
-      return data is Map<String, dynamic> ? data : {'success': true};
-    } else if (response.statusCode == 400) {
-      final error = json.decode(response.body);
-      print('❌ Validation errors: $error');
-      throw Exception('Validation error: ${error.toString()}');
-    } else {
-      throw Exception('Failed to update menu item: ${response.statusCode}');
-    }
-  }
-
-  Future<void> deleteMenuItem(String id) async {
-    print('🗑️ Deleting menu item: $id');
-
-    final response = await http.delete(
-      Uri.parse('$baseUrl/api/owner/menu-items/$id/'),
-      headers: await getHeaders(),
-    );
-
-    print('Delete response status: ${response.statusCode}');
-
-    if (response.statusCode != 204 && response.statusCode != 200) {
-      throw Exception('Failed to delete menu item: ${response.statusCode}');
-    }
-  }
-
-  // ============================================
-  // GROUP 11: NOTIFICATION ENDPOINTS
+  // GROUP 10: NOTIFICATION ENDPOINTS
   // ============================================
 
   Future<List<dynamic>> getNotifications() async {
@@ -1326,7 +1328,7 @@ class ApiService {
   }
 
   // ============================================
-  // GROUP 12: UTILITY METHODS
+  // GROUP 11: UTILITY METHODS
   // ============================================
 
   String getImageUrl(String? imagePath) {

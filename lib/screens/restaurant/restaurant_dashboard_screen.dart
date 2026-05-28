@@ -31,8 +31,6 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
     });
   }
 
-  /// Poll every 30 seconds so the balance updates after an incoming payment
-  /// without the owner needing to manually pull-to-refresh.
   void _startAutoRefresh() {
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) _loadData();
@@ -51,8 +49,6 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
     provider.loadRestaurantOrders();
   }
 
-  /// Navigate to withdraw and reload stats when the owner returns,
-  /// so the updated balance is immediately visible.
   Future<void> _navigateToWithdraw() async {
     await context.push('/withdraw');
     if (mounted) {
@@ -151,7 +147,6 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
 // Dashboard Content
 // ---------------------------------------------------------------------------
 class _DashboardContent extends StatelessWidget {
-  /// Callback owned by the parent so it can await the push and refresh stats.
   final Future<void> Function() onNavigateToWithdraw;
 
   const _DashboardContent({required this.onNavigateToWithdraw});
@@ -247,11 +242,11 @@ class _DashboardContent extends StatelessWidget {
               Expanded(
                 child: _buildStatCardWithWithdraw(
                   context,
-                  title: 'Available Balance',
+                  title: 'Balance',
                   value: _formatCurrency(stats?.walletBalance),
                   icon: Icons.wallet,
                   color: AppTheme.success,
-                  subtitle: 'Withdrawable amount (after fees)',
+                  subtitle: 'After fees',
                   onWithdraw: onNavigateToWithdraw,
                 ),
               ),
@@ -263,7 +258,7 @@ class _DashboardContent extends StatelessWidget {
                   value: _formatRating(stats?.averageRating),
                   icon: Icons.star,
                   color: AppTheme.yellow,
-                  subtitle: '★ ${_formatNumber(stats?.totalOrders)} reviews',
+                  subtitle: '${_formatNumber(stats?.totalOrders)} reviews',
                 ),
               ),
             ],
@@ -408,6 +403,8 @@ class _DashboardContent extends StatelessWidget {
     );
   }
 
+  /// Balance card: icon on top-left, value + labels below, withdraw button
+  /// at the bottom spanning full width — no horizontal row competition.
   Widget _buildStatCardWithWithdraw(
     BuildContext context, {
     required String title,
@@ -418,7 +415,7 @@ class _DashboardContent extends StatelessWidget {
     required Future<void> Function() onWithdraw,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: AppTheme.cardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
@@ -427,74 +424,98 @@ class _DashboardContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 20, color: color),
-              ),
-              GestureDetector(
-                onTap: onWithdraw,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryButtonGradient,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryRed.withOpacity(0.3),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.wallet, size: 14, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text(
-                        'Withdraw',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          // Icon only — no horizontal competition with button
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, size: 16, color: color),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          // Value
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppTheme.getPrimaryTextColor(context),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
+          // Title
           Text(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: AppTheme.getSecondaryTextColor(context),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
+          // Subtitle
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 9,
               color: AppTheme.getMutedTextColor(context),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Withdraw button — full width, no row overflow risk
+          SizedBox(
+            width: double.infinity,
+            height: 30,
+            child: ElevatedButton.icon(
+              onPressed: onWithdraw,
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.zero,
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ).copyWith(
+                backgroundColor: WidgetStateProperty.all(Colors.transparent),
+              ),
+              icon: const SizedBox.shrink(),
+              label: const SizedBox.shrink(),
+            ),
+          ),
+          // Use DecoratedBox + GestureDetector to keep gradient on button
+          GestureDetector(
+            onTap: onWithdraw,
+            child: Container(
+              width: double.infinity,
+              height: 30,
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryButtonGradient,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryRed.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(Icons.wallet, size: 13, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text(
+                    'Withdraw',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      height: 1.0,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -511,7 +532,7 @@ class _DashboardContent extends StatelessWidget {
     required String subtitle,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: AppTheme.cardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
@@ -521,35 +542,35 @@ class _DashboardContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, size: 20, color: color),
+            child: Icon(icon, size: 16, color: color),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppTheme.getPrimaryTextColor(context),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: AppTheme.getSecondaryTextColor(context),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 9,
               color: AppTheme.getMutedTextColor(context),
             ),
           ),
@@ -735,7 +756,6 @@ class __SettingsContentState extends State<_SettingsContent> {
             title: const Text('Withdraw Funds'),
             subtitle: const Text('Withdraw your earnings to mobile money'),
             trailing: const Icon(Icons.chevron_right),
-            // Use the same awaited callback so stats refresh on return
             onTap: widget.onNavigateToWithdraw,
           ),
 

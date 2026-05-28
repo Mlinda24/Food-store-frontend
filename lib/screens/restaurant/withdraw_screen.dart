@@ -146,7 +146,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
               "Insufficient balance for withdrawal. Minimum required is MK1,000"),
           backgroundColor: AppTheme.error,
@@ -169,17 +169,17 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Balance Card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 gradient: AppTheme.primaryButtonGradient,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
                 children: [
@@ -187,15 +187,15 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                     'Available Balance',
                     style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 14,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
                     'MK${balance.toStringAsFixed(0)}',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 32,
+                      fontSize: 26,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -222,14 +222,14 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
 
             // Withdrawal Form
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 gradient: AppTheme.cardGlowGradient(context),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border:
                     Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
               ),
@@ -239,11 +239,11 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                   const Text(
                     'Withdrawal Details',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Amount Field with Max Button
                   Column(
@@ -333,69 +333,56 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Phone Number Field
                   TextField(
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       color: AppTheme.getPrimaryTextColor(context),
                     ),
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
                       labelStyle: TextStyle(
+                          fontSize: 12,
                           color: AppTheme.getSecondaryTextColor(context)),
                       hintText: 'e.g., 0999123456',
-                      hintStyle:
-                          TextStyle(color: AppTheme.getMutedTextColor(context)),
-                      prefixIcon: Container(
-                        margin: const EdgeInsets.all(8),
-                        width: 24,
-                        height: 24,
-                        child: Image.asset(
-                          selectedProvider == 'mpamba'
-                              ? 'assets/images/tnm.jpeg'
-                              : 'assets/images/airtel.jpeg',
-                          width: 20,
-                          height: 20,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(
-                              selectedProvider == 'mpamba'
-                                  ? Icons.phone_android
-                                  : Icons.phone_iphone,
-                              color: AppTheme.primaryRed,
-                              size: 20,
-                            );
-                          },
-                        ),
+                      hintStyle: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.getMutedTextColor(context)),
+                      prefixIcon: Icon(
+                        selectedProvider == 'mpamba'
+                            ? Icons.phone_android
+                            : Icons.phone_iphone,
+                        size: 18,
+                        color: AppTheme.primaryRed,
                       ),
                       filled: true,
                       fillColor: AppTheme.getSurfaceColor(context),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(
                             color: AppTheme.primaryRed, width: 2),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
+                        horizontal: 12,
+                        vertical: 11,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  // Payment Method Selection with Images
+                  // Payment Method Selection
                   const Text(
                     'Select Payment Method',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -403,34 +390,37 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildMethodOptionWithImage(
+                        child: _buildMethodOption(
                           context,
-                          'Mpamba',
-                          'assets/images/tnm.jpeg',
-                          selectedProvider == 'mpamba',
-                          () => setState(() => selectedProvider = 'mpamba'),
+                          label: 'Airtel Money',
+                          // ✅ FIXED: was 'aitel.jpeg', now 'airtel.jpeg'
+                          imagePath: 'assets/images/airtel.jpeg',
+                          isSelected: selectedProvider == 'airtel',
+                          onTap: () =>
+                              setState(() => selectedProvider = 'airtel'),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: _buildMethodOptionWithImage(
+                        child: _buildMethodOption(
                           context,
-                          'Airtel Money',
-                          'assets/images/airtel.jpeg',
-                          selectedProvider == 'airtel',
-                          () => setState(() => selectedProvider = 'airtel'),
+                          label: 'TNM Mpamba',
+                          imagePath: 'assets/images/tnm.jpeg',
+                          isSelected: selectedProvider == 'mpamba',
+                          onTap: () =>
+                              setState(() => selectedProvider = 'mpamba'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
 
                   // Info Note
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: AppTheme.warning.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       border:
                           Border.all(color: AppTheme.warning.withOpacity(0.3)),
                     ),
@@ -467,7 +457,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
 
                   // Withdraw Button
                   SizedBox(
@@ -485,8 +475,8 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                       ),
                       child: loading
                           ? const SizedBox(
-                              width: 20,
-                              height: 20,
+                              width: 18,
+                              height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: Colors.white,
@@ -512,20 +502,21 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     );
   }
 
-  Widget _buildMethodOptionWithImage(
-    BuildContext context,
-    String label,
-    String imagePath,
-    bool isSelected,
-    VoidCallback onTap,
-  ) {
+  Widget _buildMethodOption(
+    BuildContext context, {
+    required String label,
+    required String imagePath,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primaryRed.withOpacity(0.1)
+              ? AppTheme.primaryRed.withOpacity(0.08)
               : AppTheme.getSurfaceColor(context),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -534,32 +525,43 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 : AppTheme.getMutedTextColor(context).withOpacity(0.3),
             width: isSelected ? 2 : 1,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primaryRed.withOpacity(0.15),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // Logo image in a white rounded container
             Container(
-              width: 28,
-              height: 28,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isSelected ? AppTheme.primaryRed : Colors.transparent,
-                  width: 1.5,
+                  color: isSelected
+                      ? AppTheme.primaryRed.withOpacity(0.4)
+                      : Colors.grey.withOpacity(0.2),
+                  width: 1,
                 ),
               ),
-              child: ClipOval(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(9),
                 child: Image.asset(
                   imagePath,
-                  width: 24,
-                  height: 24,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
+                    debugPrint('Image load error [$imagePath]: $error');
                     return Icon(
-                      label == 'Mpamba'
-                          ? Icons.phone_android
-                          : Icons.phone_iphone,
-                      size: 20,
+                      Icons.phone_android,
+                      size: 28,
                       color: isSelected
                           ? AppTheme.primaryRed
                           : AppTheme.getSecondaryTextColor(context),
@@ -568,15 +570,28 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(height: 8),
+            // Label
             Text(
               label,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 color: isSelected
                     ? AppTheme.primaryRed
                     : AppTheme.getSecondaryTextColor(context),
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Selected indicator dot
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? AppTheme.primaryRed : Colors.transparent,
               ),
             ),
           ],
