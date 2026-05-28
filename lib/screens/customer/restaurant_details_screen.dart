@@ -182,8 +182,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
           deliveryFee: (data['delivery_fee'] ?? data['deliveryFee'] ?? 2000.0)
               .toDouble(),
           minOrderAmount:
-              (data['min_order_amount'] ?? data['minOrderAmount'] ?? 10.0)
-                  .toDouble(),
+              (data['min_order_amount'] ?? data['minOrderAmount'] ?? 0.0)
+                  .toDouble(), // Changed to 0.0 minimum
           categories: data['categories'] != null
               ? List<String>.from(data['categories'])
               : [],
@@ -668,8 +668,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                  'Min Order: MK${restaurant!.minOrderAmount.toStringAsFixed(0)}',
-                  style: const TextStyle(fontSize: 12)),
+                  'Min Order: MK0 (No minimum)',
+                  style: const TextStyle(fontSize: 12)), // Changed to show no minimum
               Row(
                 children: [
                   Icon(Icons.motorcycle, size: 12, color: AppTheme.primaryRed),

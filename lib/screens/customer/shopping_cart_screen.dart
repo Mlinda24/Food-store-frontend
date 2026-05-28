@@ -121,20 +121,20 @@ class ShoppingCartScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: CachedNetworkImage(
           imageUrl: imageUrl,
-          width: 50,
-          height: 50,
+          width: 45,
+          height: 45,
           fit: BoxFit.cover,
           placeholder: (context, url) => Container(
-            width: 50,
-            height: 50,
+            width: 45,
+            height: 45,
             decoration: BoxDecoration(
               gradient: AppTheme.primaryButtonGradient,
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Center(
               child: SizedBox(
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: Colors.white,
@@ -143,8 +143,8 @@ class ShoppingCartScreen extends StatelessWidget {
             ),
           ),
           errorWidget: (context, url, error) => Container(
-            width: 50,
-            height: 50,
+            width: 45,
+            height: 45,
             decoration: BoxDecoration(
               gradient: AppTheme.primaryButtonGradient,
               borderRadius: BorderRadius.circular(12),
@@ -153,7 +153,7 @@ class ShoppingCartScreen extends StatelessWidget {
               child: Text(
                 cartProvider.restaurantName![0].toUpperCase(),
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
@@ -164,8 +164,8 @@ class ShoppingCartScreen extends StatelessWidget {
       );
     } else {
       return Container(
-        width: 50,
-        height: 50,
+        width: 45,
+        height: 45,
         decoration: BoxDecoration(
           gradient: AppTheme.primaryButtonGradient,
           borderRadius: BorderRadius.circular(12),
@@ -174,7 +174,7 @@ class ShoppingCartScreen extends StatelessWidget {
           child: Text(
             cartProvider.restaurantName![0].toUpperCase(),
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -195,13 +195,13 @@ class ShoppingCartScreen extends StatelessWidget {
     }
 
     final placeholder = Container(
-      width: 60,
-      height: 60,
+      width: 55,
+      height: 55,
       decoration: BoxDecoration(
         gradient: AppTheme.primaryButtonGradient,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(Icons.fastfood, size: 28, color: Colors.white),
+      child: Icon(Icons.fastfood, size: 24, color: Colors.white),
     );
 
     if (imageUrl.isEmpty) {
@@ -212,8 +212,8 @@ class ShoppingCartScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       child: CachedNetworkImage(
         imageUrl: imageUrl,
-        width: 60,
-        height: 60,
+        width: 55,
+        height: 55,
         fit: BoxFit.cover,
         placeholder: (context, _) => placeholder,
         errorWidget: (context, url, error) {
@@ -320,8 +320,8 @@ class ShoppingCartScreen extends StatelessWidget {
               // ── Restaurant info banner with image ─────────────────────────
               if (cartProvider.restaurantName != null)
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                   decoration: BoxDecoration(
                     gradient: AppTheme.cardGlowGradient(context),
                     borderRadius: BorderRadius.circular(12),
@@ -332,7 +332,7 @@ class ShoppingCartScreen extends StatelessWidget {
                     children: [
                       // Restaurant image
                       _buildRestaurantImage(context, cartProvider),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,18 +340,18 @@ class ShoppingCartScreen extends StatelessWidget {
                             Text(
                               cartProvider.restaurantName!,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.getPrimaryTextColor(context),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
                               'Delivery: MK${cartProvider.deliveryFee.toStringAsFixed(0)}',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 11,
                                 color: AppTheme.getSecondaryTextColor(context),
                               ),
                             ),
@@ -359,7 +359,7 @@ class ShoppingCartScreen extends StatelessWidget {
                               Text(
                                 'Outside delivery zone',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: AppTheme.error,
                                 ),
                               ),
@@ -373,13 +373,13 @@ class ShoppingCartScreen extends StatelessWidget {
               // ── Items list ───────────────────────────────────────────────
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                   itemCount: cartProvider.items.length,
                   itemBuilder: (context, index) {
                     final item = cartProvider.items[index];
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         gradient: AppTheme.cardGlowGradient(context),
                         borderRadius: BorderRadius.circular(12),
@@ -390,7 +390,7 @@ class ShoppingCartScreen extends StatelessWidget {
                         children: [
                           // Item image
                           _buildItemImage(context, item, isDark),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           // Item details - reduced font size to prevent overflow
                           Expanded(
                             child: Column(
@@ -399,7 +399,7 @@ class ShoppingCartScreen extends StatelessWidget {
                                 Text(
                                   item.name,
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     color:
                                         AppTheme.getPrimaryTextColor(context),
@@ -411,20 +411,20 @@ class ShoppingCartScreen extends StatelessWidget {
                                 Text(
                                   'MK${item.price.toStringAsFixed(0)}',
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
                                     color: AppTheme.primaryRed,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           // Quantity controls
                           Container(
                             decoration: BoxDecoration(
                               color: AppTheme.getSurfaceColor(context),
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(18),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -432,7 +432,7 @@ class ShoppingCartScreen extends StatelessWidget {
                                 IconButton(
                                   onPressed: () => _updateQuantity(
                                       context, item, item.quantity - 1),
-                                  icon: const Icon(Icons.remove, size: 16),
+                                  icon: const Icon(Icons.remove, size: 14),
                                   color: AppTheme.primaryRed,
                                   padding: const EdgeInsets.all(4),
                                   constraints: const BoxConstraints(),
@@ -440,7 +440,7 @@ class ShoppingCartScreen extends StatelessWidget {
                                 Text(
                                   '${item.quantity}',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     color:
                                         AppTheme.getPrimaryTextColor(context),
@@ -449,7 +449,7 @@ class ShoppingCartScreen extends StatelessWidget {
                                 IconButton(
                                   onPressed: () => _updateQuantity(
                                       context, item, item.quantity + 1),
-                                  icon: const Icon(Icons.add, size: 16),
+                                  icon: const Icon(Icons.add, size: 14),
                                   color: AppTheme.primaryRed,
                                   padding: const EdgeInsets.all(4),
                                   constraints: const BoxConstraints(),
@@ -462,7 +462,7 @@ class ShoppingCartScreen extends StatelessWidget {
                             onPressed: () =>
                                 _showRemoveConfirmation(context, item),
                             icon: Icon(Icons.delete_outline,
-                                size: 18, color: AppTheme.error),
+                                size: 16, color: AppTheme.error),
                           ),
                         ],
                       ),
@@ -473,7 +473,7 @@ class ShoppingCartScreen extends StatelessWidget {
 
               // ── Order summary + checkout ─────────────────────────────────
               Container(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+                padding: EdgeInsets.fromLTRB(14, 14, 14, 14 + bottomInset),
                 decoration: BoxDecoration(
                   color: AppTheme.getCardColor(context),
                   boxShadow: [
@@ -493,34 +493,34 @@ class ShoppingCartScreen extends StatelessWidget {
                         Text(
                           'Subtotal (${cartProvider.itemCount})',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                         Text(
                           'MK${cartProvider.subtotal.toStringAsFixed(0)}',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 5),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           'Delivery Fee',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
                         Text(
                           'MK${cartProvider.deliveryFee.toStringAsFixed(0)}',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             color: AppTheme.getSecondaryTextColor(context),
                           ),
                         ),
@@ -528,17 +528,17 @@ class ShoppingCartScreen extends StatelessWidget {
                     ),
                     if (!cartProvider.canDeliver)
                       Padding(
-                        padding: const EdgeInsets.only(top: 6),
+                        padding: const EdgeInsets.only(top: 5),
                         child: Row(
                           children: [
                             Icon(Icons.warning,
-                                size: 14, color: AppTheme.error),
-                            const SizedBox(width: 6),
+                                size: 12, color: AppTheme.error),
+                            const SizedBox(width: 5),
                             Expanded(
                               child: Text(
                                 'Delivery not available',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   color: AppTheme.error,
                                 ),
                               ),
@@ -546,14 +546,14 @@ class ShoppingCartScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                    const Divider(height: 20),
+                    const Divider(height: 18),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           'Total',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.getPrimaryTextColor(context),
                           ),
@@ -561,14 +561,14 @@ class ShoppingCartScreen extends StatelessWidget {
                         Text(
                           'MK${cartProvider.total.toStringAsFixed(0)}',
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.primaryRed,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -579,7 +579,7 @@ class ShoppingCartScreen extends StatelessWidget {
                           backgroundColor: cartProvider.canDeliver
                               ? AppTheme.primaryRed
                               : Colors.grey,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30)),
                         ),
@@ -588,7 +588,7 @@ class ShoppingCartScreen extends StatelessWidget {
                               ? 'Proceed to Checkout'
                               : 'Delivery Not Available',
                           style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold),
+                              fontSize: 13, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
