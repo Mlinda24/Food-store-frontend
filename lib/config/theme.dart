@@ -32,7 +32,7 @@ class AppTheme {
   static const Color orange = Color(0xFFFB923C);
   static const Color teal = Color(0xFF14B8A6);
   
-  // ==================== LEGACY/ALIAS COLORS (for backward compatibility) ====================
+  // ==================== LEGACY/ALIAS COLORS ====================
   static const Color mainBackground = darkBackground;
   static const Color secondaryBackground = darkSecondaryBackground;
   static const Color cardBackground = darkCardBackground;
@@ -87,10 +87,12 @@ class AppTheme {
       primary: primaryRed,
       secondary: brightAccentRed,
       surface: lightCardBackground,
+      background: lightBackground,
       error: error,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: lightPrimaryText,
+      onBackground: lightPrimaryText,
       onError: Colors.white,
     ),
     fontFamily: GoogleFonts.poppins().fontFamily,
@@ -207,10 +209,12 @@ class AppTheme {
       primary: primaryRed,
       secondary: brightAccentRed,
       surface: darkCardBackground,
+      background: darkBackground,
       error: error,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: darkPrimaryText,
+      onBackground: darkPrimaryText,
       onError: Colors.white,
     ),
     fontFamily: GoogleFonts.poppins().fontFamily,
@@ -325,6 +329,37 @@ class AppTheme {
     } else {
       return lightCardGlowGradient;
     }
+  }
+  
+  // ==================== THEME-AWARE COLOR GETTERS ====================
+  static Color getBackgroundColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkBackground : lightBackground;
+  }
+  
+  static Color getSecondaryBackgroundColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkSecondaryBackground : lightSecondaryBackground;
+  }
+  
+  static Color getCardBackgroundColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkCardBackground : lightCardBackground;
+  }
+  
+  static Color getPrimaryTextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkPrimaryText : lightPrimaryText;
+  }
+  
+  static Color getSecondaryTextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkSecondaryText : lightSecondaryText;
+  }
+  
+  static Color getMutedTextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkMutedText : lightMutedText;
   }
   
   // Legacy gradient for backward compatibility

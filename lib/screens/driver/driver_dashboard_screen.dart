@@ -129,6 +129,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       s;
 
   void _showOrderDetailSheet(DeliveryRequest order, {bool isAvailable = false}) {
+    final theme = Provider.of<ThemeProvider>(context, listen: false);
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -161,72 +163,74 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             setState(() => _showActiveDeliveryFullView = false);
           }
         },
-        buildContact: (o) => _buildContactSection(o),
+        buildContact: (o) => _buildContactSection(o, theme),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<DriverProvider>(context);
-    final auth = Provider.of<AuthProvider>(context);
-    final theme = Provider.of<ThemeProvider>(context);
-    final driverName = auth.currentUser?.name ?? 'Driver';
+    return Consumer<ThemeProvider>(
+      builder: (context, theme, child) {
+        final provider = Provider.of<DriverProvider>(context);
+        final auth = Provider.of<AuthProvider>(context);
+        final driverName = auth.currentUser?.name ?? 'Driver';
 
-    final bg = theme.isDarkMode ? AppTheme.darkBackground : AppTheme.lightBackground;
-    final text = theme.isDarkMode ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+        final bgColor = theme.isDarkMode ? AppTheme.darkBackground : AppTheme.lightBackground;
+        final textColor = theme.isDarkMode ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+        final cardBgColor = theme.isDarkMode ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
+        final secondaryTextColor = theme.isDarkMode ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+        final mutedTextColor = theme.isDarkMode ? AppTheme.darkMutedText : AppTheme.lightMutedText;
 
-    if (provider.isLoading && !provider.isOnline) {
-      return Scaffold(
-        backgroundColor: bg,
-        appBar: AppBar(
-            backgroundColor: bg,
-            elevation: 0,
-            title: Text(driverName, style: TextStyle(color: text))),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+        if (provider.isLoading && !provider.isOnline) {
+          return Scaffold(
+            backgroundColor: bgColor,
+            appBar: AppBar(
+              backgroundColor: bgColor,
+              elevation: 0,
+              title: Text(driverName, style: TextStyle(color: textColor))),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    return Scaffold(
-      backgroundColor: bg,
-      appBar: _buildAppBar(provider, driverName, text,
-          theme.isDarkMode ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText),
-      body: RefreshIndicator(
-        onRefresh: provider.refresh,
-        child: _selectedIndex == 0
-            ? _buildDashboard(provider, theme, text)
-            : _buildScreen(_selectedIndex),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: theme.isDarkMode ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
-        selectedItemColor: AppTheme.primaryRed,
-        unselectedItemColor: theme.isDarkMode ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-        currentIndex: _selectedIndex,
-        onTap: (i) => setState(() => _selectedIndex = i),
-        items: _navItems
-            .map((n) => BottomNavigationBarItem(
-                  icon: Icon(n['icon'] as IconData),
-                  label: n['label'] as String,
-                ))
-            .toList(),
-      ),
+        return Scaffold(
+          backgroundColor: bgColor,
+          appBar: _buildAppBar(provider, driverName, textColor, secondaryTextColor, theme),
+          body: RefreshIndicator(
+            onRefresh: provider.refresh,
+            child: _selectedIndex == 0
+                ? _buildDashboard(provider, theme, textColor, secondaryTextColor, mutedTextColor, cardBgColor)
+                : _buildScreen(_selectedIndex),
+          ),
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: cardBgColor,
+            selectedItemColor: AppTheme.primaryRed,
+            unselectedItemColor: secondaryTextColor,
+            currentIndex: _selectedIndex,
+            onTap: (i) => setState(() => _selectedIndex = i),
+            items: _navItems
+                .map((n) => BottomNavigationBarItem(
+                      icon: Icon(n['icon'] as IconData),
+                      label: n['label'] as String,
+                    ))
+                .toList(),
+          ),
+        );
+      },
     );
   }
 
-  AppBar _buildAppBar(DriverProvider provider, String name, Color text, Color sub) {
+  AppBar _buildAppBar(DriverProvider provider, String name, Color text, Color sub, ThemeProvider theme) {
+    final bgColor = theme.isDarkMode ? AppTheme.darkBackground : AppTheme.lightBackground;
+    
     return AppBar(
-      backgroundColor: Provider.of<ThemeProvider>(context).isDarkMode
-          ? AppTheme.darkBackground
-          : AppTheme.lightBackground,
+      backgroundColor: bgColor,
       elevation: 0,
       title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(name,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
+        Text(name, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
         Text(
-          _selectedIndex == 0
-              ? 'Driver Dashboard'
-              : _navItems[_selectedIndex]['label'] as String,
+          _selectedIndex == 0 ? 'Driver Dashboard' : _navItems[_selectedIndex]['label'] as String,
           style: TextStyle(fontSize: 12, color: sub),
         ),
       ]),
@@ -235,9 +239,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           margin: const EdgeInsets.only(right: 16),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: provider.isOnline
-                ? AppTheme.success.withOpacity(0.2)
-                : AppTheme.error.withOpacity(0.2),
+            color: provider.isOnline ? AppTheme.success.withOpacity(0.2) : AppTheme.error.withOpacity(0.2),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: provider.isOnline ? AppTheme.success : AppTheme.error),
           ),
@@ -257,9 +259,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               value: provider.isOnline,
               onChanged: (v) async {
                 await provider.toggleOnlineStatus(v);
-                if (mounted) {
-                  _showSnackBar(v ? 'You are now online' : 'You are now offline');
-                }
+                if (mounted) _showSnackBar(v ? 'You are now online' : 'You are now offline');
               },
               activeColor: AppTheme.success,
               inactiveThumbColor: AppTheme.error,
@@ -271,7 +271,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  Widget _buildDashboard(DriverProvider provider, ThemeProvider theme, Color text) {
+  Widget _buildDashboard(DriverProvider provider, ThemeProvider theme, Color text, Color sub, Color muted, Color cardBg) {
     final active = provider.activeDelivery;
     final stats = provider.stats;
 
@@ -279,7 +279,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(children: [
         if (active != null && _showActiveDeliveryFullView)
-          _buildActiveExpanded(active),
+          _buildActiveExpanded(active, theme),
         if (active != null && !_showActiveDeliveryFullView)
           _buildActiveBanner(active),
 
@@ -319,7 +319,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: AppTheme.getCardGlowGradient(context),
+            color: cardBg,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
           ),
@@ -329,8 +329,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Today's Schedule",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
+                  Text("Today's Schedule", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
                   if (provider.acceptedHistory.isNotEmpty || provider.availableOrders.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -350,8 +349,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               if (provider.acceptedHistory.isNotEmpty) ...[
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text('Accepted',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedText, letterSpacing: 0.5)),
+                  child: Text('Accepted', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: muted, letterSpacing: 0.5)),
                 ),
                 ...provider.acceptedHistory.map((order) {
                   final isCurrentlyActive = active != null && active.id == order.id;
@@ -359,13 +357,10 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
                   String scheduleStatus;
                   if (isCurrentlyActive) {
-                    scheduleStatus = displayOrder.status == 'accepted'
-                        ? 'Ready for Pickup'
-                        : displayOrder.status == 'picked_up'
-                            ? 'Out for Delivery'
-                            : displayOrder.status == 'delivered'
-                                ? 'Delivered ✓'
-                                : 'In Progress';
+                    scheduleStatus = displayOrder.status == 'accepted' ? 'Ready for Pickup'
+                        : displayOrder.status == 'picked_up' ? 'Out for Delivery'
+                        : displayOrder.status == 'delivered' ? 'Delivered ✓'
+                        : 'In Progress';
                   } else {
                     scheduleStatus = displayOrder.status == 'delivered' ? 'Delivered ✓' : 'Previously Accepted';
                   }
@@ -385,8 +380,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               if (provider.availableOrders.isNotEmpty) ...[
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8, top: 4),
-                  child: Text('Available',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.mutedText, letterSpacing: 0.5)),
+                  child: Text('Available', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: muted, letterSpacing: 0.5)),
                 ),
                 ...provider.availableOrders.map((order) => ScheduleItem(
                       orderId: order.id,
@@ -401,13 +395,13 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               if (provider.acceptedHistory.isEmpty && provider.availableOrders.isEmpty && provider.isOnline)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: Text('No orders right now. Pull down to refresh.', style: TextStyle(color: AppTheme.mutedText))),
+                  child: Center(child: Text('No orders right now. Pull down to refresh.', style: TextStyle(color: muted))),
                 ),
 
               if (!provider.isOnline)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: Text('Go online to start receiving orders.', style: TextStyle(color: AppTheme.mutedText))),
+                  child: Center(child: Text('Go online to start receiving orders.', style: TextStyle(color: muted))),
                 ),
             ],
           ),
@@ -451,18 +445,25 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  Widget _buildActiveExpanded(DeliveryRequest d) {
+  Widget _buildActiveExpanded(DeliveryRequest d, ThemeProvider theme) {
+    final isDark = theme.isDarkMode;
+    final cardBg = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
+    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryBg = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
+    final mutedColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppTheme.getCardGlowGradient(context),
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('Order #${d.id}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryText)),
+          Text('Order #${d.id}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
           Row(children: [
             StatusChip(status: d.status),
             const SizedBox(width: 8),
@@ -483,14 +484,14 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         InfoSection(icon: Icons.home, title: 'Deliver to', subtitle: d.customerName,
             address: d.deliveryAddress.isNotEmpty ? d.deliveryAddress : 'Address not provided'),
         const SizedBox(height: 16),
-        _buildContactSection(d),
+        _buildContactSection(d, theme),
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: AppTheme.secondaryBackground, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: secondaryBg, borderRadius: BorderRadius.circular(12)),
           child: Row(children: [
-            const Icon(Icons.fastfood, size: 20, color: AppTheme.mutedText),
+            Icon(Icons.fastfood, size: 20, color: mutedColor),
             const SizedBox(width: 12),
-            Expanded(child: Text(d.items, style: const TextStyle(color: AppTheme.secondaryText))),
+            Expanded(child: Text(d.items, style: TextStyle(color: secondaryTextColor))),
             const Spacer(),
             const Icon(Icons.attach_money, size: 20, color: AppTheme.primaryRed),
             const SizedBox(width: 4),
@@ -507,10 +508,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   context: context,
                   builder: (_) => UpdateStatusDialog(
                     currentStatus: d.status,
-                    onStatusUpdate: (ns) {
-                      _updateOrderStatus(d.id, ns);
-                      if (ns == 'delivered') setState(() => _showActiveDeliveryFullView = false);
-                    },
+                    onStatusUpdate: (ns) => _updateOrderStatus(d.id, ns),
                   ),
                 );
               },
@@ -540,8 +538,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  Widget _buildContactSection(DeliveryRequest d) {
-    final theme = Provider.of<ThemeProvider>(context);
+  Widget _buildContactSection(DeliveryRequest d, ThemeProvider theme) {
     final textColor = theme.isDarkMode ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
 
     return Container(
@@ -645,6 +642,9 @@ class _OrderDetailSheet extends StatelessWidget {
         final bg = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
         final text = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
         final sub = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+        final secondaryBg = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
+        final mutedColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+        final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
 
         final liveActive = provider.activeDelivery;
         final isNowActive = liveActive != null && liveActive.id == orderId;
@@ -699,11 +699,11 @@ class _OrderDetailSheet extends StatelessWidget {
                     buildContact(order),
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: AppTheme.secondaryBackground, borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: secondaryBg, borderRadius: BorderRadius.circular(12)),
                       child: Row(children: [
-                        const Icon(Icons.fastfood, size: 20, color: AppTheme.mutedText),
+                        Icon(Icons.fastfood, size: 20, color: mutedColor),
                         const SizedBox(width: 12),
-                        Expanded(child: Text(order.items, style: const TextStyle(color: AppTheme.secondaryText))),
+                        Expanded(child: Text(order.items, style: TextStyle(color: secondaryTextColor))),
                         const Spacer(),
                         const Icon(Icons.attach_money, size: 20, color: AppTheme.primaryRed),
                         const SizedBox(width: 4),

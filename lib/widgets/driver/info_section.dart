@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../providers/theme_provider.dart';
 
 class InfoSection extends StatelessWidget {
   final IconData icon;
@@ -19,13 +21,21 @@ class InfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDarkMode;
+    
+    final bgColor = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
+    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final mutedTextColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+    
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppTheme.secondaryBackground,
+            color: bgColor,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, size: 24, color: AppTheme.primaryRed),
@@ -39,15 +49,15 @@ class InfoSection extends StatelessWidget {
                 title,
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppTheme.mutedText,
+                  color: mutedTextColor,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryText,
+                  color: textColor,
                 ),
               ),
               const SizedBox(height: 2),
@@ -55,7 +65,7 @@ class InfoSection extends StatelessWidget {
                 address,
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppTheme.secondaryText,
+                  color: secondaryTextColor,
                 ),
               ),
               if (phone != null) ...[

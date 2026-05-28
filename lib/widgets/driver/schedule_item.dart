@@ -26,6 +26,12 @@ class ScheduleItem extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDarkMode;
     
+    final bgColor = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
+    final iconBgColor = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
+    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final mutedTextColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -33,7 +39,7 @@ class ScheduleItem extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground,
+          color: bgColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -42,10 +48,10 @@ class ScheduleItem extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
+                color: iconBgColor,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.restaurant, size: 20, color: AppTheme.mutedText),
+              child: Icon(Icons.restaurant, size: 20, color: mutedTextColor),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -54,9 +60,9 @@ class ScheduleItem extends StatelessWidget {
                 children: [
                   Text(
                     restaurant,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryText,
+                      color: textColor,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -64,7 +70,7 @@ class ScheduleItem extends StatelessWidget {
                     'Order #$orderId • $customer',
                     style: TextStyle(
                       fontSize: 11,
-                      color: AppTheme.secondaryText,
+                      color: secondaryTextColor,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -72,7 +78,7 @@ class ScheduleItem extends StatelessWidget {
                     time,
                     style: TextStyle(
                       fontSize: 10,
-                      color: AppTheme.mutedText,
+                      color: mutedTextColor,
                     ),
                   ),
                 ],
