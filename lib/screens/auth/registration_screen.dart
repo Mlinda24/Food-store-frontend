@@ -85,7 +85,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   Future<void> _handleRegister() async {
     if (_nameController.text.trim().isEmpty) {
-      _showError('Please enter your full name');
+      _showError('Please enter your Username');
       return;
     }
     if (_emailController.text.trim().isEmpty) {

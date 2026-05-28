@@ -112,20 +112,20 @@ class MenuItemCard extends StatelessWidget {
                     child: imageUrl.isNotEmpty
                         ? Image.network(
                             imageUrl,
-                            width: 90,
-                            height: 90,
+                            width: 80,
+                            height: 80,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
-                                width: 90,
-                                height: 90,
+                                width: 80,
+                                height: 80,
                                 decoration: BoxDecoration(
                                   gradient: AppTheme.cardGlowGradient(context),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
                                   Icons.fastfood,
-                                  size: 40,
+                                  size: 35,
                                   color: AppTheme.getMutedTextColor(context),
                                 ),
                               );
@@ -133,16 +133,16 @@ class MenuItemCard extends StatelessWidget {
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
                               return Container(
-                                width: 90,
-                                height: 90,
+                                width: 80,
+                                height: 80,
                                 decoration: BoxDecoration(
                                   gradient: AppTheme.cardGlowGradient(context),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Center(
                                   child: SizedBox(
-                                    width: 24,
-                                    height: 24,
+                                    width: 20,
+                                    height: 20,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: AppTheme.primaryRed,
@@ -153,15 +153,15 @@ class MenuItemCard extends StatelessWidget {
                             },
                           )
                         : Container(
-                            width: 90,
-                            height: 90,
+                            width: 80,
+                            height: 80,
                             decoration: BoxDecoration(
                               gradient: AppTheme.cardGlowGradient(context),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               Icons.fastfood,
-                              size: 40,
+                              size: 35,
                               color: AppTheme.getMutedTextColor(context),
                             ),
                           ),
@@ -178,7 +178,7 @@ class MenuItemCard extends StatelessWidget {
                             'Unavailable',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 9,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -202,7 +202,7 @@ class MenuItemCard extends StatelessWidget {
                           child: Text(
                             item.name,
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.getPrimaryTextColor(context),
                             ),
@@ -212,24 +212,24 @@ class MenuItemCard extends StatelessWidget {
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 3),
+                              horizontal: 5, vertical: 2),
                           decoration: BoxDecoration(
                             color: AppTheme.success.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
                                 Icons.star,
-                                size: 12,
+                                size: 10,
                                 color: AppTheme.warning,
                               ),
                               const SizedBox(width: 2),
                               Text(
                                 '4.5',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9,
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.getPrimaryTextColor(context),
                                 ),
@@ -239,12 +239,12 @@ class MenuItemCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         Icon(
                           Icons.restaurant,
-                          size: 12,
+                          size: 10,
                           color: AppTheme.getSecondaryTextColor(context),
                         ),
                         const SizedBox(width: 4),
@@ -252,7 +252,7 @@ class MenuItemCard extends StatelessWidget {
                           child: Text(
                             restaurantName,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               color: AppTheme.getSecondaryTextColor(context),
                             ),
                             maxLines: 1,
@@ -261,17 +261,17 @@ class MenuItemCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       item.description,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: AppTheme.getSecondaryTextColor(context),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -282,7 +282,7 @@ class MenuItemCard extends StatelessWidget {
                             Text(
                               'MK${item.price.toStringAsFixed(0)}',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.primaryRed,
                               ),
@@ -291,51 +291,56 @@ class MenuItemCard extends StatelessWidget {
                               Text(
                                 'per serving',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9,
                                   color: AppTheme.getMutedTextColor(context),
                                 ),
                               ),
                           ],
                         ),
-                        ElevatedButton(
-                          onPressed: item.isAvailable
-                              ? () => _addToCart(context)
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: item.isAvailable
-                                ? AppTheme.primaryRed
-                                : Colors.grey,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            elevation: 0,
-                            minimumSize: const Size(90, 36),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.add_shopping_cart,
-                                size: 16,
-                                color: item.isAvailable
-                                    ? Colors.white
-                                    : Colors.grey[300],
+                        // REDUCED ADD TO CART BUTTON
+                        SizedBox(
+                          width: 70,
+                          height: 32,
+                          child: ElevatedButton(
+                            onPressed: item.isAvailable
+                                ? () => _addToCart(context)
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: item.isAvailable
+                                  ? AppTheme.primaryRed
+                                  : Colors.grey,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Add',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                              elevation: 0,
+                              minimumSize: const Size(70, 32),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.add_shopping_cart,
+                                  size: 12,
                                   color: item.isAvailable
                                       ? Colors.white
                                       : Colors.grey[300],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Add',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: item.isAvailable
+                                        ? Colors.white
+                                        : Colors.grey[300],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
