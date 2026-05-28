@@ -79,10 +79,7 @@ class _PaychanguWebViewScreenState extends State<PaychanguWebViewScreen> {
     // Check for success indicators
     if (lowerUrl.contains('success') ||
         lowerUrl.contains('complete') ||
-        (lowerUrl.contains('/payment/status/') &&
-            !lowerUrl.contains('cancelled')) ||
-        lowerUrl.contains('reference=${widget.reference}') &&
-            !lowerUrl.contains('cancelled')) {
+        lowerUrl.contains('reference=${widget.reference}')) {
       _returnToApp(success: true, cancelled: false);
       return true;
     }
@@ -110,7 +107,8 @@ class _PaychanguWebViewScreenState extends State<PaychanguWebViewScreen> {
 
     print('✅ Returning to app: success=$success, cancelled=$cancelled');
 
-    Future.delayed(const Duration(milliseconds: 300), () {
+    // Use WidgetsBinding to ensure safe navigation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Navigator.of(context).pop({
           'status':

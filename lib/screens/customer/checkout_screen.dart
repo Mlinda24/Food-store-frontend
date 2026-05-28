@@ -32,6 +32,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isLoading = false;
   bool _isProcessingPayment = false;
   bool _isPlacingOrder = false;
+  bool _isCreatingOrder = false;
   Order? _pendingOrder;
 
   // Delivery
@@ -221,11 +222,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  // ─── Place Order & Payment Flow ──────────────────────────────
+  // ─── Payment Flow (Order Created After Successful Payment) ──────────────
 
-  Future<void> _placeOrder() async {
-    if (_isPlacingOrder) {
-      print('⏳ Order already in progress, ignoring duplicate call');
+  Future<void> _startPayment() async {
+    if (_isProcessingPayment || _isPlacingOrder) {
+      print('⏳ Payment already in progress, ignoring duplicate call');
       return;
     }
 
@@ -239,17 +240,129 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (!_validateFields()) return;
 
     setState(() {
-      _isLoading = true;
-      _isPlacingOrder = true;
+      _isProcessingPayment = true;
     });
 
+    try {
+      final total = cartProvider.subtotal +
+          (_calculatedDeliveryFee ?? cartProvider.deliveryFee);
+
+      print('💳 Total to pay: MK$total');
+
+      // First initiate payment - this will NOT create the order yet
+      final result = await _paymentProvider.initiateSimplePayment(
+        amount: total,
+        orderId:
+            'temp', // Temporary ID, will be replaced after successful payment
+      );
+
+      final checkoutUrl = result['checkout_url'] as String?;
+      final paymentReference = result['reference'] as String?;
+
+      print('💳 Checkout URL: $checkoutUrl');
+      print('💳 Payment Reference: $paymentReference');
+
+      if (checkoutUrl == null || checkoutUrl.isEmpty) {
+        _showError(
+            'Payment service did not return a checkout URL. Please try again.');
+        setState(() => _isProcessingPayment = false);
+        return;
+      }
+
+      setState(() => _isProcessingPayment = false);
+
+      // Open PayChangu checkout page in WebView
+      final webViewResult =
+          await Navigator.of(context).push<Map<String, dynamic>>(
+        MaterialPageRoute(
+          builder: (_) => PaychanguWebViewScreen(
+            checkoutUrl: checkoutUrl,
+            reference: paymentReference ?? '',
+            amount: total,
+          ),
+        ),
+      );
+
+      // User cancelled or closed WebView
+      if (webViewResult == null || webViewResult['status'] == 'cancelled') {
+        _showError('Payment was cancelled. Your order was not created.');
+        return;
+      }
+
+      if (webViewResult['status'] == 'submitted') {
+        setState(() => _isProcessingPayment = true);
+        final ref =
+            webViewResult['reference'] as String? ?? paymentReference ?? '';
+
+        // Poll for payment confirmation
+        final paymentConfirmed = await _pollPaymentStatus(ref);
+        setState(() => _isProcessingPayment = false);
+
+        if (paymentConfirmed) {
+          // ONLY AFTER PAYMENT IS CONFIRMED, create the order
+          await _createOrderAfterPayment();
+        } else {
+          _showError('Payment verification failed. Please contact support.');
+        }
+      } else if (webViewResult['status'] == 'failed') {
+        _showError('Payment failed. Please try again.');
+      }
+    } catch (e) {
+      setState(() => _isProcessingPayment = false);
+      _showError('Payment error: ${e.toString()}');
+      print('❌ Payment error: $e');
+    }
+  }
+
+  Future<bool> _pollPaymentStatus(String reference) async {
+    print('🔄 Polling payment status for reference: $reference');
+    for (int attempt = 1; attempt <= 15; attempt++) {
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return false;
+      try {
+        final statusData =
+            await _paymentProvider.getPaymentStatusByReference(reference);
+        final status = statusData?['status'] as String?;
+        final distributed =
+            statusData?['distributed_to_wallets'] as bool? ?? false;
+
+        print(
+            '🔄 Poll attempt $attempt: status=$status, distributed=$distributed');
+
+        if (status == 'completed') {
+          print('✅ Payment confirmed!');
+          return true;
+        }
+        if (status == 'failed') {
+          print('❌ Payment failed');
+          return false;
+        }
+      } catch (e) {
+        print('Poll attempt $attempt error: $e');
+      }
+    }
+    return false;
+  }
+
+  Future<void> _createOrderAfterPayment() async {
+    if (_isCreatingOrder) {
+      print('⏳ Order creation already in progress');
+      return;
+    }
+
+    setState(() {
+      _isCreatingOrder = true;
+      _isLoading = true;
+    });
+
+    final cartProvider = context.read<CartProvider>();
     final orderProvider = context.read<OrderProvider>();
     final authProvider = context.read<AuthProvider>();
 
     if (authProvider.currentUser == null) {
       setState(() {
+        _isCreatingOrder = false;
         _isLoading = false;
-        _isPlacingOrder = false;
       });
       _showError('Please login first');
       context.go('/login');
@@ -283,105 +396,42 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (placedOrder != null && mounted) {
         _pendingOrder = placedOrder;
-        await _processPayment(placedOrder);
+        await _completeOrder(placedOrder.id);
       } else if (mounted) {
-        _showError('Failed to place order. Please try again.');
+        _showError('Failed to create order. Please contact support.');
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      _showError('Error placing order: $e');
-      print('❌ Order placement error: $e');
+      _showError('Error creating order: $e');
+      print('❌ Order creation error: $e');
     } finally {
-      setState(() => _isPlacingOrder = false);
+      setState(() {
+        _isCreatingOrder = false;
+      });
     }
   }
 
-  Future<void> _processPayment(Order order) async {
-    setState(() => _isProcessingPayment = true);
+  Future<void> _completeOrder(String orderId) async {
+    // Clear cart AFTER successful order creation
+    final cartProvider = context.read<CartProvider>();
+    await cartProvider.clearCart();
 
-    try {
-      final cartProvider = context.read<CartProvider>();
-      final total = cartProvider.subtotal +
-          (_calculatedDeliveryFee ?? cartProvider.deliveryFee);
+    final notificationProvider =
+        Provider.of<NotificationProvider>(context, listen: false);
+    await notificationProvider.loadUnreadCount();
 
-      print('💳 Total to pay: MK$total');
-      print('💳 Order ID: ${order.id}');
+    _showSuccess('Order placed successfully!');
 
-      final result = await _paymentProvider.initiateSimplePayment(
-        amount: total,
-        orderId: order.id,
-      );
-
-      final checkoutUrl = result['checkout_url'] as String?;
-      final reference = result['reference'] as String?;
-
-      print('💳 Checkout URL: $checkoutUrl');
-      print('💳 Reference: $reference');
-
-      if (checkoutUrl == null || checkoutUrl.isEmpty) {
-        _showError(
-            'Payment service did not return a checkout URL. Please try again.');
-        setState(() => _isProcessingPayment = false);
-        return;
-      }
-
-      setState(() => _isProcessingPayment = false);
-
-      final webViewResult =
-          await Navigator.of(context).push<Map<String, dynamic>>(
-        MaterialPageRoute(
-          builder: (_) => PaychanguWebViewScreen(
-            checkoutUrl: checkoutUrl,
-            reference: reference ?? '',
-            amount: total,
-          ),
-        ),
-      );
-
-      if (webViewResult == null || webViewResult['status'] == 'cancelled') {
-        _showError('Payment was cancelled. Your order has not been confirmed.');
-        return;
-      }
-
-      if (webViewResult['status'] == 'submitted') {
-        setState(() => _isProcessingPayment = true);
-        final ref = webViewResult['reference'] as String? ?? reference ?? '';
-        final confirmed = await _pollPaymentStatus(ref);
-        setState(() => _isProcessingPayment = false);
-
-        if (confirmed) {
-          await _completeOrder(order.id);
-        } else {
-          _showPaymentPendingDialog(order.id, ref);
+    if (mounted) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          context.go('/order-tracking', extra: {'order_id': orderId});
         }
-      }
-    } catch (e) {
-      setState(() => _isProcessingPayment = false);
-      _showError('Payment error: ${e.toString()}');
-      print('❌ Payment error: $e');
+      });
     }
   }
 
-  Future<bool> _pollPaymentStatus(String reference) async {
-    print('🔄 Polling payment status for reference: $reference');
-    for (int attempt = 1; attempt <= 10; attempt++) {
-      await Future.delayed(const Duration(seconds: 3));
-      if (!mounted) return false;
-      try {
-        final statusData =
-            await _paymentProvider.getPaymentStatusByReference(reference);
-        final status = statusData?['status'] as String?;
-        print('🔄 Poll attempt $attempt: status=$status');
-        if (status == 'completed') return true;
-        if (status == 'failed') return false;
-      } catch (e) {
-        print('Poll attempt $attempt error: $e');
-      }
-    }
-    return false;
-  }
-
-  void _showPaymentPendingDialog(String orderId, String reference) {
+  void _showPaymentPendingDialog(String reference) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -395,7 +445,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 16),
             const Text(
               'Your payment is being processed. '
-              'Your order will be confirmed once payment is received.',
+              'Please check your order status later.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
@@ -411,7 +461,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               final confirmed = await _pollPaymentStatus(reference);
               setState(() => _isProcessingPayment = false);
               if (confirmed && mounted) {
-                await _completeOrder(orderId);
+                await _createOrderAfterPayment();
               } else if (mounted) {
                 _showError(
                     'Payment not yet confirmed. Check your orders for updates.');
@@ -432,21 +482,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _completeOrder(String orderId) async {
-    final cartProvider = context.read<CartProvider>();
-    await cartProvider.clearCart();
-
-    final notificationProvider =
-        Provider.of<NotificationProvider>(context, listen: false);
-    await notificationProvider.loadUnreadCount();
-
-    _showSuccess('Order placed successfully!');
-
-    if (mounted) {
-      context.go('/order-tracking', extra: {'order_id': orderId});
-    }
   }
 
   // ─── UI Widgets ───────────────────────────────────────────────
@@ -628,7 +663,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     color: isDark
                         ? AppTheme.darkPrimaryText
                         : AppTheme.lightPrimaryText),
-                onPressed: _goBack, // Fixed back button
+                onPressed: _goBack,
               ),
             ),
             body: const Center(child: CircularProgressIndicator()),
@@ -651,7 +686,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     color: isDark
                         ? AppTheme.darkPrimaryText
                         : AppTheme.lightPrimaryText),
-                onPressed: _goBack, // Fixed back button
+                onPressed: _goBack,
               ),
             ),
             body: Center(
@@ -715,7 +750,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   color: isDark
                       ? AppTheme.darkPrimaryText
                       : AppTheme.lightPrimaryText),
-              onPressed: _goBack, // Fixed back button
+              onPressed: _goBack,
             ),
           ),
           body: Stack(
@@ -993,23 +1028,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Place order button
+                    // Place order button - Now initiates payment first
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: (_isLoading ||
                                 !_canDeliver ||
                                 _isProcessingPayment ||
-                                _isPlacingOrder)
+                                _isPlacingOrder ||
+                                _isCreatingOrder)
                             ? null
-                            : _placeOrder,
+                            : _startPayment,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryRed,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30)),
                         ),
-                        child: (_isLoading || _isProcessingPayment)
+                        child: (_isLoading ||
+                                _isProcessingPayment ||
+                                _isCreatingOrder)
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
@@ -1026,7 +1064,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
 
               // Payment processing overlay
-              if (_isProcessingPayment)
+              if (_isProcessingPayment || _isCreatingOrder)
                 Container(
                   color: Colors.black54,
                   child: Center(
@@ -1042,9 +1080,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             const CircularProgressIndicator(
                                 color: AppTheme.primaryRed),
                             const SizedBox(height: 16),
-                            const Text('Processing Payment...',
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                            Text(
+                              _isCreatingOrder
+                                  ? 'Creating your order...'
+                                  : 'Processing Payment...',
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
                             const SizedBox(height: 8),
                             Text(
                               'Please wait',

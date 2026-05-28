@@ -147,7 +147,7 @@ class LandingScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      '🍔 Hungry? We\'ve Got This! 🍕',
+                      ' Hungry? We\'ve Got This! ',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -255,7 +255,8 @@ class LandingScreen extends StatelessWidget {
           children: [
             // Meal Image
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(14)),
               child: imageUrl.isNotEmpty
                   ? Image.network(
                       imageUrl,

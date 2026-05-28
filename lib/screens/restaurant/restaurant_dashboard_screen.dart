@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -19,19 +20,45 @@ class RestaurantDashboardScreen extends StatefulWidget {
 
 class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
   int _selectedIndex = 0;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
+      _startAutoRefresh();
     });
+  }
+
+  /// Poll every 30 seconds so the balance updates after an incoming payment
+  /// without the owner needing to manually pull-to-refresh.
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _loadData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   void _loadData() {
     final provider = Provider.of<RestaurantProvider>(context, listen: false);
     provider.loadRestaurantData();
     provider.loadRestaurantOrders();
+  }
+
+  /// Navigate to withdraw and reload stats when the owner returns,
+  /// so the updated balance is immediately visible.
+  Future<void> _navigateToWithdraw() async {
+    await context.push('/withdraw');
+    if (mounted) {
+      Provider.of<RestaurantProvider>(context, listen: false)
+          .loadRestaurantData();
+    }
   }
 
   void _onItemTapped(int index) {
@@ -57,10 +84,10 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
 
   List<Widget> _getScreens() {
     return [
-      const _DashboardContent(),
+      _DashboardContent(onNavigateToWithdraw: _navigateToWithdraw),
       const RestaurantOrdersScreen(),
       const MenuManagementScreen(),
-      const _SettingsContent(),
+      _SettingsContent(onNavigateToWithdraw: _navigateToWithdraw),
     ];
   }
 
@@ -82,9 +109,7 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
         centerTitle: true,
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          _loadData();
-        },
+        onRefresh: () async => _loadData(),
         child: _getScreens()[_selectedIndex],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -122,9 +147,14 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
   }
 }
 
-// Dashboard Content with real data
+// ---------------------------------------------------------------------------
+// Dashboard Content
+// ---------------------------------------------------------------------------
 class _DashboardContent extends StatelessWidget {
-  const _DashboardContent();
+  /// Callback owned by the parent so it can await the push and refresh stats.
+  final Future<void> Function() onNavigateToWithdraw;
+
+  const _DashboardContent({required this.onNavigateToWithdraw});
 
   String _formatCurrency(dynamic value) {
     if (value == null) return 'MK0';
@@ -147,9 +177,7 @@ class _DashboardContent extends StatelessWidget {
     if (value is double) return value.toInt().toString();
     if (value is String) {
       final parsed = double.tryParse(value);
-      if (parsed != null) {
-        return parsed.toInt().toString();
-      }
+      if (parsed != null) return parsed.toInt().toString();
       return value;
     }
     return '0';
@@ -191,7 +219,7 @@ class _DashboardContent extends StatelessWidget {
               Expanded(
                 child: _buildStatCard(
                   context,
-                  title: 'Today\'s Earnings',
+                  title: "Today's Earnings",
                   value: _formatCurrency(stats?.todayEarnings),
                   icon: Icons.today,
                   color: AppTheme.primaryRed,
@@ -202,7 +230,7 @@ class _DashboardContent extends StatelessWidget {
               Expanded(
                 child: _buildStatCard(
                   context,
-                  title: 'Today\'s Orders',
+                  title: "Today's Orders",
                   value: _formatNumber(stats?.todayOrders),
                   icon: Icons.receipt,
                   color: AppTheme.orange,
@@ -213,7 +241,7 @@ class _DashboardContent extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Row 2: Available Balance (Withdrawable) & Rating
+          // Row 2: Available Balance & Rating
           Row(
             children: [
               Expanded(
@@ -224,9 +252,7 @@ class _DashboardContent extends StatelessWidget {
                   icon: Icons.wallet,
                   color: AppTheme.success,
                   subtitle: 'Withdrawable amount (after fees)',
-                  onWithdraw: () {
-                    context.push('/withdraw');
-                  },
+                  onWithdraw: onNavigateToWithdraw,
                 ),
               ),
               const SizedBox(width: 12),
@@ -245,7 +271,7 @@ class _DashboardContent extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Total Earnings Card (for reference - not withdrawable)
+          // Total Earnings Card
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -389,7 +415,7 @@ class _DashboardContent extends StatelessWidget {
     required IconData icon,
     required Color color,
     required String subtitle,
-    required VoidCallback onWithdraw,
+    required Future<void> Function() onWithdraw,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -533,9 +559,13 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
 // Settings Content
+// ---------------------------------------------------------------------------
 class _SettingsContent extends StatefulWidget {
-  const _SettingsContent();
+  final Future<void> Function() onNavigateToWithdraw;
+
+  const _SettingsContent({required this.onNavigateToWithdraw});
 
   @override
   State<_SettingsContent> createState() => __SettingsContentState();
@@ -657,7 +687,6 @@ class __SettingsContentState extends State<_SettingsContent> {
 
           const SizedBox(height: 8),
 
-          // Menu Items
           ListTile(
             leading:
                 const Icon(Icons.restaurant_menu, color: AppTheme.primaryRed),
@@ -668,16 +697,13 @@ class __SettingsContentState extends State<_SettingsContent> {
               final state = context
                   .findAncestorStateOfType<_RestaurantDashboardScreenState>();
               if (state != null) {
-                state.setState(() {
-                  state._selectedIndex = 2;
-                });
+                state.setState(() => state._selectedIndex = 2);
               }
             },
           ),
 
           const Divider(),
 
-          // Orders
           ListTile(
             leading: const Icon(Icons.receipt, color: AppTheme.primaryRed),
             title: const Text('View Orders'),
@@ -687,42 +713,34 @@ class __SettingsContentState extends State<_SettingsContent> {
               final state = context
                   .findAncestorStateOfType<_RestaurantDashboardScreenState>();
               if (state != null) {
-                state.setState(() {
-                  state._selectedIndex = 1;
-                });
+                state.setState(() => state._selectedIndex = 1);
               }
             },
           ),
 
           const Divider(),
 
-          // Profile
           ListTile(
             leading: const Icon(Icons.person, color: AppTheme.primaryRed),
             title: const Text('Restaurant Profile'),
             subtitle: const Text('View and edit profile information'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              context.push('/restaurant-profile');
-            },
+            onTap: () => context.push('/restaurant-profile'),
           ),
 
           const Divider(),
 
-          // Withdraw (Quick Action)
           ListTile(
             leading: const Icon(Icons.wallet, color: AppTheme.primaryRed),
             title: const Text('Withdraw Funds'),
             subtitle: const Text('Withdraw your earnings to mobile money'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              context.push('/withdraw');
-            },
+            // Use the same awaited callback so stats refresh on return
+            onTap: widget.onNavigateToWithdraw,
           ),
 
           const Divider(),
 
-          // Logout
           ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.error),
             title: Text('Logout', style: TextStyle(color: AppTheme.error)),
