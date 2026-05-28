@@ -26,35 +26,24 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final ApiService _apiService = ApiService();
   late String _selectedRole;
 
-  // Role display information
   final Map<String, Map<String, dynamic>> _roleInfo = {
     'customer': {
       'title': 'Customer',
       'icon': Icons.person_outline,
       'color': AppTheme.primaryRed,
       'description': 'Order food from your favorite restaurants',
-      'welcomeMessage': 'Welcome Food Lover!',
     },
     'restaurant': {
       'title': 'Restaurant Owner',
       'icon': Icons.restaurant_outlined,
       'color': AppTheme.warning,
       'description': 'Manage your restaurant and orders',
-      'welcomeMessage': 'Welcome Restaurant Partner!',
     },
     'driver': {
       'title': 'Delivery Driver',
       'icon': Icons.delivery_dining_outlined,
       'color': AppTheme.teal,
       'description': 'Deliver food and earn money',
-      'welcomeMessage': 'Welcome Delivery Partner!',
-    },
-    'admin': {
-      'title': 'Admin',
-      'icon': Icons.admin_panel_settings_outlined,
-      'color': AppTheme.orange,
-      'description': 'Manage platform and users',
-      'welcomeMessage': 'Welcome Administrator!',
     },
   };
 
@@ -99,50 +88,40 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       _showError('Please enter your full name');
       return;
     }
-
     if (_emailController.text.trim().isEmpty) {
       _showError('Please enter your email address');
       return;
     }
-
     if (!_isValidEmail(_emailController.text.trim())) {
       _showError('Please enter a valid email address');
       return;
     }
-
     if (_phoneController.text.trim().isEmpty) {
       _showError('Please enter your phone number');
       return;
     }
-
     if (!_isValidPhone(_phoneController.text.trim())) {
       _showError('Please enter a valid 10-digit phone number');
       return;
     }
-
     if (_passwordController.text.isEmpty) {
       _showError('Please enter a password');
       return;
     }
-
     if (_passwordController.text.length < 6) {
       _showError('Password must be at least 6 characters');
       return;
     }
-
     if (_passwordController.text != _confirmPasswordController.text) {
       _showError('Passwords do not match');
       return;
     }
-
     if (!_agreeToTerms) {
       _showError('Please agree to the Terms & Conditions');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final result = await _apiService.register(
@@ -163,11 +142,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       print('Registration error: $e');
       _showError(e.toString().replaceAll('Exception: ', ''));
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -184,18 +159,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     final roleInfo = _roleInfo[_selectedRole] ?? _roleInfo['customer']!;
-    final welcomeMessage = roleInfo['welcomeMessage'] as String;
 
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
       appBar: AppBar(
         backgroundColor: AppTheme.getBackgroundColor(context),
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back,
-              color: AppTheme.getPrimaryTextColor(context)),
-          onPressed: () => context.pop(),
-        ),
+        automaticallyImplyLeading: false, // removes back arrow
         title: const Text(
           'Create Account',
           style: TextStyle(
@@ -212,7 +182,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Selected Role Card (Display only, not selectable)
+              // Selected Role Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -272,9 +242,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.edit, color: Colors.white),
-                      onPressed: () {
-                        context.pop();
-                      },
+                      onPressed: () => context.pop(),
                       tooltip: 'Change Role',
                     ),
                   ],
@@ -283,16 +251,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
               const SizedBox(height: 32),
 
-              // Welcome Message (Role-specific)
-              Text(
-                welcomeMessage,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.getPrimaryTextColor(context),
-                ),
-              ),
-              const SizedBox(height: 8),
+              // Subtitle only (no welcome message)
               Text(
                 'Fill in your details to get started',
                 style: TextStyle(
@@ -302,14 +261,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Form Fields - No labels, only placeholders
               _buildTextField(
                 controller: _nameController,
                 hint: 'Full Name',
                 icon: Icons.person_outline,
               ),
               const SizedBox(height: 16),
-
               _buildTextField(
                 controller: _emailController,
                 hint: 'Email Address',
@@ -317,7 +274,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
-
               _buildTextField(
                 controller: _phoneController,
                 hint: 'Phone Number',
@@ -325,7 +281,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 16),
-
               _buildTextField(
                 controller: _passwordController,
                 hint: 'Password',
@@ -336,15 +291,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     _obscurePassword ? Icons.visibility_off : Icons.visibility,
                     color: AppTheme.getMutedTextColor(context),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
               const SizedBox(height: 16),
-
               _buildTextField(
                 controller: _confirmPasswordController,
                 hint: 'Confirm Password',
@@ -357,11 +308,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         : Icons.visibility,
                     color: AppTheme.getMutedTextColor(context),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureConfirmPassword = !_obscureConfirmPassword;
-                    });
-                  },
+                  onPressed: () => setState(() =>
+                      _obscureConfirmPassword = !_obscureConfirmPassword),
                 ),
               ),
 
@@ -372,21 +320,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 children: [
                   Checkbox(
                     value: _agreeToTerms,
-                    onChanged: (value) {
-                      setState(() {
-                        _agreeToTerms = value ?? false;
-                      });
-                    },
+                    onChanged: (value) =>
+                        setState(() => _agreeToTerms = value ?? false),
                     activeColor: AppTheme.primaryRed,
                     checkColor: Colors.white,
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _agreeToTerms = !_agreeToTerms;
-                        });
-                      },
+                      onTap: () =>
+                          setState(() => _agreeToTerms = !_agreeToTerms),
                       child: RichText(
                         text: TextSpan(
                           style: TextStyle(
@@ -472,9 +414,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () {
-                      context.go('/login');
-                    },
+                    onTap: () => context.go('/login'),
                     child: Text(
                       'Sign In',
                       style: TextStyle(

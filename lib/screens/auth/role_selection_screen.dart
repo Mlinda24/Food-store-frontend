@@ -29,13 +29,7 @@ class RoleSelectionScreen extends StatelessWidget {
         'color': AppTheme.teal,
         'roleValue': 'driver',
       },
-      {
-        'title': 'Admin',
-        'icon': Icons.admin_panel_settings_outlined,
-        'description': 'Manage platform and users',
-        'color': AppTheme.orange,
-        'roleValue': 'admin',
-      },
+      
     ];
 
     return Scaffold(

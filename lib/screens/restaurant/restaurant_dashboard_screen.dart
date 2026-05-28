@@ -122,7 +122,6 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
   }
 }
 
-// Dashboard Content with real data
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();
 
@@ -147,9 +146,7 @@ class _DashboardContent extends StatelessWidget {
     if (value is double) return value.toInt().toString();
     if (value is String) {
       final parsed = double.tryParse(value);
-      if (parsed != null) {
-        return parsed.toInt().toString();
-      }
+      if (parsed != null) return parsed.toInt().toString();
       return value;
     }
     return '0';
@@ -213,7 +210,7 @@ class _DashboardContent extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Row 2: Available Balance (Withdrawable) & Rating
+          // Row 2: Available Balance & Rating
           Row(
             children: [
               Expanded(
@@ -223,10 +220,8 @@ class _DashboardContent extends StatelessWidget {
                   value: _formatCurrency(stats?.walletBalance),
                   icon: Icons.wallet,
                   color: AppTheme.success,
-                  subtitle: 'Withdrawable amount (after fees)',
-                  onWithdraw: () {
-                    context.push('/withdraw');
-                  },
+                  subtitle: 'Withdrawable (after fees)',
+                  onWithdraw: () => context.push('/withdraw'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -245,7 +240,7 @@ class _DashboardContent extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Total Earnings Card (for reference - not withdrawable)
+          // Total Earnings Card
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -392,7 +387,7 @@ class _DashboardContent extends StatelessWidget {
     required VoidCallback onWithdraw,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         gradient: AppTheme.cardGlowGradient(context),
         borderRadius: BorderRadius.circular(16),
@@ -405,37 +400,31 @@ class _DashboardContent extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 20, color: color),
+                child: Icon(icon, size: 16, color: color),
               ),
               GestureDetector(
                 onTap: onWithdraw,
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     gradient: AppTheme.primaryButtonGradient,
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryRed.withOpacity(0.3),
-                        blurRadius: 4,
-                      ),
-                    ],
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.wallet, size: 14, color: Colors.white),
-                      SizedBox(width: 4),
+                      Icon(Icons.wallet, size: 11, color: Colors.white),
+                      SizedBox(width: 3),
                       Text(
                         'Withdraw',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
@@ -446,30 +435,32 @@ class _DashboardContent extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppTheme.getPrimaryTextColor(context),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: AppTheme.getSecondaryTextColor(context),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 9,
               color: AppTheme.getMutedTextColor(context),
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ],
       ),
@@ -657,7 +648,6 @@ class __SettingsContentState extends State<_SettingsContent> {
 
           const SizedBox(height: 8),
 
-          // Menu Items
           ListTile(
             leading:
                 const Icon(Icons.restaurant_menu, color: AppTheme.primaryRed),
@@ -677,7 +667,6 @@ class __SettingsContentState extends State<_SettingsContent> {
 
           const Divider(),
 
-          // Orders
           ListTile(
             leading: const Icon(Icons.receipt, color: AppTheme.primaryRed),
             title: const Text('View Orders'),
@@ -696,33 +685,26 @@ class __SettingsContentState extends State<_SettingsContent> {
 
           const Divider(),
 
-          // Profile
           ListTile(
             leading: const Icon(Icons.person, color: AppTheme.primaryRed),
             title: const Text('Restaurant Profile'),
             subtitle: const Text('View and edit profile information'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              context.push('/restaurant-profile');
-            },
+            onTap: () => context.push('/restaurant-profile'),
           ),
 
           const Divider(),
 
-          // Withdraw (Quick Action)
           ListTile(
             leading: const Icon(Icons.wallet, color: AppTheme.primaryRed),
             title: const Text('Withdraw Funds'),
             subtitle: const Text('Withdraw your earnings to mobile money'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              context.push('/withdraw');
-            },
+            onTap: () => context.push('/withdraw'),
           ),
 
           const Divider(),
 
-          // Logout
           ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.error),
             title: Text('Logout', style: TextStyle(color: AppTheme.error)),

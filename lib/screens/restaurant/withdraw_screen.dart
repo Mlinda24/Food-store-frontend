@@ -110,17 +110,17 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), // reduced from 16
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Balance Card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), // reduced from 20
               decoration: BoxDecoration(
                 gradient: AppTheme.primaryButtonGradient,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
                 children: [
@@ -128,31 +128,30 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                     'Available Balance',
                     style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 14,
+                      fontSize: 12, // reduced from 14
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4), // reduced from 8
                   Text(
                     'MK${balance.toStringAsFixed(0)}',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 32,
+                      fontSize: 26, // reduced from 32
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 14), // reduced from 24
 
             // Withdrawal Form
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14), // reduced from 16
               decoration: BoxDecoration(
                 gradient: AppTheme.cardGlowGradient(context),
-                borderRadius: BorderRadius.circular(16),
-                border:
-                    Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,96 +159,102 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                   const Text(
                     'Withdrawal Details',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 15, // reduced from 18
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12), // reduced from 16
 
                   // Amount Field
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13, // reduced from 14
                       color: AppTheme.getPrimaryTextColor(context),
                     ),
                     decoration: InputDecoration(
                       labelText: 'Amount (MWK)',
                       labelStyle: TextStyle(
+                          fontSize: 12,
                           color: AppTheme.getSecondaryTextColor(context)),
                       hintText: 'Enter amount to withdraw',
-                      hintStyle:
-                          TextStyle(color: AppTheme.getMutedTextColor(context)),
+                      hintStyle: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.getMutedTextColor(context)),
                       prefixText: 'MK ',
                       prefixStyle: TextStyle(
                         color: AppTheme.primaryRed,
                         fontWeight: FontWeight.bold,
+                        fontSize: 13,
                       ),
                       filled: true,
                       fillColor: AppTheme.getSurfaceColor(context),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(
                             color: AppTheme.primaryRed, width: 2),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
+                        horizontal: 12,
+                        vertical: 11, // reduced from 14
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12), // reduced from 16
 
                   // Phone Number Field
                   TextField(
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       color: AppTheme.getPrimaryTextColor(context),
                     ),
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
                       labelStyle: TextStyle(
+                          fontSize: 12,
                           color: AppTheme.getSecondaryTextColor(context)),
                       hintText: 'e.g., 0999123456',
-                      hintStyle:
-                          TextStyle(color: AppTheme.getMutedTextColor(context)),
+                      hintStyle: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.getMutedTextColor(context)),
                       prefixIcon: Icon(
                         selectedProvider == 'mpamba'
                             ? Icons.phone_android
                             : Icons.phone_iphone,
+                        size: 18, // added explicit size
                         color: AppTheme.primaryRed,
                       ),
                       filled: true,
                       fillColor: AppTheme.getSurfaceColor(context),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(
                             color: AppTheme.primaryRed, width: 2),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
+                        horizontal: 12,
+                        vertical: 11,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12), // reduced from 16
 
                   // Payment Method Selection
                   const Text(
                     'Select Payment Method',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12, // reduced from 14
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -265,7 +270,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                           () => setState(() => selectedProvider = 'mpamba'),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10), // reduced from 12
                       Expanded(
                         child: _buildMethodOption(
                           context,
@@ -277,27 +282,28 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14), // reduced from 24
 
                   // Info Note
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10), // reduced from 12
                     decoration: BoxDecoration(
                       color: AppTheme.warning.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: AppTheme.warning.withOpacity(0.3)),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: AppTheme.warning.withOpacity(0.3)),
                     ),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(Icons.info_outline,
-                            size: 20, color: AppTheme.warning),
-                        const SizedBox(width: 12),
+                            size: 16, color: AppTheme.warning), // reduced from 20
+                        const SizedBox(width: 8), // reduced from 12
                         Expanded(
                           child: Text(
-                            'Minimum withdrawal: MK1,000\nFunds will be sent to your mobile money within 24 hours.',
+                            'Min. withdrawal: MK1,000\nFunds sent within 24 hours.',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11, // reduced from 12
                               color: AppTheme.getSecondaryTextColor(context),
                             ),
                           ),
@@ -305,7 +311,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14), // reduced from 24
 
                   // Withdraw Button
                   SizedBox(
@@ -314,15 +320,15 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                       onPressed: loading ? null : submitWithdraw,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryRed,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 12), // reduced from 14
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
                       ),
                       child: loading
                           ? const SizedBox(
-                              width: 20,
-                              height: 20,
+                              width: 18, // reduced from 20
+                              height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: Colors.white,
@@ -331,7 +337,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                           : const Text(
                               'Request Withdrawal',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 14, // reduced from 16
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -356,12 +362,12 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 9), // reduced from 12
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryRed.withOpacity(0.1)
               : AppTheme.getSurfaceColor(context),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
                 ? AppTheme.primaryRed
@@ -374,17 +380,18 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
           children: [
             Icon(
               icon,
-              size: 20,
+              size: 16, // reduced from 20
               color: isSelected
                   ? AppTheme.primaryRed
                   : AppTheme.getSecondaryTextColor(context),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6), // reduced from 8
             Text(
               label,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontSize: 12, // reduced from 14
+                fontWeight:
+                    isSelected ? FontWeight.w600 : FontWeight.normal,
                 color: isSelected
                     ? AppTheme.primaryRed
                     : AppTheme.getSecondaryTextColor(context),
