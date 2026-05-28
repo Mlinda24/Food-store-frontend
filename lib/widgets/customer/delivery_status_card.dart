@@ -15,6 +15,7 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
   final ApiService _apiService = ApiService();
   bool _isProcessing = false;
   Order? _activeOrder;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -23,27 +24,52 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
   }
 
   Future<void> _loadActiveOrder() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
     try {
       final orders = await _apiService.getMyOrders();
+      print('📦 Loaded ${orders.length} orders');
       
+      // Print all orders for debugging
       for (var order in orders) {
+        print('   Order #${order.id}: status=${order.status}, items=${order.items.length}');
+      }
+      
+      // Find order that is ready to be delivered (not yet delivered)
+      // Check for statuses like: 'pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery'
+      Order? foundOrder;
+      for (var order in orders) {
+        // Don't mark already delivered or cancelled orders
+        if (order.status == OrderStatus.delivered || 
+            order.status == OrderStatus.cancelled ||
+            order.status == OrderStatus.received) {
+          continue;
+        }
+        
+        // These are orders that can be marked as delivered
         if (order.status == OrderStatus.onTheWay || 
-            order.status == OrderStatus.delivered ||
-            order.status == OrderStatus.confirmed ||
-            order.status == OrderStatus.preparing) {
-          if (mounted) {
-            setState(() {
-              _activeOrder = order;
-            });
-          }
+            order.status == OrderStatus.pickedUp ||
+            order.status == OrderStatus.outForDelivery ||
+            order.status == OrderStatus.ready) {
+          foundOrder = order;
           break;
         }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _activeOrder = foundOrder;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       print('Error loading active order: $e');
       if (mounted) {
         setState(() {
           _activeOrder = null;
+          _isLoading = false;
         });
       }
     }
@@ -73,6 +99,7 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
     try {
       print('✅ Found active order #${orderToDeliver.id} with status: ${orderToDeliver.status}');
 
+      // Get item names for display
       String itemNames = '';
       if (orderToDeliver.items.isNotEmpty) {
         List<String> names = orderToDeliver.items.map((item) => item.name).toList();
@@ -82,6 +109,7 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
         }
       }
 
+      // Show confirmation dialog
       final confirm = await showDialog<bool>(
         context: context,
         builder: (BuildContext dialogContext) => AlertDialog(
@@ -131,7 +159,9 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
         return;
       }
 
-      await _apiService.updateOrderStatus(orderToDeliver.id.toString(), 'delivered');
+      // Update order status to "delivered" - this will trigger notification to restaurant
+      final result = await _apiService.updateOrderStatus(orderToDeliver.id.toString(), 'delivered');
+      print('✅ Update result: $result');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -148,14 +178,15 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
           _isProcessing = false;
         });
         
+        // Refresh the page to update order status
         context.go('/home');
       }
     } catch (e) {
       print('Error marking order as delivered: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to mark order as delivered'),
+          SnackBar(
+            content: Text('Failed to mark order as delivered: ${e.toString()}'),
             backgroundColor: AppTheme.error,
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
@@ -177,8 +208,8 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
     if (_activeOrder!.items.isNotEmpty) {
       List<String> names = _activeOrder!.items.map((item) => item.name).toList();
       itemNames = names.join(', ');
-      if (itemNames.length > 25) {
-        itemNames = itemNames.substring(0, 22) + '...';
+      if (itemNames.length > 22) {
+        itemNames = itemNames.substring(0, 19) + '...';
       }
     }
     
@@ -223,22 +254,32 @@ class _DeliveryStatusCardState extends State<DeliveryStatusCard> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Padding(
-                  padding: const EdgeInsets.only(left: 8), // Push left by 8px (approx 0.3cm)
-                  child: Text(
-                    _activeOrder != null ? _getOrderSummary() : 'No active orders',
-                    style: TextStyle(
-                      color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
-                      fontSize: 11,
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      _activeOrder != null ? _getOrderSummary() : 'No active orders',
+                      style: TextStyle(
+                        color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+                        fontSize: 11,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
-          if (_activeOrder != null)
+          if (_activeOrder != null && !_isLoading)
             GestureDetector(
               onTap: _isProcessing ? null : _markOrderAsDelivered,
               child: Container(

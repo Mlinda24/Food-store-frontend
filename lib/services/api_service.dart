@@ -1085,24 +1085,35 @@ class ApiService {
     }
   }
 
+  // FIXED: getMyOrders handles 404 properly
   Future<List<Order>> getMyOrders() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/orders/my_orders/'),
-      headers: await getHeaders(),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/orders/my_orders/'),
+        headers: await getHeaders(),
+      );
 
-    print('Get my orders response: ${response.statusCode}');
+      print('Get my orders response: ${response.statusCode}');
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      List<dynamic> ordersData = data is List ? data : (data['results'] ?? []);
-
-      return ordersData.map((json) => Order.fromJson(json)).toList();
-    } else if (response.statusCode == 401) {
-      final refreshed = await refreshToken();
-      if (refreshed) return getMyOrders();
-      return [];
-    } else {
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        List<dynamic> ordersData = data is List ? data : (data['results'] ?? []);
+        print('✅ Found ${ordersData.length} orders');
+        return ordersData.map((json) => Order.fromJson(json)).toList();
+      } else if (response.statusCode == 404) {
+        // No orders found - return empty list
+        print('⚠️ No orders found (404)');
+        return [];
+      } else if (response.statusCode == 401) {
+        final refreshed = await refreshToken();
+        if (refreshed) return getMyOrders();
+        return [];
+      } else {
+        print('⚠️ Unexpected response: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ Error fetching orders: $e');
       return [];
     }
   }
