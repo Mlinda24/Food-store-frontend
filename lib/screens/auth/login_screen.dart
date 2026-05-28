@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 
@@ -81,8 +82,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Use theme-aware colors
+    final backgroundColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final primaryTextColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final mutedTextColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+    final cardBackgroundColor = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
+    final secondaryBackgroundColor = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
+    
     return Scaffold(
-      backgroundColor: AppTheme.mainBackground,
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -116,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 'Welcome Back!',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryText,
+                      color: primaryTextColor,
                     ),
                 textAlign: TextAlign.center,
               ),
@@ -124,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(
                 'Sign in to continue to Foodie Express',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.secondaryText,
+                      color: secondaryTextColor,
                     ),
                 textAlign: TextAlign.center,
               ),
@@ -133,13 +144,13 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _usernameController,
                 keyboardType: TextInputType.text,
-                style: const TextStyle(color: AppTheme.primaryText),
+                style: TextStyle(color: primaryTextColor),
                 decoration: InputDecoration(
                   labelText: 'Username',
-                  labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                  prefixIcon: const Icon(Icons.person_outline, color: AppTheme.mutedText),
+                  labelStyle: TextStyle(color: secondaryTextColor),
+                  prefixIcon: Icon(Icons.person_outline, color: mutedTextColor),
                   filled: true,
-                  fillColor: AppTheme.secondaryBackground,
+                  fillColor: secondaryBackgroundColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -159,15 +170,15 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
-                style: const TextStyle(color: AppTheme.primaryText),
+                style: TextStyle(color: primaryTextColor),
                 decoration: InputDecoration(
                   labelText: 'Password',
-                  labelStyle: const TextStyle(color: AppTheme.secondaryText),
-                  prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.mutedText),
+                  labelStyle: TextStyle(color: secondaryTextColor),
+                  prefixIcon: Icon(Icons.lock_outline, color: mutedTextColor),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: AppTheme.mutedText,
+                      color: mutedTextColor,
                     ),
                     onPressed: () {
                       setState(() {
@@ -176,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   filled: true,
-                  fillColor: AppTheme.secondaryBackground,
+                  fillColor: secondaryBackgroundColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -253,7 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: AppTheme.cardGlowGradient,
+                  gradient: AppTheme.getCardGlowGradient(context),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: AppTheme.deepCrimson.withOpacity(0.3),
@@ -261,20 +272,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       'Demo Credentials:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryText,
+                        color: primaryTextColor,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildDemoCredential('Customer', 'customer'),
-                    _buildDemoCredential('Admin', 'admin'),
-                    _buildDemoCredential('Restaurant', 'restaurant'),
-                    _buildDemoCredential('Driver', 'driver'),
+                    _buildDemoCredential('Customer', 'customer', primaryTextColor, secondaryTextColor),
+                    _buildDemoCredential('Admin', 'admin', primaryTextColor, secondaryTextColor),
+                    _buildDemoCredential('Restaurant', 'restaurant', primaryTextColor, secondaryTextColor),
+                    _buildDemoCredential('Driver', 'driver', primaryTextColor, secondaryTextColor),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'Password for all: password123',
                       style: TextStyle(
                         color: AppTheme.yellow,
@@ -293,7 +304,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     "Don't have an account? ",
                     style: TextStyle(
-                      color: AppTheme.secondaryText,
+                      color: secondaryTextColor,
                     ),
                   ),
                   TextButton(
@@ -317,7 +328,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildDemoCredential(String role, String username) {
+  Widget _buildDemoCredential(String role, String username, Color primaryText, Color secondaryText) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -325,14 +336,14 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Text(
             '$role: ',
-            style: const TextStyle(
-              color: AppTheme.secondaryText,
+            style: TextStyle(
+              color: secondaryText,
               fontSize: 12,
             ),
           ),
           Text(
             username,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppTheme.primaryRed,
               fontSize: 12,
               fontWeight: FontWeight.bold,

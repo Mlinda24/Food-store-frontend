@@ -11,6 +11,7 @@ import '../../providers/driver_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/driver/settings_tile.dart';
 import '../../widgets/custom/otp_verification_dialog.dart';
+import '../../services/driver_service.dart';
 
 // Model for a Withdrawal Account
 class WithdrawalAccount {
@@ -61,39 +62,61 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   String _driverName = '';
   String _driverEmail = '';
   String _driverPhone = '';
+  bool _isSaving = false;
   
   // Verification Status
   bool _isEmailVerified = false;
   bool _isPhoneVerified = false;
   
   // Vehicle Information
-  String _selectedVehicleType = 'Car';
-  final List<String> _vehicleTypes = ['Car', 'Motorcycle', 'Scooter', 'Bicycle'];
+  String _selectedVehicleType = 'car';
+  final List<Map<String, String>> _vehicleTypes = [
+    {'value': 'car', 'label': 'Car'},
+    {'value': 'motorcycle', 'label': 'Motorcycle'},
+    {'value': 'scooter', 'label': 'Scooter'},
+    {'value': 'bicycle', 'label': 'Bicycle'},
+  ];
   final TextEditingController _vehicleModelController = TextEditingController();
   final TextEditingController _vehiclePlateController = TextEditingController();
+  final TextEditingController _vehicleColorController = TextEditingController();
+  final TextEditingController _licenseNumberController = TextEditingController();
   bool _hasVehicleInfo = false;
   bool _showVehicleForm = false;
+  bool _isSavingVehicle = false;
   
   // Password Change
   bool _showPasswordChange = false;
   final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  bool _isChangingPassword = false;
 
   // SharedPreferences keys
   static const String _keyWithdrawalAccounts = 'withdrawal_accounts';
   static const String _keyVehicleModel = 'vehicle_model';
   static const String _keyVehiclePlate = 'vehicle_plate';
+  static const String _keyVehicleColor = 'vehicle_color';
   static const String _keyVehicleType = 'vehicle_type';
+  static const String _keyLicenseNumber = 'license_number';
   static const String _keyHasVehicle = 'has_vehicle';
   static const String _keyProfileImage = 'profile_image_path';
-  static const String _keyDriverName = 'driver_name';
-  static const String _keyDriverPhone = 'driver_phone';
 
   @override
   void initState() {
     super.initState();
     _loadAllData();
+  }
+
+  @override
+  void dispose() {
+    _vehicleModelController.dispose();
+    _vehiclePlateController.dispose();
+    _vehicleColorController.dispose();
+    _licenseNumberController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAllData() async {
@@ -102,7 +125,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     await _loadProfileData();
   }
 
-  // ==================== LOAD DATA FROM STORAGE ====================
+  // ==================== LOAD DATA FROM STORAGE & BACKEND ====================
   
   Future<void> _loadWithdrawalAccounts() async {
     final prefs = await SharedPreferences.getInstance();
@@ -128,34 +151,59 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     _hasVehicleInfo = prefs.getBool(_keyHasVehicle) ?? false;
     
     if (_hasVehicleInfo) {
-      _selectedVehicleType = prefs.getString(_keyVehicleType) ?? 'Car';
+      _selectedVehicleType = prefs.getString(_keyVehicleType) ?? 'car';
       _vehicleModelController.text = prefs.getString(_keyVehicleModel) ?? '';
       _vehiclePlateController.text = prefs.getString(_keyVehiclePlate) ?? '';
+      _vehicleColorController.text = prefs.getString(_keyVehicleColor) ?? '';
+      _licenseNumberController.text = prefs.getString(_keyLicenseNumber) ?? '';
     } else {
-      _selectedVehicleType = 'Car';
+      _selectedVehicleType = 'car';
       _vehicleModelController.text = '';
       _vehiclePlateController.text = '';
+      _vehicleColorController.text = '';
+      _licenseNumberController.text = '';
     }
     setState(() {});
   }
 
   Future<void> _loadProfileData() async {
+    setState(() => _isSaving = true);
+    
+    try {
+      // Try to load from backend first
+      final profile = await DriverService.getProfile();
+      if (profile.isNotEmpty) {
+        _driverName = profile['user']?['name'] ?? profile['user']?['username'] ?? '';
+        _driverEmail = profile['user']?['email'] ?? '';
+        _driverPhone = profile['phone_number'] ?? '';
+        _isEmailVerified = profile['is_verified'] ?? false;
+      } else {
+        // Fallback to SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        _driverName = prefs.getString('driver_name') ?? '';
+        _driverEmail = prefs.getString('driver_email') ?? '';
+        _driverPhone = prefs.getString('driver_phone') ?? '';
+      }
+    } catch (e) {
+      print('Error loading profile from backend: $e');
+      // Fallback to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      _driverName = prefs.getString('driver_name') ?? '';
+      _driverEmail = prefs.getString('driver_email') ?? '';
+      _driverPhone = prefs.getString('driver_phone') ?? '';
+    }
+    
+    // Load profile image
     final prefs = await SharedPreferences.getInstance();
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
-    _driverName = authProvider.currentUser?.name ?? prefs.getString(_keyDriverName) ?? '';
-    _driverEmail = authProvider.currentUser?.email ?? '';
-    _driverPhone = prefs.getString(_keyDriverPhone) ?? '';
-    
     final imagePath = prefs.getString(_keyProfileImage);
     if (imagePath != null && imagePath.isNotEmpty) {
       _profileImage = File(imagePath);
     }
     
-    setState(() {});
+    setState(() => _isSaving = false);
   }
 
-  // ==================== SAVE DATA TO STORAGE ====================
+  // ==================== SAVE DATA TO STORAGE & BACKEND ====================
   
   Future<void> _saveWithdrawalAccounts() async {
     final prefs = await SharedPreferences.getInstance();
@@ -167,40 +215,81 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     if (_vehicleModelController.text.isEmpty || _vehiclePlateController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all vehicle fields'),
+          content: Text('Please fill in vehicle model and registration'),
           backgroundColor: AppTheme.error,
         ),
       );
       return;
     }
     
+    setState(() => _isSavingVehicle = true);
+    
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyHasVehicle, true);
     await prefs.setString(_keyVehicleType, _selectedVehicleType);
     await prefs.setString(_keyVehicleModel, _vehicleModelController.text);
     await prefs.setString(_keyVehiclePlate, _vehiclePlateController.text);
+    await prefs.setString(_keyVehicleColor, _vehicleColorController.text);
+    await prefs.setString(_keyLicenseNumber, _licenseNumberController.text);
+    
+    // Save to backend
+    try {
+      await DriverService.updateProfile({
+        'vehicle_type': _selectedVehicleType,
+        'vehicle_registration': _vehiclePlateController.text,
+        'vehicle_model': _vehicleModelController.text,
+        'vehicle_color': _vehicleColorController.text,
+        'license_number': _licenseNumberController.text,
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vehicle information saved to server!'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Saved locally only: $e'),
+          backgroundColor: AppTheme.warning,
+        ),
+      );
+    }
     
     setState(() {
       _hasVehicleInfo = true;
       _showVehicleForm = false;
+      _isSavingVehicle = false;
     });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Vehicle information saved successfully!'),
-        backgroundColor: AppTheme.success,
-      ),
-    );
   }
 
   Future<void> _saveProfileData() async {
+    setState(() => _isSaving = true);
+    
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyDriverName, _driverName);
-    await prefs.setString(_keyDriverPhone, _driverPhone);
+    await prefs.setString('driver_name', _driverName);
+    await prefs.setString('driver_email', _driverEmail);
+    await prefs.setString('driver_phone', _driverPhone);
     
     if (_profileImage != null) {
       await prefs.setString(_keyProfileImage, _profileImage!.path);
     }
+    
+    // Save to backend
+    try {
+      await DriverService.updateProfile({
+        'phone_number': _driverPhone,
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile saved to server!'), backgroundColor: AppTheme.success),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Saved locally only: $e'), backgroundColor: AppTheme.warning),
+      );
+    }
+    
+    setState(() => _isSaving = false);
   }
 
   void _deleteVehicleInfo() {
@@ -218,12 +307,29 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               await prefs.remove(_keyVehicleType);
               await prefs.remove(_keyVehicleModel);
               await prefs.remove(_keyVehiclePlate);
+              await prefs.remove(_keyVehicleColor);
+              await prefs.remove(_keyLicenseNumber);
+              
+              // Also try to clear from backend
+              try {
+                await DriverService.updateProfile({
+                  'vehicle_type': '',
+                  'vehicle_registration': '',
+                  'vehicle_model': '',
+                  'vehicle_color': '',
+                  'license_number': '',
+                });
+              } catch (e) {
+                print('Error clearing vehicle from backend: $e');
+              }
               
               setState(() {
                 _hasVehicleInfo = false;
                 _vehicleModelController.clear();
                 _vehiclePlateController.clear();
-                _selectedVehicleType = 'Car';
+                _vehicleColorController.clear();
+                _licenseNumberController.clear();
+                _selectedVehicleType = 'car';
                 _showVehicleForm = false;
               });
               
@@ -247,13 +353,13 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   IconData _getVehicleIcon(String vehicleType) {
     switch (vehicleType) {
-      case 'Car':
+      case 'car':
         return Icons.directions_car;
-      case 'Motorcycle':
+      case 'motorcycle':
         return Icons.motorcycle;
-      case 'Scooter':
+      case 'scooter':
         return Icons.electric_scooter;
-      case 'Bicycle':
+      case 'bicycle':
         return Icons.pedal_bike;
       default:
         return Icons.directions_car;
@@ -470,7 +576,6 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   void _showEditProfileDialog() {
     final nameController = TextEditingController(text: _driverName);
-    final emailController = TextEditingController(text: _driverEmail);
     final phoneController = TextEditingController(text: _driverPhone);
     
     showDialog(
@@ -493,17 +598,6 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: emailController,
-                style: const TextStyle(color: AppTheme.primaryText),
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  hintText: 'Enter your email',
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
                 controller: phoneController,
                 style: const TextStyle(color: AppTheme.primaryText),
                 keyboardType: TextInputType.phone,
@@ -522,13 +616,12 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               setState(() {
                 _driverName = nameController.text;
-                _driverEmail = emailController.text;
                 _driverPhone = phoneController.text;
               });
-              _saveProfileData();
+              await _saveProfileData();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Profile updated!'), backgroundColor: AppTheme.success),
@@ -541,7 +634,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     );
   }
 
-  void _changePassword() {
+  Future<void> _changePassword() async {
     if (_currentPasswordController.text.isEmpty ||
         _newPasswordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
@@ -565,6 +658,11 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       return;
     }
     
+    setState(() => _isChangingPassword = true);
+    
+    // TODO: Implement actual password change API
+    await Future.delayed(const Duration(seconds: 1));
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Password changed successfully!'), backgroundColor: AppTheme.success),
     );
@@ -574,9 +672,12 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     _confirmPasswordController.clear();
     setState(() {
       _showPasswordChange = false;
+      _isChangingPassword = false;
     });
   }
 
+  // ==================== WITHDRAWAL ACCOUNT METHODS ====================
+  
   void _addWithdrawalAccount() {
     _showAccountDialog();
   }
@@ -842,30 +943,32 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildProfileCard(todayEarnings, totalDeliveries, rating, isDark, textColor, cardBgColor),
-            const SizedBox(height: 16),
-            _buildVerificationCard(isDark, cardBgColor),
-            const SizedBox(height: 16),
-            _buildVehicleCard(isDark, cardBgColor),
-            const SizedBox(height: 16),
-            _buildWithdrawalCard(isDark, cardBgColor),
-            const SizedBox(height: 16),
-            _buildSecurityCard(isDark, cardBgColor),
-            const SizedBox(height: 16),
-            _buildPreferencesCard(themeProvider, isDark, cardBgColor),
-            const SizedBox(height: 16),
-            _buildSupportCard(isDark, cardBgColor),
-            const SizedBox(height: 16),
-            _buildAboutCard(isDark, cardBgColor),
-            const SizedBox(height: 24),
-            _buildLogoutButton(),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
+      body: _isSaving
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildProfileCard(todayEarnings, totalDeliveries, rating, isDark, textColor, cardBgColor),
+                  const SizedBox(height: 16),
+                  _buildVerificationCard(isDark, cardBgColor),
+                  const SizedBox(height: 16),
+                  _buildVehicleCard(isDark, cardBgColor),
+                  const SizedBox(height: 16),
+                  _buildWithdrawalCard(isDark, cardBgColor),
+                  const SizedBox(height: 16),
+                  _buildSecurityCard(isDark, cardBgColor),
+                  const SizedBox(height: 16),
+                  _buildPreferencesCard(themeProvider, isDark, cardBgColor),
+                  const SizedBox(height: 16),
+                  _buildSupportCard(isDark, cardBgColor),
+                  const SizedBox(height: 16),
+                  _buildAboutCard(isDark, cardBgColor),
+                  const SizedBox(height: 24),
+                  _buildLogoutButton(),
+                  const SizedBox(height: 30),
+                ],
+              ),
+            ),
     );
   }
 
@@ -969,7 +1072,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                 _buildDivider(),
                 _buildStatItem(Icons.delivery_dining, '$totalDeliveries', 'Deliveries', isDark),
                 _buildDivider(),
-                _buildStatItem(Icons.star, '$rating ★', 'Rating', isDark),
+                _buildStatItem(Icons.star, '${rating.toStringAsFixed(1)} ★', 'Rating', isDark),
               ],
             ),
           ),
@@ -1132,7 +1235,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       prefixIcon: Icon(Icons.directions_car),
                       border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                     ),
-                    items: _vehicleTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
+                    items: _vehicleTypes.map((type) => DropdownMenuItem(value: type['value'], child: Text(type['label']!))).toList(),
                     onChanged: (value) => setState(() => _selectedVehicleType = value!),
                   ),
                   const SizedBox(height: 16),
@@ -1158,11 +1261,33 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  TextField(
+                    controller: _vehicleColorController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(
+                      labelText: 'Vehicle Color',
+                      hintText: 'e.g., Red, Blue, Black',
+                      prefixIcon: Icon(Icons.color_lens),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _licenseNumberController,
+                    style: TextStyle(color: textColor),
+                    decoration: const InputDecoration(
+                      labelText: 'Driver\'s License Number',
+                      hintText: 'Enter your license number',
+                      prefixIcon: Icon(Icons.credit_card),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(child: OutlinedButton(onPressed: () => setState(() => _showVehicleForm = false), child: const Text('Cancel'))),
                       const SizedBox(width: 12),
-                      Expanded(child: ElevatedButton(onPressed: _saveVehicleInfo, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed), child: const Text('Save Vehicle'))),
+                      Expanded(child: _isSavingVehicle ? const Center(child: CircularProgressIndicator()) : ElevatedButton(onPressed: _saveVehicleInfo, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed), child: const Text('Save Vehicle'))),
                     ],
                   ),
                 ],
@@ -1367,11 +1492,13 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _changePassword,
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
-                      child: const Text('Update Password'),
-                    ),
+                    child: _isChangingPassword
+                        ? const Center(child: CircularProgressIndicator())
+                        : ElevatedButton(
+                            onPressed: _changePassword,
+                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                            child: const Text('Update Password'),
+                          ),
                   ),
                 ],
               ),

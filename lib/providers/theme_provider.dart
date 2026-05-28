@@ -15,14 +15,24 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   ThemeProvider() {
-    _loadThemePreference();
+    loadThemePreference();
   }
 
-  Future<void> _loadThemePreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    final themeModeIndex = prefs.getInt('theme_mode') ?? 0;
-    _themeMode = ThemeMode.values[themeModeIndex];
-    notifyListeners();
+  Future<void> loadThemePreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final themeModeIndex = prefs.getInt('theme_mode');
+      
+      if (themeModeIndex != null && themeModeIndex >= 0 && themeModeIndex < ThemeMode.values.length) {
+        _themeMode = ThemeMode.values[themeModeIndex];
+      } else {
+        _themeMode = ThemeMode.light;
+      }
+      notifyListeners();
+    } catch (e) {
+      _themeMode = ThemeMode.light;
+      notifyListeners();
+    }
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -40,5 +50,9 @@ class ThemeProvider extends ChangeNotifier {
     } else {
       setThemeMode(ThemeMode.light);
     }
+  }
+  
+  void refreshTheme() {
+    notifyListeners();
   }
 }

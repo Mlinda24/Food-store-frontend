@@ -8,7 +8,9 @@ import 'providers/theme_provider.dart';
 import 'routes/router.dart';
 import 'config/theme.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
   runApp(
     MultiProvider(
       providers: [

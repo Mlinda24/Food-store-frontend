@@ -15,14 +15,13 @@ class DriverService {
       };
 
   // ============================================================
-  // STATUS - FIXED to use update_status endpoint
+  // STATUS - Using update_status endpoint (PATCH)
   // ============================================================
 
   static Future<Map<String, dynamic>> goOnline() async {
     final token = await _getToken();
     if (token == null) throw Exception('Not authenticated');
     
-    // Use the update_status endpoint with status 'online'
     final response = await http.patch(
       Uri.parse('$_base/drivers/update_status/'),
       headers: _headers(token),
@@ -42,7 +41,6 @@ class DriverService {
     final token = await _getToken();
     if (token == null) throw Exception('Not authenticated');
     
-    // Use the update_status endpoint with status 'offline'
     final response = await http.patch(
       Uri.parse('$_base/drivers/update_status/'),
       headers: _headers(token),
@@ -56,6 +54,30 @@ class DriverService {
       return json.decode(response.body);
     }
     throw Exception('Failed to go offline: ${response.body}');
+  }
+
+  static Future<Map<String, dynamic>> getDriverStatus() async {
+    final token = await _getToken();
+    if (token == null) throw Exception('Not authenticated');
+    
+    // Try to get status from profile or driver endpoint
+    final response = await http.get(
+      Uri.parse('$_base/drivers/profile/'),
+      headers: _headers(token),
+    );
+    
+    print('📊 Get status - Status: ${response.statusCode}');
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return {
+        'is_available': data['is_available'] ?? false,
+        'status': data['status'] ?? 'offline',
+        'role': 'driver',
+        'is_verified': data['is_verified'] ?? true
+      };
+    }
+    return {'is_available': false, 'status': 'offline'};
   }
 
   // ============================================================
@@ -104,7 +126,7 @@ class DriverService {
           'today_earnings': double.tryParse(data['today_earnings']?.toString() ?? '0') ?? 0,
           'total_earnings': double.tryParse(data['total_earnings']?.toString() ?? '0') ?? 0,
           'total_deliveries': int.tryParse(data['total_deliveries']?.toString() ?? '0') ?? 0,
-          'rating': double.tryParse(data['average_rating']?.toString() ?? '5.0') ?? 5.0,
+          'average_rating': double.tryParse(data['average_rating']?.toString() ?? '5.0') ?? 5.0,
           'today_deliveries': int.tryParse(data['today_deliveries']?.toString() ?? '0') ?? 0,
         };
       }
@@ -137,16 +159,16 @@ class DriverService {
   // ============================================================
   // RESTAURANT ADDRESS LOOKUP
   // ============================================================
-  static final Map<int, String> _restaurantAddressCache = {};
+  static final Map<String, String> _restaurantAddressCache = {};
 
-  static Future<String> getRestaurantAddress(int restaurantId) async {
+  static Future<String> getRestaurantAddress(String restaurantId) async {
     if (_restaurantAddressCache.containsKey(restaurantId)) {
       return _restaurantAddressCache[restaurantId]!;
     }
     try {
       final token = await _getToken();
       final response = await http.get(
-        Uri.parse('$_base/customer/restaurants/$restaurantId/'),
+        Uri.parse('$_base/restaurants/$restaurantId/'),
         headers: _headers(token),
       );
       if (response.statusCode == 200) {
@@ -209,6 +231,9 @@ class DriverService {
         final data = json.decode(response.body);
         if (data == null) return null;
         if (data is Map) {
+          if (data.containsKey('has_active_delivery') && data['has_active_delivery'] == false) {
+            return null;
+          }
           if (data.containsKey('delivery') && data['delivery'] is Map) {
             return Map<String, dynamic>.from(data['delivery']);
           }
@@ -222,7 +247,7 @@ class DriverService {
         return null;
       }
       if (response.statusCode == 404) {
-        return null; // No active delivery
+        return null;
       }
       return null;
     } catch (e) {
