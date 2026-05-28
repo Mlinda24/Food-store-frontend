@@ -126,11 +126,13 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       
-      // ✅ Navigate to login screen after logout using go_router
+      // ✅ Navigate to login screen after logout
       if (context != null && context.mounted) {
+        // Use a microtask to ensure the widget tree is ready
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
-            GoRouter.of(context).go('/login');
+            // Navigate to login and clear all history
+            context.go('/login');
           }
         });
       }
@@ -143,7 +145,7 @@ class AuthProvider extends ChangeNotifier {
       if (context != null && context.mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
-            GoRouter.of(context).go('/login');
+            context.go('/login');
           }
         });
       }

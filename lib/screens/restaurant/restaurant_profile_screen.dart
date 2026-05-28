@@ -17,7 +17,6 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
   bool _isEditing = false;
   final _formKey = GlobalKey<FormState>();
   
-  // Controllers for backend fields
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
@@ -26,7 +25,6 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
   final _minOrderController = TextEditingController();
   final _deliveryTimeController = TextEditingController();
   
-  // Frontend only (not saved to backend)
   bool _emailNotifications = true;
   bool _pushNotifications = true;
   String _selectedLanguage = 'English';
@@ -82,10 +80,10 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
     }
   }
   
-  void _showLogoutDialog() {
+  Future<void> _showLogoutDialog() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    showDialog(
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.getCardColor(context),
@@ -97,15 +95,11 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
         content: const Text('Are you sure you want to logout?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              authProvider.logout(context: context);
-              context.go('/login');
-            },
+            onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.error,
             ),
@@ -114,6 +108,19 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
         ],
       ),
     );
+    
+    if (confirm == true) {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Logging out...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      
+      // Perform logout
+      await authProvider.logout(context: context);
+    }
   }
   
   @override
@@ -144,7 +151,6 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Restaurant Logo/Avatar
               Center(
                 child: Column(
                   children: [
@@ -176,7 +182,6 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
               ),
               const SizedBox(height: 24),
               
-              // ========== RESTAURANT INFORMATION ==========
               _buildSectionHeader('Restaurant Information', Icons.restaurant),
               const SizedBox(height: 12),
               
@@ -216,7 +221,6 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
               
               const SizedBox(height: 24),
               
-              // ========== DELIVERY SETTINGS ==========
               _buildSectionHeader('Delivery Settings', Icons.delivery_dining),
               const SizedBox(height: 12),
               
@@ -248,7 +252,6 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
               
               const SizedBox(height: 24),
               
-              // ========== NOTIFICATION PREFERENCES (Frontend Only) ==========
               _buildSectionHeader('Notifications', Icons.notifications),
               const SizedBox(height: 12),
               
@@ -269,7 +272,6 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
               
               const SizedBox(height: 24),
               
-              // ========== APPEARANCE (Frontend Only) ==========
               _buildSectionHeader('Appearance', Icons.brightness_6),
               const SizedBox(height: 12),
               
@@ -287,7 +289,6 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
               
               const SizedBox(height: 24),
               
-              // ========== ACCOUNT ==========
               _buildSectionHeader('Account', Icons.account_circle),
               const SizedBox(height: 12),
               
@@ -301,7 +302,6 @@ class _RestaurantProfileScreenState extends State<RestaurantProfileScreen> {
               
               const SizedBox(height: 24),
               
-              // ========== SUPPORT ==========
               _buildSectionHeader('Support', Icons.help_outline),
               const SizedBox(height: 12),
               
