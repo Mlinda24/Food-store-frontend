@@ -36,7 +36,9 @@ class User {
       phone: json['phone'] ?? '',
       role: json['role'] == 'restaurant'
           ? UserRole.restaurant
-          : UserRole.customer,
+          : json['role'] == 'driver'
+              ? UserRole.driver
+              : UserRole.customer,
       avatar: json['avatar'],
       isActive: json['is_active'] ?? true,
       createdAt: DateTime.tryParse(json['date_joined'] ?? '') ?? DateTime.now(),
@@ -103,8 +105,8 @@ class Restaurant {
       if (imageStr.isEmpty) return '';
       if (imageStr.startsWith('http')) return imageStr;
       if (imageStr.startsWith('/media/'))
-        return 'http://127.0.0.1:8000$imageStr';
-      return 'http://127.0.0.1:8000/media/$imageStr';
+        return 'https://food-store-backend-4eo6.onrender.com$imageStr';
+      return 'https://food-store-backend-4eo6.onrender.com/media/$imageStr';
     }
 
     return Restaurant(
@@ -176,8 +178,8 @@ class MenuItem {
       if (imageStr.isEmpty) return '';
       if (imageStr.startsWith('http')) return imageStr;
       if (imageStr.startsWith('/media/'))
-        return 'http://127.0.0.1:8000$imageStr';
-      return 'http://127.0.0.1:8000/media/$imageStr';
+        return 'https://food-store-backend-4eo6.onrender.com$imageStr';
+      return 'https://food-store-backend-4eo6.onrender.com/media/$imageStr';
     }
 
     String categoryValue = 'General';
@@ -269,19 +271,19 @@ class CartItem {
       if (imageStr.isEmpty) return '';
       if (imageStr.startsWith('http')) return imageStr;
       if (imageStr.startsWith('/media/'))
-        return 'http://127.0.0.1:8000$imageStr';
-      return 'http://127.0.0.1:8000/media/$imageStr';
+        return 'https://food-store-backend-4eo6.onrender.com$imageStr';
+      return 'https://food-store-backend-4eo6.onrender.com/media/$imageStr';
     }
 
     String? imageUrl;
     String? imagePath;
-    
+
     // Try to get image from menu_item_image
     if (json['menu_item_image'] != null) {
       imagePath = json['menu_item_image'].toString();
       imageUrl = getImageUrl(imagePath);
     }
-    
+
     // Also check if menu_item_data has image
     if (json['menu_item_data'] != null && json['menu_item_data'] is Map) {
       final menuItemData = json['menu_item_data'] as Map;
@@ -311,8 +313,11 @@ enum OrderStatus {
   ready,
   pickedUp,
   onTheWay,
+  outForDelivery,
   delivered,
-  cancelled
+  cancelled,
+  received,
+  rejected
 }
 
 extension OrderStatusExtension on OrderStatus {
@@ -330,10 +335,43 @@ extension OrderStatusExtension on OrderStatus {
         return 'picked_up';
       case OrderStatus.onTheWay:
         return 'on_the_way';
+      case OrderStatus.outForDelivery:
+        return 'out_for_delivery';
       case OrderStatus.delivered:
         return 'delivered';
       case OrderStatus.cancelled:
         return 'cancelled';
+      case OrderStatus.received:
+        return 'received';
+      case OrderStatus.rejected:
+        return 'rejected';
+    }
+  }
+
+  String get displayText {
+    switch (this) {
+      case OrderStatus.pending:
+        return 'Pending';
+      case OrderStatus.confirmed:
+        return 'Confirmed';
+      case OrderStatus.preparing:
+        return 'Preparing';
+      case OrderStatus.ready:
+        return 'Ready';
+      case OrderStatus.pickedUp:
+        return 'Picked Up';
+      case OrderStatus.onTheWay:
+        return 'On The Way';
+      case OrderStatus.outForDelivery:
+        return 'Out for Delivery';
+      case OrderStatus.delivered:
+        return 'Delivered';
+      case OrderStatus.cancelled:
+        return 'Cancelled';
+      case OrderStatus.received:
+        return 'Received';
+      case OrderStatus.rejected:
+        return 'Rejected';
     }
   }
 
@@ -351,10 +389,17 @@ extension OrderStatusExtension on OrderStatus {
         return OrderStatus.pickedUp;
       case 'on_the_way':
         return OrderStatus.onTheWay;
+      case 'out_for_delivery':
+      case 'outfordelivery':
+        return OrderStatus.outForDelivery;
       case 'delivered':
         return OrderStatus.delivered;
       case 'cancelled':
         return OrderStatus.cancelled;
+      case 'received':
+        return OrderStatus.received;
+      case 'rejected':
+        return OrderStatus.rejected;
       default:
         return OrderStatus.pending;
     }
@@ -420,6 +465,7 @@ class Order {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final String? restaurantName;
+  final String? phoneNumber;
 
   Order({
     required this.id,
@@ -437,6 +483,7 @@ class Order {
     required this.createdAt,
     this.updatedAt,
     this.restaurantName,
+    this.phoneNumber,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -473,8 +520,20 @@ class Order {
           ? DateTime.tryParse(toString(json['updated_at']))
           : null,
       restaurantName: toString(json['restaurant_name']),
+      phoneNumber: toString(json['phone_number']),
     );
   }
+
+  // Helper getters
+  bool get isPending => status == OrderStatus.pending;
+  bool get isConfirmed => status == OrderStatus.confirmed;
+  bool get isPreparing => status == OrderStatus.preparing;
+  bool get isReady => status == OrderStatus.ready;
+  bool get isOutForDelivery => status == OrderStatus.outForDelivery;
+  bool get isDelivered => status == OrderStatus.delivered;
+  bool get isCancelled => status == OrderStatus.cancelled;
+  bool get isRejected => status == OrderStatus.rejected;
+  bool get isReceived => status == OrderStatus.received;
 }
 
 // Rest of the models remain the same...
