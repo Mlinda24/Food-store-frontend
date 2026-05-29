@@ -199,11 +199,13 @@ class DriverProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      String? deliveryId;
       if (!order.id.startsWith('MOCK')) {
-        await DriverService.acceptOrder(order.id);
+        final response = await DriverService.acceptOrder(order.id);
+        deliveryId = response['delivery_id']?.toString();
       }
       _availableOrders.removeWhere((o) => o.id == order.id);
-      final accepted = order.copyWith(status: 'accepted');
+      final accepted = order.copyWith(status: 'accepted', deliveryId: deliveryId);
       _activeDelivery = accepted;
       _acceptedHistory.insert(0, accepted);
     } catch (e) {
@@ -237,10 +239,11 @@ class DriverProvider extends ChangeNotifier {
 
     try {
       if (!orderId.startsWith('MOCK')) {
-        await DriverService.updateDeliveryStatus(orderId, newStatus);
+        final deliveryId = _activeDelivery!.deliveryId ?? orderId;
+        await DriverService.updateDeliveryStatus(deliveryId, newStatus);
       }
       _activeDelivery = _activeDelivery!.copyWith(status: newStatus);
-      
+
       final idx = _acceptedHistory.indexWhere((o) => o.id == orderId);
       if (idx != -1) _acceptedHistory[idx] = _activeDelivery!;
 
@@ -310,6 +313,7 @@ class DriverProvider extends ChangeNotifier {
       }
       return DeliveryRequest(
         id: (raw['id'] ?? raw['order_id'] ?? raw['delivery_id']).toString(),
+        deliveryId: raw['delivery_id']?.toString(),
         restaurantName: raw['restaurant_name']?.toString() ?? 'Unknown Restaurant',
         restaurantAddress: restaurantAddress,
         customerName: raw['customer_name']?.toString() ?? 'Unknown Customer',

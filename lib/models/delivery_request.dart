@@ -1,5 +1,6 @@
 class DeliveryRequest {
   final String id;
+  final String? deliveryId;
   final String restaurantName;
   final String restaurantAddress;
   final String customerName;
@@ -14,6 +15,7 @@ class DeliveryRequest {
 
   DeliveryRequest({
     required this.id,
+    this.deliveryId,
     required this.restaurantName,
     required this.restaurantAddress,
     required this.customerName,
@@ -29,6 +31,7 @@ class DeliveryRequest {
 
   DeliveryRequest copyWith({
     String? id,
+    String? deliveryId,
     String? restaurantName,
     String? restaurantAddress,
     String? customerName,
@@ -43,6 +46,7 @@ class DeliveryRequest {
   }) {
     return DeliveryRequest(
       id: id ?? this.id,
+      deliveryId: deliveryId ?? this.deliveryId,
       restaurantName: restaurantName ?? this.restaurantName,
       restaurantAddress: restaurantAddress ?? this.restaurantAddress,
       customerName: customerName ?? this.customerName,

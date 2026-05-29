@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../providers/theme_provider.dart';
 
 class UpdateStatusDialog extends StatefulWidget {
   final String currentStatus;
@@ -17,7 +19,7 @@ class UpdateStatusDialog extends StatefulWidget {
 
 class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
   String _selectedStatus = '';
-  
+
   final List<Map<String, dynamic>> _statusOptions = [
     {
       'value': 'picked_up',
@@ -43,65 +45,49 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter available statuses based on current status
     final availableStatuses = _getAvailableStatuses();
-    
+    final theme = Provider.of<ThemeProvider>(context, listen: false);
+    final isDark = theme.isDarkMode;
+
+    final bgColor = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
+    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final subColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final optionBg = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
+    final mutedColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppTheme.cardBackground, AppTheme.secondaryBackground],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: bgColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
-            const Text(
+            Text(
               'Update Delivery Status',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryText,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
             ),
             const SizedBox(height: 8),
             Text(
               'Current: ${_getCurrentStatusLabel()}',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.secondaryText,
-              ),
+              style: TextStyle(fontSize: 14, color: subColor),
             ),
             const SizedBox(height: 20),
-            
-            // Status Options
-            ...availableStatuses.map((status) => _buildStatusOption(status)),
-            
+            ...availableStatuses.map((status) => _buildStatusOption(status, optionBg, textColor, mutedColor)),
             const SizedBox(height: 20),
-            
-            // Action Buttons
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
+                    onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('Cancel'),
+                    child: Text('Cancel', style: TextStyle(color: textColor)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -115,15 +101,10 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.success,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text(
-                      'Update',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    child: const Text('Update', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                   ),
                 ),
               ],
@@ -134,37 +115,25 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
     );
   }
 
-  Widget _buildStatusOption(Map<String, dynamic> status) {
+  Widget _buildStatusOption(Map<String, dynamic> status, Color optionBg, Color textColor, Color mutedColor) {
     final isSelected = _selectedStatus == status['value'];
-    
+
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedStatus = status['value'];
-        });
-      },
+      onTap: () => setState(() => _selectedStatus = status['value']),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? (status['color'] as Color).withOpacity(0.1)
-              : AppTheme.secondaryBackground,
+          color: isSelected ? (status['color'] as Color).withOpacity(0.1) : optionBg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected 
-                ? status['color'] as Color
-                : AppTheme.mutedText.withOpacity(0.3),
+            color: isSelected ? status['color'] as Color : mutedColor.withOpacity(0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
         child: Row(
           children: [
-            Icon(
-              status['icon'],
-              color: isSelected ? status['color'] : AppTheme.mutedText,
-              size: 24,
-            ),
+            Icon(status['icon'], color: isSelected ? status['color'] : mutedColor, size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -174,25 +143,17 @@ class _UpdateStatusDialogState extends State<UpdateStatusDialog> {
                     status['label'],
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? status['color'] : AppTheme.primaryText,
+                      color: isSelected ? status['color'] : textColor,
                     ),
                   ),
                   Text(
                     status['description'],
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.secondaryText,
-                    ),
+                    style: TextStyle(fontSize: 11, color: mutedColor),
                   ),
                 ],
               ),
             ),
-            if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: status['color'],
-                size: 20,
-              ),
+            if (isSelected) Icon(Icons.check_circle, color: status['color'], size: 20),
           ],
         ),
       ),
