@@ -7,10 +7,6 @@ import '../../models/delivery_request.dart';
 import '../../widgets/driver/status_chip.dart';
 import '../../widgets/driver/info_section.dart';
 
-/// Available Orders screen.
-/// Reads directly from DriverProvider._availableOrders – the same list
-/// the dashboard uses – so they are always in sync.
-/// Tapping a card opens a full detail bottom sheet with Accept / Decline.
 class AvailableOrdersScreen extends StatelessWidget {
   const AvailableOrdersScreen({super.key});
 
@@ -20,12 +16,9 @@ class AvailableOrdersScreen extends StatelessWidget {
     final theme = Provider.of<ThemeProvider>(context);
     final isDark = theme.isDarkMode;
 
-    final text =
-        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    final sub =
-        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    final card =
-        isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
+    final text = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final sub = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final card = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
 
     if (!provider.isOnline) {
       return _emptyState(
@@ -53,8 +46,7 @@ class AvailableOrdersScreen extends StatelessWidget {
         action: TextButton.icon(
           onPressed: () => provider.refreshAvailableOrders(),
           icon: const Icon(Icons.refresh, color: AppTheme.primaryRed),
-          label: const Text('Refresh',
-              style: TextStyle(color: AppTheme.primaryRed)),
+          label: const Text('Refresh', style: TextStyle(color: AppTheme.primaryRed)),
         ),
       );
     }
@@ -86,20 +78,15 @@ class AvailableOrdersScreen extends StatelessWidget {
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(icon, size: 64, color: AppTheme.mutedText),
         const SizedBox(height: 16),
-        Text(title,
-            style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold, color: text)),
+        Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
         const SizedBox(height: 8),
-        Text(message,
-            style: TextStyle(fontSize: 14, color: sub),
-            textAlign: TextAlign.center),
+        Text(message, style: TextStyle(fontSize: 14, color: sub), textAlign: TextAlign.center),
         if (action != null) ...[const SizedBox(height: 16), action],
       ]),
     );
   }
 }
 
-// ── Order card ────────────────────────────────────────────────────────────────
 class _OrderCard extends StatelessWidget {
   final DeliveryRequest order;
   final Color cardColor;
@@ -113,16 +100,12 @@ class _OrderCard extends StatelessWidget {
     required this.subColor,
   });
 
-  // ── Detail bottom sheet ───────────────────────────────────────────────────
   void _showDetailSheet(BuildContext context) {
     final theme = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = theme.isDarkMode;
-    final bg =
-        isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
-    final text =
-        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    final sub =
-        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final bg = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
+    final text = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final sub = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
 
     showModalBottomSheet(
       context: context,
@@ -135,62 +118,33 @@ class _OrderCard extends StatelessWidget {
         builder: (ctx, scrollController) => Container(
           decoration: BoxDecoration(
             color: bg,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(children: [
-            // drag handle
             Container(
               margin: const EdgeInsets.only(top: 12, bottom: 8),
               width: 40,
               height: 4,
-              decoration: BoxDecoration(
-                  color: sub.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(color: sub.withOpacity(0.3), borderRadius: BorderRadius.circular(2)),
             ),
-
             Expanded(
               child: ListView(
                 controller: scrollController,
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 children: [
-                  // ── Header ────────────────────────────────────────────────
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Order #${order.id}',
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: text)),
-                              const SizedBox(height: 2),
-                              Text(order.restaurantName,
-                                  style: TextStyle(
-                                      fontSize: 13, color: sub)),
-                            ]),
-                        // Earnings badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                              color: AppTheme.primaryRed,
-                              borderRadius: BorderRadius.circular(20)),
-                          child: Text(
-                            'MK${order.earnings.toInt()}',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15),
-                          ),
-                        ),
-                      ]),
-
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Order #${order.id}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: text)),
+                      const SizedBox(height: 2),
+                      Text(order.restaurantName, style: TextStyle(fontSize: 13, color: sub)),
+                    ]),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(color: AppTheme.primaryRed, borderRadius: BorderRadius.circular(20)),
+                      child: Text('MK${order.earnings.toInt()}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                    ),
+                  ]),
                   const SizedBox(height: 16),
-
-                  // Distance & time chips
                   Row(children: [
                     if (order.distance.isNotEmpty) ...[
                       _chip(Icons.route, order.distance, sub),
@@ -198,77 +152,50 @@ class _OrderCard extends StatelessWidget {
                     ],
                     _chip(Icons.timer, order.estimatedTime, sub),
                   ]),
-
                   const SizedBox(height: 20),
-
-                  // Restaurant
                   InfoSection(
                     icon: Icons.restaurant,
                     title: 'Pickup from',
                     subtitle: order.restaurantName,
-                    address: order.restaurantAddress.isNotEmpty
-                        ? order.restaurantAddress
-                        : 'Address not available',
+                    address: order.restaurantAddress.isNotEmpty ? order.restaurantAddress : 'Address not available',
                   ),
                   const SizedBox(height: 16),
-
-                  // Customer / delivery
                   InfoSection(
                     icon: Icons.home,
                     title: 'Deliver to',
                     subtitle: order.customerName,
-                    address: order.deliveryAddress.isNotEmpty
-                        ? order.deliveryAddress
-                        : 'Address not provided',
+                    address: order.deliveryAddress.isNotEmpty ? order.deliveryAddress : 'Address not provided',
                   ),
                   const SizedBox(height: 16),
-
-                  // Items row
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                        color: AppTheme.secondaryBackground,
-                        borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: AppTheme.secondaryBackground, borderRadius: BorderRadius.circular(12)),
                     child: Row(children: [
-                      const Icon(Icons.fastfood,
-                          size: 20, color: AppTheme.mutedText),
+                      const Icon(Icons.fastfood, size: 20, color: AppTheme.mutedText),
                       const SizedBox(width: 12),
-                      Expanded(
-                          child: Text(order.items,
-                              style: const TextStyle(
-                                  color: AppTheme.secondaryText))),
+                      Expanded(child: Text(order.items, style: const TextStyle(color: AppTheme.secondaryText))),
                     ]),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // ── Accept / Decline ──────────────────────────────────────
                   Row(children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
                           Navigator.pop(ctx);
-                          final provider = Provider.of<DriverProvider>(
-                              context,
-                              listen: false);
+                          final provider = Provider.of<DriverProvider>(context, listen: false);
                           provider.declineOrder(order);
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(const SnackBar(
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                             content: Text('Order declined'),
                             backgroundColor: AppTheme.error,
                             duration: Duration(seconds: 2),
                           ));
                         },
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                              color: AppTheme.error.withOpacity(0.5)),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30)),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('Decline',
-                            style: TextStyle(color: AppTheme.error)),
+                        child: const Text('Decline', style: TextStyle(color: AppTheme.error)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -277,21 +204,16 @@ class _OrderCard extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () async {
                           Navigator.pop(ctx);
-                          final provider = Provider.of<DriverProvider>(
-                              context,
-                              listen: false);
+                          final provider = Provider.of<DriverProvider>(context, listen: false);
                           try {
                             await provider.acceptOrder(order);
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(SnackBar(
-                              content: Text(
-                                  'Order accepted! Head to ${order.restaurantName}.'),
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Order accepted! Head to ${order.restaurantName}.'),
                               backgroundColor: AppTheme.success,
                               duration: const Duration(seconds: 2),
                             ));
                           } catch (_) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(const SnackBar(
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                               content: Text('Failed to accept order'),
                               backgroundColor: AppTheme.error,
                               duration: Duration(seconds: 2),
@@ -300,15 +222,10 @@ class _OrderCard extends StatelessWidget {
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.success,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30)),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text('Accept',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
+                        child: const Text('Accept', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                       ),
                     ),
                   ]),
@@ -324,15 +241,11 @@ class _OrderCard extends StatelessWidget {
   Widget _chip(IconData icon, String label, Color sub) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-          color: AppTheme.primaryRed.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: AppTheme.primaryRed.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 13, color: AppTheme.primaryRed),
         const SizedBox(width: 4),
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12, color: AppTheme.primaryRed)),
+        Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.primaryRed)),
       ]),
     );
   }
@@ -342,7 +255,6 @@ class _OrderCard extends StatelessWidget {
     final provider = Provider.of<DriverProvider>(context, listen: false);
 
     return GestureDetector(
-      // ── Tap anywhere on the card to see full details ─────────────────────
       onTap: () => _showDetailSheet(context),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -351,72 +263,37 @@ class _OrderCard extends StatelessWidget {
           color: cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.primaryRed.withOpacity(0.15)),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ── Header ──────────────────────────────────────────────────────
           Row(children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                  color: AppTheme.primaryRed.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.restaurant,
-                  color: AppTheme.primaryRed, size: 22),
+              decoration: BoxDecoration(color: AppTheme.primaryRed.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.restaurant, color: AppTheme.primaryRed, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(order.restaurantName,
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: textColor)),
-                    Text(
-                      order.restaurantAddress.isNotEmpty
-                          ? order.restaurantAddress
-                          : 'Tap for details',
-                      style: TextStyle(fontSize: 12, color: subColor),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ]),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(order.restaurantName, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor)),
+                Text(
+                  order.restaurantAddress.isNotEmpty ? order.restaurantAddress : 'Tap for details',
+                  style: TextStyle(fontSize: 12, color: subColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ]),
             ),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                  color: AppTheme.primaryRed,
-                  borderRadius: BorderRadius.circular(20)),
-              child: Text(
-                'MK${order.earnings.toInt()}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: AppTheme.primaryRed, borderRadius: BorderRadius.circular(20)),
+              child: Text('MK${order.earnings.toInt()}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
             ),
           ]),
-
           const Divider(height: 20),
-
-          // ── Summary row ──────────────────────────────────────────────────
           _row(Icons.person_outline, order.customerName, subColor),
           const SizedBox(height: 6),
-          _row(
-              Icons.location_on_outlined,
-              order.deliveryAddress.isNotEmpty
-                  ? order.deliveryAddress
-                  : 'Delivery address not provided',
-              subColor,
-              maxLines: 2),
+          _row(Icons.location_on_outlined, order.deliveryAddress.isNotEmpty ? order.deliveryAddress : 'Delivery address not provided', subColor, maxLines: 2),
           const SizedBox(height: 6),
           Row(children: [
             if (order.distance.isNotEmpty) ...[
@@ -425,31 +302,19 @@ class _OrderCard extends StatelessWidget {
             ],
             _iconText(Icons.timer, order.estimatedTime, subColor),
             const Spacer(),
-            // "Tap for details" hint
-            Text('Tap for details',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.primaryRed.withOpacity(0.7),
-                    fontStyle: FontStyle.italic)),
+            Text('Tap for details', style: TextStyle(fontSize: 11, color: AppTheme.primaryRed.withOpacity(0.7), fontStyle: FontStyle.italic)),
           ]),
-
           const SizedBox(height: 14),
-
-          // ── Quick action buttons (still available on the card) ───────────
           Row(children: [
             Expanded(
               child: OutlinedButton(
                 onPressed: () => provider.declineOrder(order),
                 style: OutlinedButton.styleFrom(
-                  side:
-                      BorderSide(color: AppTheme.error.withOpacity(0.5)),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
+                  side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
-                child: const Text('Decline',
-                    style:
-                        TextStyle(color: AppTheme.error, fontSize: 13)),
+                child: const Text('Decline', style: TextStyle(color: AppTheme.error, fontSize: 13)),
               ),
             ),
             const SizedBox(width: 12),
@@ -460,32 +325,26 @@ class _OrderCard extends StatelessWidget {
                   try {
                     await provider.acceptOrder(order);
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(
-                              content: Text(
-                                  'Order accepted! Head to ${order.restaurantName}.'),
-                              backgroundColor: AppTheme.success));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Order accepted! Head to ${order.restaurantName}.'),
+                        backgroundColor: AppTheme.success,
+                      ));
                     }
                   } catch (_) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(const SnackBar(
-                              content: Text('Failed to accept order'),
-                              backgroundColor: AppTheme.error));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Failed to accept order'),
+                        backgroundColor: AppTheme.error,
+                      ));
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.success,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
-                child: const Text('Accept',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontSize: 13)),
+                child: const Text('Accept', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
               ),
             ),
           ]),
@@ -498,11 +357,7 @@ class _OrderCard extends StatelessWidget {
     return Row(children: [
       Icon(icon, size: 15, color: AppTheme.mutedText),
       const SizedBox(width: 6),
-      Expanded(
-          child: Text(label,
-              style: TextStyle(fontSize: 12, color: sub),
-              maxLines: maxLines,
-              overflow: TextOverflow.ellipsis)),
+      Expanded(child: Text(label, style: TextStyle(fontSize: 12, color: sub), maxLines: maxLines, overflow: TextOverflow.ellipsis)),
     ]);
   }
 

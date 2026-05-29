@@ -1,63 +1,49 @@
 class DeliveryRequest {
   final String id;
-  final String? deliveryId;
   final String restaurantName;
   final String restaurantAddress;
   final String customerName;
+  final String customerPhone;
   final String deliveryAddress;
-  String status;
   final String items;
-  final String distance;
   final double earnings;
+  final String distance;
   final String estimatedTime;
-  final String? customerPhone;
-  final String? specialInstructions;
+  final String status;
+  final DateTime? assignedAt;
+  final DateTime? deliveredAt;
 
   DeliveryRequest({
     required this.id,
-    this.deliveryId,
     required this.restaurantName,
     required this.restaurantAddress,
     required this.customerName,
+    required this.customerPhone,
     required this.deliveryAddress,
-    required this.status,
     required this.items,
-    required this.distance,
     required this.earnings,
+    required this.distance,
     required this.estimatedTime,
-    this.customerPhone,
-    this.specialInstructions,
+    required this.status,
+    this.assignedAt,
+    this.deliveredAt,
   });
 
-  DeliveryRequest copyWith({
-    String? id,
-    String? deliveryId,
-    String? restaurantName,
-    String? restaurantAddress,
-    String? customerName,
-    String? deliveryAddress,
-    String? status,
-    String? items,
-    String? distance,
-    double? earnings,
-    String? estimatedTime,
-    String? customerPhone,
-    String? specialInstructions,
-  }) {
+  factory DeliveryRequest.fromJson(Map<String, dynamic> json) {
     return DeliveryRequest(
-      id: id ?? this.id,
-      deliveryId: deliveryId ?? this.deliveryId,
-      restaurantName: restaurantName ?? this.restaurantName,
-      restaurantAddress: restaurantAddress ?? this.restaurantAddress,
-      customerName: customerName ?? this.customerName,
-      deliveryAddress: deliveryAddress ?? this.deliveryAddress,
-      status: status ?? this.status,
-      items: items ?? this.items,
-      distance: distance ?? this.distance,
-      earnings: earnings ?? this.earnings,
-      estimatedTime: estimatedTime ?? this.estimatedTime,
-      customerPhone: customerPhone ?? this.customerPhone,
-      specialInstructions: specialInstructions ?? this.specialInstructions,
+      id: json['id']?.toString() ?? '',
+      restaurantName: json['restaurant_name'] ?? '',
+      restaurantAddress: json['restaurant_address'] ?? '',
+      customerName: json['customer_name'] ?? '',
+      customerPhone: json['customer_phone'] ?? '',
+      deliveryAddress: json['delivery_address'] ?? '',
+      items: json['items'] ?? '',
+      earnings: (json['total_earning'] ?? json['earnings'] ?? 0).toDouble(),
+      distance: json['distance'] ?? '0 km',
+      estimatedTime: json['estimated_time'] ?? '30 min',
+      status: json['status'] ?? 'pending',
+      assignedAt: json['assigned_at'] != null ? DateTime.tryParse(json['assigned_at']) : null,
+      deliveredAt: json['delivered_at'] != null ? DateTime.tryParse(json['delivered_at']) : null,
     );
   }
 }

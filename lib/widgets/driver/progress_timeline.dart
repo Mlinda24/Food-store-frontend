@@ -1,72 +1,77 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../config/theme.dart';
-import '../../providers/theme_provider.dart';
 
 class ProgressTimeline extends StatelessWidget {
   final String status;
 
-  const ProgressTimeline({
-    super.key,
-    required this.status,
-  });
+  const ProgressTimeline({super.key, required this.status});
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final isDark = themeProvider.isDarkMode;
+    final steps = ['accepted', 'driver_arrived', 'picked_up', 'delivered'];
+    final currentIndex = steps.indexOf(status.toLowerCase());
     
-    final steps = ['Accepted', 'Picked Up', 'Delivered'];
-    int currentStep = 0;
-    
-    if (status == 'accepted') currentStep = 0;
-    if (status == 'picked_up') currentStep = 1;
-    if (status == 'delivered') currentStep = 2;
-
-    final completedColor = AppTheme.success;
-    final inactiveColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
-    final textColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-
-    return Row(
-      children: steps.asMap().entries.map((entry) {
-        int idx = entry.key;
-        String step = entry.value;
-        bool isCompleted = idx <= currentStep;
-        bool isCurrent = idx == currentStep;
-        
-        return Expanded(
-          child: Column(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isCompleted ? completedColor : inactiveColor.withOpacity(0.3),
-                  border: Border.all(
-                    color: isCompleted ? completedColor : inactiveColor,
-                    width: 2,
+    return Column(
+      children: [
+        Row(
+          children: List.generate(steps.length, (index) {
+            final isCompleted = index <= currentIndex;
+            return Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      children: [
+                        if (index > 0) Expanded(child: Divider(color: isCompleted ? AppTheme.primaryRed : AppTheme.mutedText, thickness: 2)),
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isCompleted ? AppTheme.primaryRed : AppTheme.mutedText,
+                          ),
+                          child: Icon(
+                            isCompleted ? Icons.check : _getStepIcon(steps[index]),
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (index < steps.length - 1) Expanded(child: Divider(color: isCompleted ? AppTheme.primaryRed : AppTheme.mutedText, thickness: 2)),
+                      ],
+                    ),
                   ),
-                ),
-                child: Icon(
-                  isCompleted ? Icons.check : Icons.circle_outlined,
-                  size: 16,
-                  color: isCompleted ? Colors.white : inactiveColor,
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _getStepLabel(steps[index]),
+                    style: TextStyle(fontSize: 10, color: isCompleted ? AppTheme.primaryRed : AppTheme.mutedText),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                step,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                  color: isCompleted ? completedColor : textColor,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+            );
+          }),
+        ),
+      ],
     );
+  }
+
+  IconData _getStepIcon(String step) {
+    switch (step) {
+      case 'accepted': return Icons.check_circle;
+      case 'driver_arrived': return Icons.location_on;
+      case 'picked_up': return Icons.shopping_bag;
+      case 'delivered': return Icons.home;
+      default: return Icons.circle;
+    }
+  }
+
+  String _getStepLabel(String step) {
+    switch (step) {
+      case 'accepted': return 'Accepted';
+      case 'driver_arrived': return 'Arrived';
+      case 'picked_up': return 'Picked Up';
+      case 'delivered': return 'Delivered';
+      default: return step;
+    }
   }
 }

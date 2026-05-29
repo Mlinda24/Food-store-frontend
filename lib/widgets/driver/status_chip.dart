@@ -4,75 +4,50 @@ import '../../config/theme.dart';
 class StatusChip extends StatelessWidget {
   final String status;
 
-  const StatusChip({
-    super.key,
-    required this.status,
-  });
+  const StatusChip({super.key, required this.status});
 
   @override
   Widget build(BuildContext context) {
-    final statusInfo = _getStatusInfo(status);
+    Color color;
+    String label;
+
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        color = Colors.blue;
+        label = 'Accepted';
+        break;
+      case 'picked_up':
+        color = Colors.purple;
+        label = 'Picked Up';
+        break;
+      case 'driver_arrived':
+        color = Colors.orange;
+        label = 'Arrived';
+        break;
+      case 'delivered':
+        color = AppTheme.success;
+        label = 'Delivered';
+        break;
+      case 'declined':
+        color = AppTheme.error;
+        label = 'Declined';
+        break;
+      default:
+        color = AppTheme.warning;
+        label = status;
+    }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: statusInfo['color'].withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            statusInfo['icon'],
-            size: 14,
-            color: statusInfo['color'],
-          ),
-          const SizedBox(width: 4),
-          Text(
-            statusInfo['label'],
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: statusInfo['color'],
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
     );
-  }
-
-  Map<String, dynamic> _getStatusInfo(String status) {
-    switch (status) {
-      case 'pending':
-        return {
-          'label': 'Pending',
-          'color': AppTheme.warning,
-          'icon': Icons.pending_actions,
-        };
-      case 'accepted':
-        return {
-          'label': 'Accepted',
-          'color': AppTheme.success,
-          'icon': Icons.check_circle,
-        };
-      case 'picked_up':
-        return {
-          'label': 'Out for Delivery',
-          'color': AppTheme.primaryRed,
-          'icon': Icons.delivery_dining,
-        };
-      case 'delivered':
-        return {
-          'label': 'Delivered',
-          'color': AppTheme.success,
-          'icon': Icons.check_circle_outline,
-        };
-      default:
-        return {
-          'label': status,
-          'color': AppTheme.mutedText,
-          'icon': Icons.circle_outlined,
-        };
-    }
   }
 }

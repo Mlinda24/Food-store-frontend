@@ -5,7 +5,7 @@ class SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
   final Widget? trailing;
   final Color? iconColor;
 
@@ -14,7 +14,7 @@ class SettingsTile extends StatelessWidget {
     required this.icon,
     required this.title,
     this.subtitle,
-    this.onTap,
+    required this.onTap,
     this.trailing,
     this.iconColor,
   });
@@ -28,26 +28,11 @@ class SettingsTile extends StatelessWidget {
           color: (iconColor ?? AppTheme.primaryRed).withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: iconColor ?? AppTheme.primaryRed, size: 20),
+        child: Icon(icon, size: 20, color: iconColor ?? AppTheme.primaryRed),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: AppTheme.primaryText,
-        ),
-      ),
-      subtitle: subtitle != null
-          ? Text(
-              subtitle!,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppTheme.secondaryText,
-              ),
-            )
-          : null,
-      trailing: trailing ?? (onTap != null ? const Icon(Icons.chevron_right, color: AppTheme.mutedText) : null),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, color: AppTheme.primaryText)),
+      subtitle: subtitle != null ? Text(subtitle!, style: const TextStyle(fontSize: 12, color: AppTheme.secondaryText)) : null,
+      trailing: trailing ?? const Icon(Icons.chevron_right, size: 20, color: AppTheme.mutedText),
       onTap: onTap,
     );
   }
