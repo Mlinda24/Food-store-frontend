@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../providers/auth_provider.dart';
+import '../config/api_config.dart'; 
 
 class DriverService {
-  static const String _base = 'http://127.0.0.1:8000/api';
+  static const String _base = '${ApiConfig.baseUrl}/api';
 
   static Future<String?> _getToken() async {
     return await AuthProvider.getToken();

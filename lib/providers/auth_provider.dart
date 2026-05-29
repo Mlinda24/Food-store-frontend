@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
+import '../config/api_config.dart'; 
+
 
 class AuthProvider extends ChangeNotifier {
   static AuthProvider? _instance;
@@ -15,8 +17,7 @@ class AuthProvider extends ChangeNotifier {
     _instance = this;
     _loadStoredToken(); // Load token from storage on startup
   }
-
-  static const String _baseUrl = 'http://127.0.0.1:8000/api';
+  static const String _baseUrl = '${ApiConfig.baseUrl}/api';
   static const String _tokenKey = 'auth_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
