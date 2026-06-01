@@ -23,9 +23,9 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     });
   }
 
-  void _loadOrders() {
+  Future<void> _loadOrders() async {
     final provider = Provider.of<RestaurantProvider>(context, listen: false);
-    provider.loadRestaurantOrders();
+    await provider.loadRestaurantOrders();
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -61,9 +61,20 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     return '0';
   }
 
-  Future<void> _updateOrderStatus(dynamic order, String newStatus, String statusName) async {
+  Future<void> _updateOrderStatus(
+      dynamic order, String newStatus, String statusName) async {
     final provider = Provider.of<RestaurantProvider>(context, listen: false);
-    
+    final orderId = order['id'].toString();
+
+    bool isAccepting = false;
+    bool isDeclining = false;
+
+    if (newStatus == 'confirmed') {
+      isAccepting = true;
+    } else if (newStatus == 'cancelled') {
+      isDeclining = true;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -72,29 +83,76 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppTheme.deepCrimson.withOpacity(0.3)),
         ),
-        title: const Text('Update Order Status'),
-        content: Text('Mark order #${order['id']} as $statusName?'),
+        title: Text(isAccepting
+            ? 'Accept Order'
+            : (isDeclining ? 'Decline Order' : 'Update Order Status')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Order #${order['id']}'),
+            const SizedBox(height: 8),
+            if (isAccepting) ...[
+              Text('Order Total: ${_formatCurrency(order['total_price'])}'),
+              const SizedBox(height: 4),
+              Text(
+                  'Delivery Fee: ${_formatCurrency(order['delivery_fee'] ?? 2000)}'),
+              const SizedBox(height: 4),
+              Text(
+                  'Platform Fee (10%): ${_formatCurrency((double.tryParse(order['total_price']?.toString() ?? '0') ?? 0) * 0.1)}'),
+              const SizedBox(height: 8),
+              Text(
+                'Accepting this order will credit MK${_formatCurrency((double.tryParse(order['total_price']?.toString() ?? '0') ?? 0) * 0.9)} to your wallet after delivery.',
+                style: TextStyle(fontSize: 12, color: AppTheme.success),
+              ),
+            ],
+            if (isDeclining)
+              Text('Are you sure you want to decline this order?'),
+            if (!isAccepting && !isDeclining)
+              Text('Are you sure you want to mark order as $statusName?'),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+            child: Text('Cancel',
+                style:
+                    TextStyle(color: AppTheme.getSecondaryTextColor(context))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryRed,
+              backgroundColor: isAccepting
+                  ? AppTheme.success
+                  : (isDeclining ? AppTheme.error : AppTheme.primaryRed),
             ),
-            child: Text('Yes, $statusName'),
+            child: Text(isAccepting
+                ? 'Yes, Accept'
+                : (isDeclining ? 'Yes, Decline' : 'Yes, $statusName')),
           ),
         ],
       ),
     );
-    
+
     if (confirmed == true) {
-      final success = await provider.updateOrderStatus(order['id'].toString(), newStatus);
+      final success = await provider.updateOrderStatus(orderId, newStatus);
+
       if (success) {
-        _loadOrders();
-        _showSnackBar('Order #${order['id']} marked as $statusName');
+        // Refresh orders
+        await _loadOrders();
+
+        // Refresh restaurant stats to update wallet balance
+        await provider.loadRestaurantData();
+        await provider.loadStats();
+
+        if (isAccepting) {
+          _showSnackBar(
+              'Order #${order['id']} accepted! Wallet will be credited upon delivery.');
+        } else if (isDeclining) {
+          _showSnackBar('Order #${order['id']} declined');
+        } else {
+          _showSnackBar('Order #${order['id']} marked as $statusName');
+        }
       } else {
         _showSnackBar('Failed to update order status', isError: true);
       }
@@ -108,15 +166,21 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     final allOrders = provider.orders;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final activeOrders = allOrders.where((o) => 
-      o['status'] == 'pending' || o['status'] == 'confirmed' || o['status'] == 'preparing'
-    ).toList();
-    
+    final activeOrders = allOrders
+        .where((o) =>
+            o['status'] == 'pending' ||
+            o['status'] == 'confirmed' ||
+            o['status'] == 'preparing')
+        .toList();
+
     final readyOrders = allOrders.where((o) => o['status'] == 'ready').toList();
-    
-    final pastOrders = allOrders.where((o) => 
-      o['status'] == 'picked_up' || o['status'] == 'delivered' || o['status'] == 'cancelled'
-    ).toList();
+
+    final pastOrders = allOrders
+        .where((o) =>
+            o['status'] == 'picked_up' ||
+            o['status'] == 'delivered' ||
+            o['status'] == 'cancelled')
+        .toList();
 
     List<dynamic> orders;
     if (_selectedTab == 'Active') {
@@ -141,18 +205,24 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      gradient: isSelected 
-                          ? AppTheme.primaryButtonGradient
-                          : null,
-                      color: isSelected ? null : AppTheme.getSurfaceColor(context),
+                      gradient:
+                          isSelected ? AppTheme.primaryButtonGradient : null,
+                      color:
+                          isSelected ? null : AppTheme.getSurfaceColor(context),
                       borderRadius: BorderRadius.circular(30),
-                      border: isSelected ? null : Border.all(color: AppTheme.getMutedTextColor(context).withOpacity(0.3)),
+                      border: isSelected
+                          ? null
+                          : Border.all(
+                              color: AppTheme.getMutedTextColor(context)
+                                  .withOpacity(0.3)),
                     ),
                     child: Text(
                       tab,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: isSelected ? Colors.white : AppTheme.getSecondaryTextColor(context),
+                        color: isSelected
+                            ? Colors.white
+                            : AppTheme.getSecondaryTextColor(context),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -170,18 +240,23 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.inbox_outlined, size: 64, color: AppTheme.getMutedTextColor(context)),
+                          Icon(Icons.inbox_outlined,
+                              size: 64,
+                              color: AppTheme.getMutedTextColor(context)),
                           const SizedBox(height: 16),
                           Text(
                             'No $_selectedTab orders',
-                            style: TextStyle(fontSize: 16, color: AppTheme.getSecondaryTextColor(context)),
+                            style: TextStyle(
+                                fontSize: 16,
+                                color: AppTheme.getSecondaryTextColor(context)),
                           ),
                         ],
                       ),
                     )
                   : RefreshIndicator(
                       onRefresh: () async {
-                        _loadOrders();
+                        await _loadOrders();
+                        await provider.loadStats();
                       },
                       child: ListView.builder(
                         padding: const EdgeInsets.all(10),
@@ -200,17 +275,18 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     final items = order['items'] as List? ?? [];
     final status = order['status'] ?? 'pending';
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     DateTime orderTime;
     try {
-      orderTime = DateTime.parse(order['created'] ?? DateTime.now().toIso8601String());
+      orderTime =
+          DateTime.parse(order['created'] ?? DateTime.now().toIso8601String());
     } catch (e) {
       orderTime = DateTime.now();
     }
-    
+
     final difference = DateTime.now().difference(orderTime);
-    final timeAgo = difference.inMinutes < 60 
-        ? '${difference.inMinutes} min ago' 
+    final timeAgo = difference.inMinutes < 60
+        ? '${difference.inMinutes} min ago'
         : difference.inHours < 24
             ? '${difference.inHours} hours ago'
             : '${difference.inDays} days ago';
@@ -218,7 +294,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     String customerName = 'Customer';
     String customerPhone = 'No phone';
     String customerAddress = order['delivery_address'] ?? '';
-    
+
     if (order['customer_name'] != null) {
       customerName = order['customer_name'].toString();
     } else if (order['customer'] != null) {
@@ -229,10 +305,18 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerName = 'Customer #${order['customer']}';
       }
     }
-    
+
     if (order['customer_phone'] != null) {
       customerPhone = order['customer_phone'].toString();
     }
+
+    // Calculate earnings for confirmed order
+    double orderTotal =
+        double.tryParse(order['total_price']?.toString() ?? '0') ?? 0;
+    double deliveryFee =
+        double.tryParse(order['delivery_fee']?.toString() ?? '2000') ?? 2000;
+    double restaurantEarnings =
+        (orderTotal + deliveryFee) * 0.9; // 10% platform fee
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -251,7 +335,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: _getStatusColor(status).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(10),
@@ -268,13 +353,16 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   const SizedBox(width: 8),
                   Text(
                     'ORD-${order['id']}',
-                    style: TextStyle(fontSize: 10, color: AppTheme.getMutedTextColor(context)),
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.getMutedTextColor(context)),
                   ),
                 ],
               ),
               Text(
                 timeAgo,
-                style: TextStyle(fontSize: 10, color: AppTheme.getMutedTextColor(context)),
+                style: TextStyle(
+                    fontSize: 10, color: AppTheme.getMutedTextColor(context)),
               ),
             ],
           ),
@@ -287,7 +375,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                   color: AppTheme.getSurfaceColor(context),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.person, size: 14, color: AppTheme.getMutedTextColor(context)),
+                child: Icon(Icons.person,
+                    size: 14, color: AppTheme.getMutedTextColor(context)),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -297,14 +386,15 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                     Text(
                       customerName,
                       style: TextStyle(
-                        fontWeight: FontWeight.w600, 
-                        fontSize: 13, 
-                        color: AppTheme.getPrimaryTextColor(context)
-                      ),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppTheme.getPrimaryTextColor(context)),
                     ),
                     Text(
                       customerPhone,
-                      style: TextStyle(fontSize: 11, color: AppTheme.getSecondaryTextColor(context)),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.getSecondaryTextColor(context)),
                     ),
                   ],
                 ),
@@ -316,12 +406,15 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.location_on, size: 12, color: AppTheme.getMutedTextColor(context)),
+                Icon(Icons.location_on,
+                    size: 12, color: AppTheme.getMutedTextColor(context)),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     customerAddress,
-                    style: TextStyle(fontSize: 11, color: AppTheme.getSecondaryTextColor(context)),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.getSecondaryTextColor(context)),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -329,134 +422,242 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               ],
             ),
           const Divider(height: 16, color: AppTheme.deepCrimson),
+
+          // Order items preview
           if (items.isNotEmpty) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${_formatNumber(items.length)} item${items.length > 1 ? 's' : ''}',
-                  style: TextStyle(fontSize: 11, color: AppTheme.getSecondaryTextColor(context)),
-                ),
-                Text(
-                  _formatCurrency(order['total_price']),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryRed),
-                ),
-              ],
+            Column(
+              children: (items as List).take(2).map((item) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${item['quantity']}x ${item['menu_item_name']}',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.getSecondaryTextColor(context)),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        _formatCurrency(item['price']),
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.primaryRed),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
+            if (items.length > 2)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '+${items.length - 2} more items',
+                  style: TextStyle(
+                      fontSize: 11, color: AppTheme.getMutedTextColor(context)),
+                ),
+              ),
+            const Divider(height: 16, color: AppTheme.deepCrimson),
           ],
+
+          // Order total
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Order Total:',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.getPrimaryTextColor(context)),
+              ),
+              Text(
+                _formatCurrency(order['total_price']),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryRed),
+              ),
+            ],
+          ),
+
+          // Earnings info for accepted orders
+          if (status == 'confirmed' ||
+              status == 'preparing' ||
+              status == 'ready' ||
+              status == 'picked_up')
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.success.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.account_balance_wallet,
+                          size: 14, color: AppTheme.success),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Your Earnings:',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.success),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    _formatCurrency(restaurantEarnings),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.success),
+                  ),
+                ],
+              ),
+            ),
+
           const SizedBox(height: 12),
-          
-          // ✅ BUTTONS SIDE BY SIDE (LEFT AND RIGHT)
+
+          // Action Buttons
           if (status == 'pending')
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _updateOrderStatus(order, 'cancelled', 'Declined'),
+                    onPressed: () =>
+                        _updateOrderStatus(order, 'cancelled', 'Declined'),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                       side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
                     ),
-                    child: Text('Decline', style: TextStyle(fontSize: 12, color: AppTheme.error)),
+                    child: Text('Decline',
+                        style: TextStyle(fontSize: 13, color: AppTheme.error)),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _updateOrderStatus(order, 'confirmed', 'Confirmed'),
+                    onPressed: () =>
+                        _updateOrderStatus(order, 'confirmed', 'Confirmed'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.success,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                     ),
-                    child: const Text('Accept', style: TextStyle(fontSize: 12, color: Colors.white)),
+                    child: const Text('Accept Order',
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
             ),
-          
+
           if (status == 'confirmed')
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    child: ElevatedButton(
-                      onPressed: () => _updateOrderStatus(order, 'preparing', 'Preparing'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.warning,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      ),
-                      child: const Text('Start Preparing', style: TextStyle(fontSize: 12, color: Colors.white)),
+                  child: ElevatedButton(
+                    onPressed: () =>
+                        _updateOrderStatus(order, 'preparing', 'Preparing'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.warning,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                     ),
+                    child: const Text('Start Preparing',
+                        style: TextStyle(fontSize: 13, color: Colors.white)),
                   ),
                 ),
               ],
             ),
-          
+
           if (status == 'preparing')
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    child: ElevatedButton(
-                      onPressed: () => _updateOrderStatus(order, 'ready', 'Ready'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.teal,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      ),
-                      child: const Text('Mark as Ready', style: TextStyle(fontSize: 12, color: Colors.white)),
+                  child: ElevatedButton(
+                    onPressed: () =>
+                        _updateOrderStatus(order, 'ready', 'Ready'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.teal,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                     ),
+                    child: const Text('Mark as Ready',
+                        style: TextStyle(fontSize: 13, color: Colors.white)),
                   ),
                 ),
               ],
             ),
-          
+
           if (status == 'ready')
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _updateOrderStatus(order, 'cancelled', 'Cancelled'),
+                    onPressed: () =>
+                        _updateOrderStatus(order, 'cancelled', 'Cancelled'),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                       side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
                     ),
-                    child: Text('Cancel', style: TextStyle(fontSize: 12, color: AppTheme.error)),
+                    child: Text('Cancel Order',
+                        style: TextStyle(fontSize: 13, color: AppTheme.error)),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _updateOrderStatus(order, 'picked_up', 'Picked Up'),
+                    onPressed: () =>
+                        _updateOrderStatus(order, 'picked_up', 'Picked Up'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryRed,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                     ),
-                    child: const Text('Picked Up', style: TextStyle(fontSize: 12, color: Colors.white)),
+                    child: const Text('Picked Up',
+                        style: TextStyle(fontSize: 13, color: Colors.white)),
                   ),
                 ),
               ],
             ),
-          
+
           if (status == 'picked_up')
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    child: OutlinedButton(
-                      onPressed: () => _updateOrderStatus(order, 'delivered', 'Delivered'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        side: BorderSide(color: AppTheme.success, width: 1.5),
-                      ),
-                      child: Text('Mark as Delivered', style: TextStyle(fontSize: 12, color: AppTheme.success)),
+                  child: OutlinedButton(
+                    onPressed: () =>
+                        _updateOrderStatus(order, 'delivered', 'Delivered'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                      side: BorderSide(color: AppTheme.success, width: 1.5),
                     ),
+                    child: Text('Mark Delivered',
+                        style:
+                            TextStyle(fontSize: 13, color: AppTheme.success)),
                   ),
                 ),
               ],
@@ -468,27 +669,43 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'pending': return Colors.orange;
-      case 'confirmed': return Colors.blue;
-      case 'preparing': return Colors.purple;
-      case 'ready': return Colors.teal;
-      case 'picked_up': return Colors.indigo;
-      case 'delivered': return Colors.green;
-      case 'cancelled': return Colors.red;
-      default: return Colors.grey;
+      case 'pending':
+        return Colors.orange;
+      case 'confirmed':
+        return Colors.green;
+      case 'preparing':
+        return Colors.purple;
+      case 'ready':
+        return Colors.teal;
+      case 'picked_up':
+        return Colors.indigo;
+      case 'delivered':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
-      case 'pending': return 'Pending';
-      case 'confirmed': return 'Confirmed';
-      case 'preparing': return 'Preparing';
-      case 'ready': return 'Ready';
-      case 'picked_up': return 'Picked Up';
-      case 'delivered': return 'Delivered';
-      case 'cancelled': return 'Cancelled';
-      default: return status;
+      case 'pending':
+        return 'Pending';
+      case 'confirmed':
+        return 'Confirmed';
+      case 'preparing':
+        return 'Preparing';
+      case 'ready':
+        return 'Ready';
+      case 'picked_up':
+        return 'Picked Up';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
     }
   }
 }
