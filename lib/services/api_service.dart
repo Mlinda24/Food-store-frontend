@@ -1097,7 +1097,8 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        List<dynamic> ordersData = data is List ? data : (data['results'] ?? []);
+        List<dynamic> ordersData =
+            data is List ? data : (data['results'] ?? []);
         print('✅ Found ${ordersData.length} orders');
         return ordersData.map((json) => Order.fromJson(json)).toList();
       } else if (response.statusCode == 404) {
