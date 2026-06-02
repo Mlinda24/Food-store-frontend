@@ -114,20 +114,30 @@ class DriverProvider extends ChangeNotifier {
   }
 
   Future<void> toggleOnlineStatus(bool value) async {
+    print('🔄 Toggle clicked: ${value ? "ON" : "OFF"}');
+
+    // Update UI immediately for better UX
     _isOnline = value;
     notifyListeners();
 
     try {
+      final status = value ? 'online' : 'offline';
+      print('📡 Sending status to API: $status');
+
+      await _apiService.updateDriverStatus(status);
+      print('✅ Status updated successfully on server');
+
       if (value) {
-        await _apiService.updateDriverStatus('online');
         await loadAvailableOrders();
-      } else {
-        await _apiService.updateDriverStatus('offline');
       }
     } catch (e) {
+      print('❌ Failed to update status: $e');
+      // Revert the toggle if API call failed
       _isOnline = !value;
       notifyListeners();
-      rethrow;
+
+      // Show error message
+      throw Exception('Failed to update status. Please check your connection.');
     }
   }
 

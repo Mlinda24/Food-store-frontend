@@ -153,7 +153,8 @@ class ApiService {
     } catch (e) {}
     return false;
   }
-// ============================================
+
+  // ============================================
   // HTTP METHODS
   // ============================================
 
@@ -294,7 +295,6 @@ class ApiService {
         'phone_number': phone,
       });
 
-      // Return structured response
       return {
         'success': true,
         'tokens': {
@@ -354,7 +354,8 @@ class ApiService {
     }
     return allItems;
   }
-// ============================================
+
+  // ============================================
   // RESTAURANT OWNER ENDPOINTS
   // ============================================
 
@@ -461,7 +462,8 @@ class ApiService {
   Future<void> deleteMenuItem(String id) async {
     await delete('/api/owner/menu-items/$id/');
   }
-// ============================================
+
+  // ============================================
   // CART ENDPOINTS
   // ============================================
 
@@ -496,7 +498,8 @@ class ApiService {
   Future<void> clearCart() async {
     await post('/api/orders/cart/clear_cart/', null);
   }
-// ============================================
+
+  // ============================================
   // ORDER ENDPOINTS
   // ============================================
 
@@ -536,7 +539,8 @@ class ApiService {
     return await patch(
         '/api/orders/orders/$orderId/update_status/', {'status': status});
   }
-// ============================================
+
+  // ============================================
   // PAYMENT ENDPOINTS
   // ============================================
 
@@ -597,44 +601,54 @@ class ApiService {
     final response = await get('/api/payments/my_payments/');
     return response is List ? response : [];
   }
-// ============================================
-  // DRIVER API ENDPOINTS
+
+  // ============================================
+  // DRIVER API ENDPOINTS (FIXED)
   // ============================================
 
   Future<Map<String, dynamic>> getDriverProfile() async {
-    return await get('/api/drivers/profile/');
+    return await get('/api/drivers/drivers/profile/');
   }
 
   Future<Map<String, dynamic>> updateDriverProfile(
       Map<String, dynamic> data) async {
-    return await patch('/api/drivers/profile/', data);
+    return await patch('/api/drivers/drivers/update_profile/', data);
   }
 
   Future<Map<String, dynamic>> updateDriverStatus(String status) async {
-    return await patch('/api/drivers/profile/status/', {'status': status});
+    print('📡 Updating driver status to: $status');
+    try {
+      final response = await patch(
+          '/api/drivers/drivers/profile_status/', {'status': status});
+      print('✅ Driver status updated successfully');
+      return response;
+    } catch (e) {
+      print('❌ Failed to update driver status: $e');
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> updateDriverLocation(
       double latitude, double longitude) async {
-    return await post('/api/drivers/location/update/', {
+    return await post('/api/drivers/drivers/location_update/', {
       'latitude': latitude,
       'longitude': longitude,
     });
   }
 
   Future<List<dynamic>> getAvailableOrders() async {
-    final response = await get('/api/deliveries/available/');
+    final response = await get('/api/drivers/deliveries/available/');
     return response is List ? response : [];
   }
 
   Future<List<dynamic>> getMyDeliveries() async {
-    final response = await get('/api/deliveries/my/');
+    final response = await get('/api/drivers/deliveries/my/');
     return response is List ? response : [];
   }
 
   Future<Map<String, dynamic>> getActiveDelivery() async {
     try {
-      final response = await get('/api/deliveries/active/');
+      final response = await get('/api/drivers/deliveries/active/');
       if (response is Map && response.isNotEmpty) {
         return response as Map<String, dynamic>;
       }
@@ -645,27 +659,28 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> acceptDelivery(String deliveryId) async {
-    return await post('/api/deliveries/$deliveryId/accept/', null);
+    return await post('/api/drivers/deliveries/$deliveryId/accept/', null);
   }
 
   Future<Map<String, dynamic>> declineDelivery(String deliveryId) async {
-    return await post('/api/deliveries/$deliveryId/decline/', null);
+    return await post('/api/drivers/deliveries/$deliveryId/decline/', null);
   }
 
   Future<Map<String, dynamic>> updateDeliveryStatus(
       String deliveryId, String status) async {
     return await patch(
-        '/api/deliveries/$deliveryId/status/', {'status': status});
+        '/api/drivers/deliveries/$deliveryId/status/', {'status': status});
   }
 
   Future<Map<String, dynamic>> getEarningsSummary() async {
-    return await get('/api/drivers/earnings/');
+    return await get('/api/drivers/drivers/earnings/');
   }
 
   Future<Map<String, dynamic>> getDeliveryHistory() async {
-    return await get('/api/drivers/delivery-history/');
+    return await get('/api/drivers/drivers/delivery_history/');
   }
-// ============================================
+
+  // ============================================
   // NOTIFICATION ENDPOINTS
   // ============================================
 
@@ -703,7 +718,8 @@ class ApiService {
   Future<void> deleteNotification(String notificationId) async {
     await delete('/api/notifications/notifications/$notificationId/');
   }
-// ============================================
+
+  // ============================================
   // UTILITY METHODS
   // ============================================
 
