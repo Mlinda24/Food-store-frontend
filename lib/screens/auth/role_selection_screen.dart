@@ -1,12 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Add this import
 import '../../config/theme.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
+  // Clear session when this screen is loaded
+  Future<void> _clearExistingSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
+    await prefs.remove('user_role');
+    await prefs.remove('user_id');
+    await prefs.remove('username');
+    print('✅ Session cleared for new registration');
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Trigger session clearing when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _clearExistingSession();
+    });
+
     final List<Map<String, dynamic>> roles = [
       {
         'title': 'Customer',
@@ -29,7 +46,6 @@ class RoleSelectionScreen extends StatelessWidget {
         'color': AppTheme.teal,
         'roleValue': 'driver',
       },
-      
     ];
 
     return Scaffold(

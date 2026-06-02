@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 import '../models/delivery_request.dart';
-import '../services/driver_service.dart';
 
 class DriverStats {
   final double totalEarnings;
@@ -35,6 +35,8 @@ class DriverStats {
 }
 
 class DriverProvider extends ChangeNotifier {
+  final ApiService _apiService = ApiService();
+
   List<DeliveryRequest> _availableOrders = [];
   List<DeliveryRequest> _deliveryHistory = [];
   List<DeliveryRequest> _acceptedHistory = [];
@@ -65,8 +67,9 @@ class DriverProvider extends ChangeNotifier {
 
   Future<void> loadAvailableOrders() async {
     try {
-      final data = await DriverService.getAvailableOrders();
-      _availableOrders = data.map((json) => DeliveryRequest.fromJson(json)).toList();
+      final data = await _apiService.getAvailableOrders();
+      _availableOrders =
+          data.map((json) => DeliveryRequest.fromJson(json)).toList();
       notifyListeners();
     } catch (e) {
       print('Error loading available orders: $e');
@@ -75,9 +78,10 @@ class DriverProvider extends ChangeNotifier {
 
   Future<void> loadDeliveryHistory() async {
     try {
-      final data = await DriverService.getDeliveryHistory();
+      final data = await _apiService.getDeliveryHistory();
       final deliveries = data['deliveries'] as List? ?? [];
-      _deliveryHistory = deliveries.map((json) => DeliveryRequest.fromJson(json)).toList();
+      _deliveryHistory =
+          deliveries.map((json) => DeliveryRequest.fromJson(json)).toList();
       notifyListeners();
     } catch (e) {
       print('Error loading delivery history: $e');
@@ -86,8 +90,8 @@ class DriverProvider extends ChangeNotifier {
 
   Future<void> loadActiveDelivery() async {
     try {
-      final data = await DriverService.getActiveDelivery();
-      if (data.isNotEmpty) {
+      final data = await _apiService.getActiveDelivery();
+      if (data.isNotEmpty && data['id'] != null) {
         _activeDelivery = DeliveryRequest.fromJson(data);
       } else {
         _activeDelivery = null;
@@ -101,7 +105,7 @@ class DriverProvider extends ChangeNotifier {
 
   Future<void> loadEarningsSummary() async {
     try {
-      final data = await DriverService.getEarningsSummary();
+      final data = await _apiService.getEarningsSummary();
       _stats = DriverStats.fromJson(data);
       notifyListeners();
     } catch (e) {
@@ -112,13 +116,13 @@ class DriverProvider extends ChangeNotifier {
   Future<void> toggleOnlineStatus(bool value) async {
     _isOnline = value;
     notifyListeners();
-    
+
     try {
       if (value) {
-        await DriverService.goOnline();
+        await _apiService.updateDriverStatus('online');
         await loadAvailableOrders();
       } else {
-        await DriverService.goOffline();
+        await _apiService.updateDriverStatus('offline');
       }
     } catch (e) {
       _isOnline = !value;
@@ -129,7 +133,7 @@ class DriverProvider extends ChangeNotifier {
 
   Future<void> acceptOrder(DeliveryRequest order) async {
     try {
-      await DriverService.acceptOrder(order.id);
+      await _apiService.acceptDelivery(order.id);
       _availableOrders.removeWhere((o) => o.id == order.id);
       _activeDelivery = order;
       _acceptedHistory.add(order);
@@ -142,7 +146,7 @@ class DriverProvider extends ChangeNotifier {
 
   Future<void> declineOrder(DeliveryRequest order) async {
     try {
-      await DriverService.declineOrder(order.id);
+      await _apiService.declineDelivery(order.id);
       _availableOrders.removeWhere((o) => o.id == order.id);
       _declinedOrders.add(order);
       notifyListeners();
@@ -153,8 +157,8 @@ class DriverProvider extends ChangeNotifier {
 
   Future<void> updateOrderStatus(String orderId, String status) async {
     try {
-      await DriverService.updateDeliveryStatus(orderId: orderId, status: status);
-      
+      await _apiService.updateDeliveryStatus(orderId, status);
+
       if (_activeDelivery != null && _activeDelivery!.id == orderId) {
         final updatedOrder = DeliveryRequest(
           id: _activeDelivery!.id,
@@ -163,20 +167,24 @@ class DriverProvider extends ChangeNotifier {
           customerName: _activeDelivery!.customerName,
           customerPhone: _activeDelivery!.customerPhone,
           deliveryAddress: _activeDelivery!.deliveryAddress,
+          items: _activeDelivery!.items,
           earnings: _activeDelivery!.earnings,
           distance: _activeDelivery!.distance,
           estimatedTime: _activeDelivery!.estimatedTime,
-          items: _activeDelivery!.items,
           status: status,
+          assignedAt: _activeDelivery!.assignedAt,
+          deliveredAt: status == 'delivered'
+              ? DateTime.now()
+              : _activeDelivery!.deliveredAt,
         );
-        
+
         if (status == 'delivered') {
           _deliveryHistory.insert(0, updatedOrder);
           _activeDelivery = null;
         } else {
           _activeDelivery = updatedOrder;
         }
-        
+
         notifyListeners();
       }
     } catch (e) {
@@ -192,5 +200,13 @@ class DriverProvider extends ChangeNotifier {
   void consumePendingOrder() {
     _pendingOrder = null;
     notifyListeners();
+  }
+
+  Future<void> updateLocation(double latitude, double longitude) async {
+    try {
+      await _apiService.updateDriverLocation(latitude, longitude);
+    } catch (e) {
+      print('Error updating location: $e');
+    }
   }
 }

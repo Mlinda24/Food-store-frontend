@@ -32,18 +32,30 @@ class DeliveryRequest {
   factory DeliveryRequest.fromJson(Map<String, dynamic> json) {
     return DeliveryRequest(
       id: json['id']?.toString() ?? '',
-      restaurantName: json['restaurant_name'] ?? '',
-      restaurantAddress: json['restaurant_address'] ?? '',
-      customerName: json['customer_name'] ?? '',
-      customerPhone: json['customer_phone'] ?? '',
-      deliveryAddress: json['delivery_address'] ?? '',
-      items: json['items'] ?? '',
-      earnings: (json['total_earning'] ?? json['earnings'] ?? 0).toDouble(),
-      distance: json['distance'] ?? '0 km',
-      estimatedTime: json['estimated_time'] ?? '30 min',
+      restaurantName: json['restaurant_name'] ?? json['restaurantName'] ?? '',
+      restaurantAddress:
+          json['restaurant_address'] ?? json['restaurantAddress'] ?? '',
+      customerName: json['customer_name'] ?? json['customerName'] ?? '',
+      customerPhone: json['customer_phone'] ?? json['customerPhone'] ?? '',
+      deliveryAddress:
+          json['delivery_address'] ?? json['deliveryAddress'] ?? '',
+      items: json['items_summary'] ?? json['items'] ?? '',
+      earnings: (json['total_earning'] ??
+              json['earnings'] ??
+              json['delivery_fee'] ??
+              0)
+          .toDouble(),
+      distance: json['distance'] ?? '2.5 km',
+      estimatedTime: json['estimated_time'] ?? '25-35 min',
       status: json['status'] ?? 'pending',
-      assignedAt: json['assigned_at'] != null ? DateTime.tryParse(json['assigned_at']) : null,
-      deliveredAt: json['delivered_at'] != null ? DateTime.tryParse(json['delivered_at']) : null,
+      assignedAt: json['assigned_at'] != null
+          ? DateTime.tryParse(json['assigned_at'])
+          : (json['accepted_at'] != null
+              ? DateTime.tryParse(json['accepted_at'])
+              : null),
+      deliveredAt: json['delivered_at'] != null
+          ? DateTime.tryParse(json['delivered_at'])
+          : null,
     );
   }
 }

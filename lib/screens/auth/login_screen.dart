@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/restaurant_provider.dart';
 import '../../models/models.dart';
@@ -69,9 +70,10 @@ class _LoginScreenState extends State<LoginScreen> {
           context.go('/home');
         } else if (user.role == UserRole.restaurant) {
           // Check if restaurant exists for this owner
-          final restaurantProvider = Provider.of<RestaurantProvider>(context, listen: false);
+          final restaurantProvider =
+              Provider.of<RestaurantProvider>(context, listen: false);
           await restaurantProvider.loadRestaurantInfo();
-          
+
           if (restaurantProvider.restaurant == null) {
             // No restaurant found, go to setup screen
             context.go('/restaurant-setup');
@@ -299,8 +301,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () {
-                        context.go('/role-selection');
+                      onTap: () async {
+                        // ← Make it async
+                        // Clear existing session before navigating
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.clear(); // Clear all stored data
+                        if (mounted) {
+                          context.go('/role-selection');
+                        }
                       },
                       child: Text(
                         'Sign Up',

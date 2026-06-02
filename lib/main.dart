@@ -6,7 +6,9 @@ import 'providers/app_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/restaurant_provider.dart';
-import 'providers/notification_provider.dart';  // ✅ ADD THIS IMPORT
+import 'providers/notification_provider.dart';
+import 'providers/driver_provider.dart';
+import 'providers/theme_provider.dart';
 import 'routes/router.dart';
 
 void main() async {
@@ -26,16 +28,18 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => RestaurantProvider()),
-        ChangeNotifierProvider(create: (_) => NotificationProvider()),  // ✅ ADD THIS LINE
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => DriverProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
-      child: Consumer<AppProvider>(
-        builder: (context, appProvider, child) {
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
           return MaterialApp.router(
             title: 'Foodie Express',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            themeMode: appProvider.themeMode,
+            themeMode: themeProvider.themeMode,
             routerConfig: router,
           );
         },

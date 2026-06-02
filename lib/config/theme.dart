@@ -45,6 +45,19 @@ class AppTheme {
   static const Color secondaryText = darkSecondaryText;
   static const Color mutedText = darkMutedText;
 
+  // ✅ ADD THESE MISSING PROPERTIES FOR DRIVER SCREENS
+  static Color get darkCardBackground => darkCard;
+  static Color get lightCardBackground => lightCard;
+  static Color get darkSecondaryBackground => darkSurface;
+  static Color get lightSecondaryBackground => lightSurface;
+
+  // ✅ ADD PRIMARY GRADIENT
+  static const LinearGradient primaryGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primaryRed, deepCrimson],
+  );
+
   // Gradients
   static const LinearGradient primaryButtonGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -67,6 +80,12 @@ class AppTheme {
         colors: [lightCard, lightCard],
       );
     }
+  }
+
+  // ✅ ADD THIS HELPER METHOD
+  static Color getCardBackgroundColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? darkCard : lightCard;
   }
 
   // ==================== LIGHT THEME ====================

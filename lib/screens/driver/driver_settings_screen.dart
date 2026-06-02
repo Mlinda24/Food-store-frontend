@@ -10,8 +10,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/driver_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/driver/settings_tile.dart';
-import '../../widgets/custom/otp_verification_dialog.dart';
-import '../../services/driver_service.dart';
+import 'package:foodie_express_mobile/widgets/custom/otp_verification_dialog.dart';
+import 'package:foodie_express_mobile/services/driver_services.dart';
 
 // Model for a Withdrawal Account
 class WithdrawalAccount {
@@ -30,20 +30,21 @@ class WithdrawalAccount {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'method': method,
-    'accountNumber': accountNumber,
-    'holderName': holderName,
-    'isDefault': isDefault,
-  };
+        'id': id,
+        'method': method,
+        'accountNumber': accountNumber,
+        'holderName': holderName,
+        'isDefault': isDefault,
+      };
 
-  factory WithdrawalAccount.fromJson(Map<String, dynamic> json) => WithdrawalAccount(
-    id: json['id'],
-    method: json['method'],
-    accountNumber: json['accountNumber'],
-    holderName: json['holderName'],
-    isDefault: json['isDefault'] ?? false,
-  );
+  factory WithdrawalAccount.fromJson(Map<String, dynamic> json) =>
+      WithdrawalAccount(
+        id: json['id'],
+        method: json['method'],
+        accountNumber: json['accountNumber'],
+        holderName: json['holderName'],
+        isDefault: json['isDefault'] ?? false,
+      );
 }
 
 class DriverSettingsScreen extends StatefulWidget {
@@ -55,7 +56,7 @@ class DriverSettingsScreen extends StatefulWidget {
 
 class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   List<WithdrawalAccount> _withdrawalAccounts = [];
-  
+
   // Profile Data
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
@@ -63,11 +64,11 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   String _driverEmail = '';
   String _driverPhone = '';
   bool _isSaving = false;
-  
+
   // Verification Status
   bool _isEmailVerified = false;
   bool _isPhoneVerified = false;
-  
+
   // Vehicle Information
   String _selectedVehicleType = 'car';
   final List<Map<String, String>> _vehicleTypes = [
@@ -79,16 +80,19 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   final TextEditingController _vehicleModelController = TextEditingController();
   final TextEditingController _vehiclePlateController = TextEditingController();
   final TextEditingController _vehicleColorController = TextEditingController();
-  final TextEditingController _licenseNumberController = TextEditingController();
+  final TextEditingController _licenseNumberController =
+      TextEditingController();
   bool _hasVehicleInfo = false;
   bool _showVehicleForm = false;
   bool _isSavingVehicle = false;
-  
+
   // Password Change
   bool _showPasswordChange = false;
-  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _isChangingPassword = false;
 
   // SharedPreferences keys
@@ -126,16 +130,17 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   }
 
   // ==================== LOAD DATA FROM STORAGE & BACKEND ====================
-  
+
   Future<void> _loadWithdrawalAccounts() async {
     final prefs = await SharedPreferences.getInstance();
     final String? accountsJson = prefs.getString(_keyWithdrawalAccounts);
-    
+
     if (accountsJson != null && accountsJson.isNotEmpty) {
       try {
         final List<dynamic> decoded = json.decode(accountsJson);
         _withdrawalAccounts = decoded
-            .map((item) => WithdrawalAccount.fromJson(item as Map<String, dynamic>))
+            .map((item) =>
+                WithdrawalAccount.fromJson(item as Map<String, dynamic>))
             .toList();
       } catch (e) {
         _withdrawalAccounts = [];
@@ -149,7 +154,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   Future<void> _loadVehicleData() async {
     final prefs = await SharedPreferences.getInstance();
     _hasVehicleInfo = prefs.getBool(_keyHasVehicle) ?? false;
-    
+
     if (_hasVehicleInfo) {
       _selectedVehicleType = prefs.getString(_keyVehicleType) ?? 'car';
       _vehicleModelController.text = prefs.getString(_keyVehicleModel) ?? '';
@@ -168,12 +173,13 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   Future<void> _loadProfileData() async {
     setState(() => _isSaving = true);
-    
+
     try {
       // Try to load from backend first
       final profile = await DriverService.getProfile();
       if (profile.isNotEmpty) {
-        _driverName = profile['user']?['name'] ?? profile['user']?['username'] ?? '';
+        _driverName =
+            profile['user']?['name'] ?? profile['user']?['username'] ?? '';
         _driverEmail = profile['user']?['email'] ?? '';
         _driverPhone = profile['phone_number'] ?? '';
         _isEmailVerified = profile['is_verified'] ?? false;
@@ -192,27 +198,29 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       _driverEmail = prefs.getString('driver_email') ?? '';
       _driverPhone = prefs.getString('driver_phone') ?? '';
     }
-    
+
     // Load profile image
     final prefs = await SharedPreferences.getInstance();
     final imagePath = prefs.getString(_keyProfileImage);
     if (imagePath != null && imagePath.isNotEmpty) {
       _profileImage = File(imagePath);
     }
-    
+
     setState(() => _isSaving = false);
   }
 
   // ==================== SAVE DATA TO STORAGE & BACKEND ====================
-  
+
   Future<void> _saveWithdrawalAccounts() async {
     final prefs = await SharedPreferences.getInstance();
-    final accountsJson = json.encode(_withdrawalAccounts.map((a) => a.toJson()).toList());
+    final accountsJson =
+        json.encode(_withdrawalAccounts.map((a) => a.toJson()).toList());
     await prefs.setString(_keyWithdrawalAccounts, accountsJson);
   }
 
   Future<void> _saveVehicleInfo() async {
-    if (_vehicleModelController.text.isEmpty || _vehiclePlateController.text.isEmpty) {
+    if (_vehicleModelController.text.isEmpty ||
+        _vehiclePlateController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in vehicle model and registration'),
@@ -221,9 +229,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       );
       return;
     }
-    
+
     setState(() => _isSavingVehicle = true);
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyHasVehicle, true);
     await prefs.setString(_keyVehicleType, _selectedVehicleType);
@@ -231,7 +239,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     await prefs.setString(_keyVehiclePlate, _vehiclePlateController.text);
     await prefs.setString(_keyVehicleColor, _vehicleColorController.text);
     await prefs.setString(_keyLicenseNumber, _licenseNumberController.text);
-    
+
     // Save to backend
     try {
       await DriverService.updateProfile({
@@ -255,7 +263,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         ),
       );
     }
-    
+
     setState(() {
       _hasVehicleInfo = true;
       _showVehicleForm = false;
@@ -265,30 +273,34 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   Future<void> _saveProfileData() async {
     setState(() => _isSaving = true);
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('driver_name', _driverName);
     await prefs.setString('driver_email', _driverEmail);
     await prefs.setString('driver_phone', _driverPhone);
-    
+
     if (_profileImage != null) {
       await prefs.setString(_keyProfileImage, _profileImage!.path);
     }
-    
+
     // Save to backend
     try {
       await DriverService.updateProfile({
         'phone_number': _driverPhone,
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile saved to server!'), backgroundColor: AppTheme.success),
+        const SnackBar(
+            content: Text('Profile saved to server!'),
+            backgroundColor: AppTheme.success),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saved locally only: $e'), backgroundColor: AppTheme.warning),
+        SnackBar(
+            content: Text('Saved locally only: $e'),
+            backgroundColor: AppTheme.warning),
       );
     }
-    
+
     setState(() => _isSaving = false);
   }
 
@@ -297,9 +309,12 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Vehicle Info'),
-        content: const Text('Are you sure you want to delete your vehicle information?'),
+        content: const Text(
+            'Are you sure you want to delete your vehicle information?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
@@ -309,7 +324,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               await prefs.remove(_keyVehiclePlate);
               await prefs.remove(_keyVehicleColor);
               await prefs.remove(_keyLicenseNumber);
-              
+
               // Also try to clear from backend
               try {
                 await DriverService.updateProfile({
@@ -322,7 +337,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               } catch (e) {
                 print('Error clearing vehicle from backend: $e');
               }
-              
+
               setState(() {
                 _hasVehicleInfo = false;
                 _vehicleModelController.clear();
@@ -332,13 +347,16 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                 _selectedVehicleType = 'car';
                 _showVehicleForm = false;
               });
-              
+
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Vehicle information deleted'), backgroundColor: AppTheme.success),
+                const SnackBar(
+                    content: Text('Vehicle information deleted'),
+                    backgroundColor: AppTheme.success),
               );
             },
-            child: const Text('Delete', style: TextStyle(color: AppTheme.error)),
+            child:
+                const Text('Delete', style: TextStyle(color: AppTheme.error)),
           ),
         ],
       ),
@@ -368,15 +386,15 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   String? _validatePhoneNumber(String method, String phoneNumber) {
     String cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    
+
     if (cleanedNumber.isEmpty) {
       return 'Phone number is required';
     }
-    
+
     if (cleanedNumber.length != 10) {
       return 'Phone number must be exactly 10 digits';
     }
-    
+
     if (method == 'airtel') {
       if (!cleanedNumber.startsWith('09')) {
         return 'Airtel number must start with 09';
@@ -386,7 +404,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         return 'TNM number must start with 08';
       }
     }
-    
+
     return null;
   }
 
@@ -399,12 +417,16 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         });
         await _saveProfileData();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated!'), backgroundColor: AppTheme.success),
+          const SnackBar(
+              content: Text('Profile picture updated!'),
+              backgroundColor: AppTheme.success),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error picking image'), backgroundColor: AppTheme.error),
+        const SnackBar(
+            content: Text('Error picking image'),
+            backgroundColor: AppTheme.error),
       );
     }
   }
@@ -412,10 +434,11 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   void _showImagePickerOptions() {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
-    
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
+      backgroundColor:
+          isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -426,7 +449,12 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
           children: [
             Text(
               'Profile Picture',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark
+                      ? AppTheme.darkPrimaryText
+                      : AppTheme.lightPrimaryText),
             ),
             const SizedBox(height: 20),
             Row(
@@ -467,10 +495,13 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     );
   }
 
-  Widget _buildImagePickerOption({required IconData icon, required String label, required VoidCallback onTap}) {
+  Widget _buildImagePickerOption(
+      {required IconData icon,
+      required String label,
+      required VoidCallback onTap}) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -478,20 +509,27 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground,
+              color: isDark
+                  ? AppTheme.darkSecondaryBackground
+                  : AppTheme.lightSecondaryBackground,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: 28, color: AppTheme.primaryRed),
           ),
           const SizedBox(height: 8),
-          Text(label, style: TextStyle(color: isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText, fontSize: 12)),
+          Text(label,
+              style: TextStyle(
+                  color: isDark
+                      ? AppTheme.darkSecondaryText
+                      : AppTheme.lightSecondaryText,
+                  fontSize: 12)),
         ],
       ),
     );
   }
 
   // ==================== VERIFICATION METHODS ====================
-  
+
   void _verifyEmail() {
     if (_driverEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -502,7 +540,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       );
       return;
     }
-    
+
     showDialog(
       context: context,
       builder: (context) => OtpVerificationDialog(
@@ -543,7 +581,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       );
       return;
     }
-    
+
     showDialog(
       context: context,
       builder: (context) => OtpVerificationDialog(
@@ -577,7 +615,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   void _showEditProfileDialog() {
     final nameController = TextEditingController(text: _driverName);
     final phoneController = TextEditingController(text: _driverPhone);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -624,7 +662,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               await _saveProfileData();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile updated!'), backgroundColor: AppTheme.success),
+                const SnackBar(
+                    content: Text('Profile updated!'),
+                    backgroundColor: AppTheme.success),
               );
             },
             child: const Text('Save'),
@@ -639,34 +679,42 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         _newPasswordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all password fields'), backgroundColor: AppTheme.error),
+        const SnackBar(
+            content: Text('Please fill all password fields'),
+            backgroundColor: AppTheme.error),
       );
       return;
     }
-    
+
     if (_newPasswordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('New passwords do not match'), backgroundColor: AppTheme.error),
+        const SnackBar(
+            content: Text('New passwords do not match'),
+            backgroundColor: AppTheme.error),
       );
       return;
     }
-    
+
     if (_newPasswordController.text.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password must be at least 6 characters'), backgroundColor: AppTheme.error),
+        const SnackBar(
+            content: Text('Password must be at least 6 characters'),
+            backgroundColor: AppTheme.error),
       );
       return;
     }
-    
+
     setState(() => _isChangingPassword = true);
-    
+
     // TODO: Implement actual password change API
     await Future.delayed(const Duration(seconds: 1));
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password changed successfully!'), backgroundColor: AppTheme.success),
+      const SnackBar(
+          content: Text('Password changed successfully!'),
+          backgroundColor: AppTheme.success),
     );
-    
+
     _currentPasswordController.clear();
     _newPasswordController.clear();
     _confirmPasswordController.clear();
@@ -677,7 +725,7 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   }
 
   // ==================== WITHDRAWAL ACCOUNT METHODS ====================
-  
+
   void _addWithdrawalAccount() {
     _showAccountDialog();
   }
@@ -691,9 +739,12 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove Account'),
-        content: Text('Are you sure you want to remove ${account.method.toUpperCase()} account ${_formatPhoneNumber(account.accountNumber)}?'),
+        content: Text(
+            'Are you sure you want to remove ${account.method.toUpperCase()} account ${_formatPhoneNumber(account.accountNumber)}?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               setState(() {
@@ -705,7 +756,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               await _saveWithdrawalAccounts();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Account removed successfully'), backgroundColor: AppTheme.error),
+                const SnackBar(
+                    content: Text('Account removed successfully'),
+                    backgroundColor: AppTheme.error),
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
@@ -732,7 +785,8 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     await _saveWithdrawalAccounts();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Default withdrawal account updated to ${selectedAccount.method.toUpperCase()}'),
+        content: Text(
+            'Default withdrawal account updated to ${selectedAccount.method.toUpperCase()}'),
         backgroundColor: AppTheme.success,
       ),
     );
@@ -740,8 +794,10 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   void _showAccountDialog({WithdrawalAccount? account}) {
     final isEditing = account != null;
-    final nameController = TextEditingController(text: account?.holderName ?? '');
-    final phoneController = TextEditingController(text: account?.accountNumber ?? '');
+    final nameController =
+        TextEditingController(text: account?.holderName ?? '');
+    final phoneController =
+        TextEditingController(text: account?.accountNumber ?? '');
     String selectedMethod = account?.method ?? 'airtel';
     String? phoneError;
 
@@ -749,12 +805,17 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) {
-          final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+          final themeProvider =
+              Provider.of<ThemeProvider>(context, listen: false);
           final isDark = themeProvider.isDarkMode;
-          
+
           return AlertDialog(
-            backgroundColor: isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
-            title: Text(isEditing ? 'Edit Withdrawal Account' : 'Add Withdrawal Account'),
+            backgroundColor: isDark
+                ? AppTheme.darkCardBackground
+                : AppTheme.lightCardBackground,
+            title: Text(isEditing
+                ? 'Edit Withdrawal Account'
+                : 'Add Withdrawal Account'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -790,7 +851,10 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                 const SizedBox(height: 20),
                 TextField(
                   controller: nameController,
-                  style: TextStyle(color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
+                  style: TextStyle(
+                      color: isDark
+                          ? AppTheme.darkPrimaryText
+                          : AppTheme.lightPrimaryText),
                   decoration: InputDecoration(
                     labelText: 'Account Holder Name',
                     hintText: 'Full name on the account',
@@ -801,7 +865,10 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                 TextField(
                   controller: phoneController,
                   keyboardType: TextInputType.phone,
-                  style: TextStyle(color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText),
+                  style: TextStyle(
+                      color: isDark
+                          ? AppTheme.darkPrimaryText
+                          : AppTheme.lightPrimaryText),
                   onChanged: (value) {
                     setStateDialog(() {
                       phoneError = null;
@@ -809,8 +876,12 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                   },
                   decoration: InputDecoration(
                     labelText: 'Mobile Number',
-                    hintText: selectedMethod == 'airtel' ? 'e.g., 0999123456' : 'e.g., 0888123456',
-                    prefixIcon: Icon(selectedMethod == 'airtel' ? Icons.phone_android : Icons.phone_iphone),
+                    hintText: selectedMethod == 'airtel'
+                        ? 'e.g., 0999123456'
+                        : 'e.g., 0888123456',
+                    prefixIcon: Icon(selectedMethod == 'airtel'
+                        ? Icons.phone_android
+                        : Icons.phone_iphone),
                     errorText: phoneError,
                     helperText: 'Must be exactly 10 digits',
                     helperStyle: const TextStyle(fontSize: 10),
@@ -819,26 +890,32 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel')),
               ElevatedButton(
                 onPressed: () async {
-                  String cleanedNumber = phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
-                  String? validationError = _validatePhoneNumber(selectedMethod, cleanedNumber);
-                  
+                  String cleanedNumber =
+                      phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+                  String? validationError =
+                      _validatePhoneNumber(selectedMethod, cleanedNumber);
+
                   if (validationError != null) {
                     setStateDialog(() {
                       phoneError = validationError;
                     });
                     return;
                   }
-                  
+
                   if (nameController.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter account holder name'), backgroundColor: AppTheme.error),
+                      const SnackBar(
+                          content: Text('Please enter account holder name'),
+                          backgroundColor: AppTheme.error),
                     );
                     return;
                   }
-                  
+
                   setState(() {
                     if (isEditing) {
                       account!.holderName = nameController.text;
@@ -858,7 +935,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(isEditing ? 'Account updated successfully' : 'Account added successfully'),
+                      content: Text(isEditing
+                          ? 'Account updated successfully'
+                          : 'Account added successfully'),
                       backgroundColor: AppTheme.success,
                     ),
                   );
@@ -882,29 +961,48 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
     final isSelected = selectedMethod == method;
-    
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryRed.withOpacity(0.2) : (isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground),
+            color: isSelected
+                ? AppTheme.primaryRed.withOpacity(0.2)
+                : (isDark
+                    ? AppTheme.darkCardBackground
+                    : AppTheme.lightCardBackground),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? AppTheme.primaryRed : (isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText).withOpacity(0.3),
+              color: isSelected
+                  ? AppTheme.primaryRed
+                  : (isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText)
+                      .withOpacity(0.3),
               width: isSelected ? 2 : 1,
             ),
           ),
           child: Column(
             children: [
-              Icon(icon, size: 32, color: isSelected ? AppTheme.primaryRed : (isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText)),
+              Icon(icon,
+                  size: 32,
+                  color: isSelected
+                      ? AppTheme.primaryRed
+                      : (isDark
+                          ? AppTheme.darkMutedText
+                          : AppTheme.lightMutedText)),
               const SizedBox(height: 8),
               Text(
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: isSelected ? (isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText) : (isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText),
+                  color: isSelected
+                      ? (isDark
+                          ? AppTheme.darkPrimaryText
+                          : AppTheme.lightPrimaryText)
+                      : (isDark
+                          ? AppTheme.darkSecondaryText
+                          : AppTheme.lightSecondaryText),
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 12,
                 ),
@@ -923,18 +1021,22 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     final todayEarnings = driverProvider.stats.todayEarnings;
     final totalDeliveries = driverProvider.stats.totalDeliveries;
     final rating = driverProvider.stats.rating;
-    
+
     final isDark = themeProvider.isDarkMode;
-    final backgroundColor = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
-    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    final cardBgColor = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
+    final backgroundColor =
+        isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final textColor =
+        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final cardBgColor =
+        isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
 
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
         title: Text(
           'Settings',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor),
+          style: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.bold, color: textColor),
         ),
         backgroundColor: backgroundColor,
         elevation: 0,
@@ -948,7 +1050,8 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
           : SingleChildScrollView(
               child: Column(
                 children: [
-                  _buildProfileCard(todayEarnings, totalDeliveries, rating, isDark, textColor, cardBgColor),
+                  _buildProfileCard(todayEarnings, totalDeliveries, rating,
+                      isDark, textColor, cardBgColor),
                   const SizedBox(height: 16),
                   _buildVerificationCard(isDark, cardBgColor),
                   const SizedBox(height: 16),
@@ -973,12 +1076,17 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   }
 
   // ==================== PROFILE CARD ====================
-  Widget _buildProfileCard(double todayEarnings, int totalDeliveries, double rating, bool isDark, Color textColor, Color cardBg) {
-    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    final mutedColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
-    final secondaryBg = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
+  Widget _buildProfileCard(double todayEarnings, int totalDeliveries,
+      double rating, bool isDark, Color textColor, Color cardBg) {
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final mutedColor =
+        isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+    final secondaryBg = isDark
+        ? AppTheme.darkSecondaryBackground
+        : AppTheme.lightSecondaryBackground;
     final displayName = _driverName.isNotEmpty ? _driverName : 'Driver';
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -1010,8 +1118,11 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                     ),
                     child: ClipOval(
                       child: _profileImage != null
-                          ? Image.file(_profileImage!, width: 80, height: 80, fit: BoxFit.cover)
-                          : const Center(child: Icon(Icons.person, size: 45, color: Colors.white)),
+                          ? Image.file(_profileImage!,
+                              width: 80, height: 80, fit: BoxFit.cover)
+                          : const Center(
+                              child: Icon(Icons.person,
+                                  size: 45, color: Colors.white)),
                     ),
                   ),
                 ),
@@ -1023,12 +1134,19 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(displayName, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor)),
+                            child: Text(displayName,
+                                style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor)),
                           ),
                           Container(
-                            decoration: BoxDecoration(color: secondaryBg, borderRadius: BorderRadius.circular(20)),
+                            decoration: BoxDecoration(
+                                color: secondaryBg,
+                                borderRadius: BorderRadius.circular(20)),
                             child: IconButton(
-                              icon: const Icon(Icons.edit, size: 18, color: AppTheme.primaryRed),
+                              icon: const Icon(Icons.edit,
+                                  size: 18, color: AppTheme.primaryRed),
                               onPressed: _showEditProfileDialog,
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
@@ -1039,17 +1157,31 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.email_outlined, size: 14, color: mutedColor),
+                          Icon(Icons.email_outlined,
+                              size: 14, color: mutedColor),
                           const SizedBox(width: 4),
-                          Expanded(child: Text(_driverEmail.isNotEmpty ? _driverEmail : 'No email set', style: TextStyle(fontSize: 12, color: secondaryTextColor), overflow: TextOverflow.ellipsis)),
+                          Expanded(
+                              child: Text(
+                                  _driverEmail.isNotEmpty
+                                      ? _driverEmail
+                                      : 'No email set',
+                                  style: TextStyle(
+                                      fontSize: 12, color: secondaryTextColor),
+                                  overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.phone_android, size: 14, color: mutedColor),
+                          Icon(Icons.phone_android,
+                              size: 14, color: mutedColor),
                           const SizedBox(width: 4),
-                          Text(_driverPhone.isNotEmpty ? _driverPhone : 'No phone set', style: TextStyle(fontSize: 12, color: secondaryTextColor)),
+                          Text(
+                              _driverPhone.isNotEmpty
+                                  ? _driverPhone
+                                  : 'No phone set',
+                              style: TextStyle(
+                                  fontSize: 12, color: secondaryTextColor)),
                         ],
                       ),
                     ],
@@ -1058,21 +1190,25 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
               ],
             ),
           ),
-          
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               color: secondaryBg,
-              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
+              borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem(Icons.attach_money, 'MK${todayEarnings.toInt()}', 'Today', isDark),
+                _buildStatItem(Icons.attach_money, 'MK${todayEarnings.toInt()}',
+                    'Today', isDark),
                 _buildDivider(),
-                _buildStatItem(Icons.delivery_dining, '$totalDeliveries', 'Deliveries', isDark),
+                _buildStatItem(Icons.delivery_dining, '$totalDeliveries',
+                    'Deliveries', isDark),
                 _buildDivider(),
-                _buildStatItem(Icons.star, '${rating.toStringAsFixed(1)} ★', 'Rating', isDark),
+                _buildStatItem(Icons.star, '${rating.toStringAsFixed(1)} ★',
+                    'Rating', isDark),
               ],
             ),
           ),
@@ -1081,15 +1217,20 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
     );
   }
 
-  Widget _buildStatItem(IconData icon, String value, String label, bool isDark) {
-    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    
+  Widget _buildStatItem(
+      IconData icon, String value, String label, bool isDark) {
+    final textColor =
+        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+
     return Column(
       children: [
         Icon(icon, size: 20, color: AppTheme.primaryRed),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
         Text(label, style: TextStyle(fontSize: 11, color: secondaryTextColor)),
       ],
     );
@@ -1105,8 +1246,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   // ==================== VERIFICATION CARD ====================
   Widget _buildVerificationCard(bool isDark, Color cardBg) {
-    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -1119,40 +1261,78 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('VERIFICATION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+            child: Text('VERIFICATION',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
           ),
           const Divider(height: 1, color: AppTheme.deepCrimson),
           ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: _isEmailVerified ? AppTheme.success.withOpacity(0.2) : AppTheme.warning.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.email_outlined, size: 20, color: _isEmailVerified ? AppTheme.success : AppTheme.warning),
+              decoration: BoxDecoration(
+                  color: _isEmailVerified
+                      ? AppTheme.success.withOpacity(0.2)
+                      : AppTheme.warning.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.email_outlined,
+                  size: 20,
+                  color:
+                      _isEmailVerified ? AppTheme.success : AppTheme.warning),
             ),
-            title: const Text('Email Address', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text(_isEmailVerified ? 'Verified' : 'Verify your email', style: TextStyle(color: secondaryTextColor)),
+            title: const Text('Email Address',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text(_isEmailVerified ? 'Verified' : 'Verify your email',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: _isEmailVerified
                 ? Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                    child: const Text('Verified', style: TextStyle(fontSize: 11, color: AppTheme.success)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: AppTheme.success.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20)),
+                    child: const Text('Verified',
+                        style:
+                            TextStyle(fontSize: 11, color: AppTheme.success)),
                   )
-                : TextButton(onPressed: _verifyEmail, child: const Text('Verify', style: TextStyle(color: AppTheme.primaryRed))),
+                : TextButton(
+                    onPressed: _verifyEmail,
+                    child: const Text('Verify',
+                        style: TextStyle(color: AppTheme.primaryRed))),
           ),
           ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: _isPhoneVerified ? AppTheme.success.withOpacity(0.2) : AppTheme.warning.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.phone_android, size: 20, color: _isPhoneVerified ? AppTheme.success : AppTheme.warning),
+              decoration: BoxDecoration(
+                  color: _isPhoneVerified
+                      ? AppTheme.success.withOpacity(0.2)
+                      : AppTheme.warning.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.phone_android,
+                  size: 20,
+                  color:
+                      _isPhoneVerified ? AppTheme.success : AppTheme.warning),
             ),
-            title: const Text('Phone Number', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text(_isPhoneVerified ? 'Verified' : 'Verify your phone', style: TextStyle(color: secondaryTextColor)),
+            title: const Text('Phone Number',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text(_isPhoneVerified ? 'Verified' : 'Verify your phone',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: _isPhoneVerified
                 ? Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                    child: const Text('Verified', style: TextStyle(fontSize: 11, color: AppTheme.success)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: AppTheme.success.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20)),
+                    child: const Text('Verified',
+                        style:
+                            TextStyle(fontSize: 11, color: AppTheme.success)),
                   )
-                : TextButton(onPressed: _verifyPhone, child: const Text('Verify', style: TextStyle(color: AppTheme.primaryRed))),
+                : TextButton(
+                    onPressed: _verifyPhone,
+                    child: const Text('Verify',
+                        style: TextStyle(color: AppTheme.primaryRed))),
           ),
         ],
       ),
@@ -1161,11 +1341,16 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   // ==================== VEHICLE CARD ====================
   Widget _buildVehicleCard(bool isDark, Color cardBg) {
-    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    final mutedColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
-    final secondaryBg = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
-    
+    final textColor =
+        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final mutedColor =
+        isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+    final secondaryBg = isDark
+        ? AppTheme.darkSecondaryBackground
+        : AppTheme.lightSecondaryBackground;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -1178,10 +1363,13 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('VEHICLE INFORMATION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+            child: Text('VEHICLE INFORMATION',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
           ),
           const Divider(height: 1, color: AppTheme.deepCrimson),
-          
           if (!_showVehicleForm && _hasVehicleInfo)
             Container(
               padding: const EdgeInsets.all(16),
@@ -1190,25 +1378,34 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                   Container(
                     width: 50,
                     height: 50,
-                    decoration: BoxDecoration(color: secondaryBg, borderRadius: BorderRadius.circular(12)),
-                    child: Icon(_getVehicleIcon(_selectedVehicleType), size: 28, color: AppTheme.primaryRed),
+                    decoration: BoxDecoration(
+                        color: secondaryBg,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: Icon(_getVehicleIcon(_selectedVehicleType),
+                        size: 28, color: AppTheme.primaryRed),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_selectedVehicleType, style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+                        Text(_selectedVehicleType,
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, color: textColor)),
                         const SizedBox(height: 2),
-                        Text(_vehicleModelController.text, style: TextStyle(fontSize: 12, color: secondaryTextColor)),
-                        Text(_vehiclePlateController.text, style: TextStyle(fontSize: 11, color: mutedColor)),
+                        Text(_vehicleModelController.text,
+                            style: TextStyle(
+                                fontSize: 12, color: secondaryTextColor)),
+                        Text(_vehiclePlateController.text,
+                            style: TextStyle(fontSize: 11, color: mutedColor)),
                       ],
                     ),
                   ),
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.edit, color: AppTheme.primaryRed),
+                        icon:
+                            const Icon(Icons.edit, color: AppTheme.primaryRed),
                         onPressed: _editVehicleInfo,
                       ),
                       IconButton(
@@ -1220,7 +1417,6 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                 ],
               ),
             ),
-          
           if (_showVehicleForm)
             Container(
               padding: const EdgeInsets.all(16),
@@ -1233,10 +1429,15 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Vehicle Type',
                       prefixIcon: Icon(Icons.directions_car),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12))),
                     ),
-                    items: _vehicleTypes.map((type) => DropdownMenuItem(value: type['value'], child: Text(type['label']!))).toList(),
-                    onChanged: (value) => setState(() => _selectedVehicleType = value!),
+                    items: _vehicleTypes
+                        .map((type) => DropdownMenuItem(
+                            value: type['value'], child: Text(type['label']!)))
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => _selectedVehicleType = value!),
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -1246,7 +1447,8 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       labelText: 'Vehicle Model',
                       hintText: 'e.g., Toyota Corolla',
                       prefixIcon: Icon(Icons.model_training),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12))),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1257,7 +1459,8 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       labelText: 'License Plate',
                       hintText: 'e.g., MN 1234',
                       prefixIcon: Icon(Icons.local_police),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12))),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1268,7 +1471,8 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       labelText: 'Vehicle Color',
                       hintText: 'e.g., Red, Blue, Black',
                       prefixIcon: Icon(Icons.color_lens),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12))),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1279,21 +1483,32 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                       labelText: 'Driver\'s License Number',
                       hintText: 'Enter your license number',
                       prefixIcon: Icon(Icons.credit_card),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12))),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: OutlinedButton(onPressed: () => setState(() => _showVehicleForm = false), child: const Text('Cancel'))),
+                      Expanded(
+                          child: OutlinedButton(
+                              onPressed: () =>
+                                  setState(() => _showVehicleForm = false),
+                              child: const Text('Cancel'))),
                       const SizedBox(width: 12),
-                      Expanded(child: _isSavingVehicle ? const Center(child: CircularProgressIndicator()) : ElevatedButton(onPressed: _saveVehicleInfo, style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed), child: const Text('Save Vehicle'))),
+                      Expanded(
+                          child: _isSavingVehicle
+                              ? const Center(child: CircularProgressIndicator())
+                              : ElevatedButton(
+                                  onPressed: _saveVehicleInfo,
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryRed),
+                                  child: const Text('Save Vehicle'))),
                     ],
                   ),
                 ],
               ),
             ),
-          
           if (!_showVehicleForm && !_hasVehicleInfo)
             Padding(
               padding: const EdgeInsets.all(32),
@@ -1302,11 +1517,13 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                   children: [
                     Icon(Icons.directions_car, size: 48, color: mutedColor),
                     const SizedBox(height: 8),
-                    Text('No vehicle information added', style: TextStyle(color: secondaryTextColor)),
+                    Text('No vehicle information added',
+                        style: TextStyle(color: secondaryTextColor)),
                     const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: () => setState(() => _showVehicleForm = true),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryRed),
                       child: const Text('Add Vehicle'),
                     ),
                   ],
@@ -1320,11 +1537,16 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   // ==================== WITHDRAWAL CARD ====================
   Widget _buildWithdrawalCard(bool isDark, Color cardBg) {
-    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    final mutedColor = isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
-    final secondaryBg = isDark ? AppTheme.darkSecondaryBackground : AppTheme.lightSecondaryBackground;
-    
+    final textColor =
+        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+    final mutedColor =
+        isDark ? AppTheme.darkMutedText : AppTheme.lightMutedText;
+    final secondaryBg = isDark
+        ? AppTheme.darkSecondaryBackground
+        : AppTheme.lightSecondaryBackground;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -1337,78 +1559,118 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('WITHDRAWAL ACCOUNTS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+            child: Text('WITHDRAWAL ACCOUNTS',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
           ),
           const Divider(height: 1, color: AppTheme.deepCrimson),
-          
           if (_withdrawalAccounts.isEmpty)
             Padding(
               padding: const EdgeInsets.all(32),
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.account_balance_wallet, size: 48, color: mutedColor),
+                    Icon(Icons.account_balance_wallet,
+                        size: 48, color: mutedColor),
                     const SizedBox(height: 8),
-                    Text('No withdrawal accounts', style: TextStyle(color: secondaryTextColor)),
-                    Text('Tap + to add one', style: TextStyle(fontSize: 12, color: mutedColor)),
+                    Text('No withdrawal accounts',
+                        style: TextStyle(color: secondaryTextColor)),
+                    Text('Tap + to add one',
+                        style: TextStyle(fontSize: 12, color: mutedColor)),
                   ],
                 ),
               ),
             ),
-          
           ..._withdrawalAccounts.map((account) => Dismissible(
-            key: Key(account.id),
-            direction: DismissDirection.endToStart,
-            background: Container(color: AppTheme.error, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 20), child: const Icon(Icons.delete, color: Colors.white)),
-            confirmDismiss: (direction) async => await showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Remove Account'),
-                content: Text('Remove ${account.method.toUpperCase()} account ${_formatPhoneNumber(account.accountNumber)}?'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Remove', style: TextStyle(color: AppTheme.error))),
-                ],
-              ),
-            ),
-            onDismissed: (direction) => _deleteWithdrawalAccount(account),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 45,
-                    height: 45,
-                    decoration: BoxDecoration(color: secondaryBg, borderRadius: BorderRadius.circular(12)),
-                    child: Center(child: Icon(account.method == 'airtel' ? Icons.phone_android : Icons.phone_iphone, size: 28, color: AppTheme.primaryRed)),
+                key: Key(account.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                    color: AppTheme.error,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    child: const Icon(Icons.delete, color: Colors.white)),
+                confirmDismiss: (direction) async => await showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Remove Account'),
+                    content: Text(
+                        'Remove ${account.method.toUpperCase()} account ${_formatPhoneNumber(account.accountNumber)}?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel')),
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Remove',
+                              style: TextStyle(color: AppTheme.error))),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(account.method.toUpperCase(), style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
-                        const SizedBox(height: 2),
-                        Text(_formatPhoneNumber(account.accountNumber), style: TextStyle(fontSize: 12, color: secondaryTextColor)),
-                        Text(account.holderName, style: TextStyle(fontSize: 11, color: mutedColor)),
-                      ],
-                    ),
+                ),
+                onDismissed: (direction) => _deleteWithdrawalAccount(account),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 45,
+                        height: 45,
+                        decoration: BoxDecoration(
+                            color: secondaryBg,
+                            borderRadius: BorderRadius.circular(12)),
+                        child: Center(
+                            child: Icon(
+                                account.method == 'airtel'
+                                    ? Icons.phone_android
+                                    : Icons.phone_iphone,
+                                size: 28,
+                                color: AppTheme.primaryRed)),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(account.method.toUpperCase(),
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor)),
+                            const SizedBox(height: 2),
+                            Text(_formatPhoneNumber(account.accountNumber),
+                                style: TextStyle(
+                                    fontSize: 12, color: secondaryTextColor)),
+                            Text(account.holderName,
+                                style:
+                                    TextStyle(fontSize: 11, color: mutedColor)),
+                          ],
+                        ),
+                      ),
+                      if (account.isDefault)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                              color: AppTheme.success.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20)),
+                          child: const Text('Default',
+                              style: TextStyle(
+                                  fontSize: 10, color: AppTheme.success)),
+                        ),
+                      if (!account.isDefault)
+                        TextButton(
+                            onPressed: () => _setDefaultAccount(account),
+                            child: const Text('Set Default',
+                                style: TextStyle(fontSize: 12))),
+                      const SizedBox(width: 8),
+                      IconButton(
+                          icon: const Icon(Icons.edit, size: 18),
+                          onPressed: () => _editWithdrawalAccount(account),
+                          color: textColor),
+                    ],
                   ),
-                  if (account.isDefault)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                      child: const Text('Default', style: TextStyle(fontSize: 10, color: AppTheme.success)),
-                    ),
-                  if (!account.isDefault)
-                    TextButton(onPressed: () => _setDefaultAccount(account), child: const Text('Set Default', style: TextStyle(fontSize: 12))),
-                  const SizedBox(width: 8),
-                  IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => _editWithdrawalAccount(account), color: textColor),
-                ],
-              ),
-            ),
-          )),
-          
+                ),
+              )),
           Padding(
             padding: const EdgeInsets.all(12),
             child: ElevatedButton.icon(
@@ -1420,7 +1682,8 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                 foregroundColor: AppTheme.primaryRed,
                 elevation: 0,
                 minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
               ),
             ),
           ),
@@ -1431,9 +1694,11 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   // ==================== SECURITY CARD ====================
   Widget _buildSecurityCard(bool isDark, Color cardBg) {
-    final textColor = isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
-    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    
+    final textColor =
+        isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText;
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -1446,24 +1711,34 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('SECURITY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+            child: Text('SECURITY',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
           ),
           const Divider(height: 1, color: AppTheme.deepCrimson),
-          
           ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: AppTheme.warning.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.lock_outline, size: 20, color: AppTheme.warning),
+              decoration: BoxDecoration(
+                  color: AppTheme.warning.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.lock_outline,
+                  size: 20, color: AppTheme.warning),
             ),
-            title: const Text('Change Password', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('Update your account password', style: TextStyle(color: secondaryTextColor)),
+            title: const Text('Change Password',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('Update your account password',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: IconButton(
-              icon: Icon(_showPasswordChange ? Icons.expand_less : Icons.expand_more, color: secondaryTextColor),
-              onPressed: () => setState(() => _showPasswordChange = !_showPasswordChange),
+              icon: Icon(
+                  _showPasswordChange ? Icons.expand_less : Icons.expand_more,
+                  color: secondaryTextColor),
+              onPressed: () =>
+                  setState(() => _showPasswordChange = !_showPasswordChange),
             ),
           ),
-          
           if (_showPasswordChange)
             Container(
               padding: const EdgeInsets.all(16),
@@ -1473,21 +1748,28 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                     controller: _currentPasswordController,
                     obscureText: true,
                     style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Current Password', prefixIcon: Icon(Icons.lock_outline)),
+                    decoration: const InputDecoration(
+                        labelText: 'Current Password',
+                        prefixIcon: Icon(Icons.lock_outline)),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _newPasswordController,
                     obscureText: true,
                     style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'New Password', prefixIcon: Icon(Icons.lock_open), helperText: 'Minimum 6 characters'),
+                    decoration: const InputDecoration(
+                        labelText: 'New Password',
+                        prefixIcon: Icon(Icons.lock_open),
+                        helperText: 'Minimum 6 characters'),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _confirmPasswordController,
                     obscureText: true,
                     style: TextStyle(color: textColor),
-                    decoration: const InputDecoration(labelText: 'Confirm New Password', prefixIcon: Icon(Icons.lock_open)),
+                    decoration: const InputDecoration(
+                        labelText: 'Confirm New Password',
+                        prefixIcon: Icon(Icons.lock_open)),
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
@@ -1496,7 +1778,10 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
                         ? const Center(child: CircularProgressIndicator())
                         : ElevatedButton(
                             onPressed: _changePassword,
-                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryRed, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryRed,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30))),
                             child: const Text('Update Password'),
                           ),
                   ),
@@ -1509,9 +1794,11 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   }
 
   // ==================== PREFERENCES CARD ====================
-  Widget _buildPreferencesCard(ThemeProvider themeProvider, bool isDark, Color cardBg) {
-    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    
+  Widget _buildPreferencesCard(
+      ThemeProvider themeProvider, bool isDark, Color cardBg) {
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -1524,37 +1811,66 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('PREFERENCES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+            child: Text('PREFERENCES',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
           ),
           const Divider(height: 1, color: AppTheme.deepCrimson),
-          
           ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: themeProvider.isDarkMode ? Colors.purple.withOpacity(0.2) : Colors.orange.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-              child: Icon(themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode, size: 20, color: themeProvider.isDarkMode ? Colors.purple : Colors.orange),
+              decoration: BoxDecoration(
+                  color: themeProvider.isDarkMode
+                      ? Colors.purple.withOpacity(0.2)
+                      : Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Icon(
+                  themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                  size: 20,
+                  color:
+                      themeProvider.isDarkMode ? Colors.purple : Colors.orange),
             ),
-            title: const Text('Theme', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text(themeProvider.isDarkMode ? 'Dark Mode' : 'Light Mode', style: TextStyle(color: secondaryTextColor)),
+            title: const Text('Theme',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text(
+                themeProvider.isDarkMode ? 'Dark Mode' : 'Light Mode',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: Switch(
               value: themeProvider.isDarkMode,
-              onChanged: (value) => themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light),
+              onChanged: (value) => themeProvider
+                  .setThemeMode(value ? ThemeMode.dark : ThemeMode.light),
               activeColor: AppTheme.primaryRed,
             ),
           ),
-          
           ListTile(
-            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.primaryRed.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.language, size: 20, color: AppTheme.primaryRed)),
-            title: const Text('Language', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('English / Chichewa', style: TextStyle(color: secondaryTextColor)),
+            leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: AppTheme.primaryRed.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.language,
+                    size: 20, color: AppTheme.primaryRed)),
+            title: const Text('Language',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('English / Chichewa',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => _showLanguageDialog(context),
           ),
-          
           ListTile(
-            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.success.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.notifications, size: 20, color: AppTheme.success)),
-            title: const Text('Notifications', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('Push notifications, sounds, alerts', style: TextStyle(color: secondaryTextColor)),
+            leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: AppTheme.success.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.notifications,
+                    size: 20, color: AppTheme.success)),
+            title: const Text('Notifications',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('Push notifications, sounds, alerts',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => _showNotificationSettings(context),
           ),
@@ -1565,8 +1881,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   // ==================== SUPPORT CARD ====================
   Widget _buildSupportCard(bool isDark, Color cardBg) {
-    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -1579,38 +1896,70 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('SUPPORT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+            child: Text('SUPPORT',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
           ),
           const Divider(height: 1, color: AppTheme.deepCrimson),
-          
           ListTile(
-            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.help_outline, size: 20, color: Colors.blue)),
-            title: const Text('Help Center', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('FAQs, guides, tutorials', style: TextStyle(color: secondaryTextColor)),
+            leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.help_outline,
+                    size: 20, color: Colors.blue)),
+            title: const Text('Help Center',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('FAQs, guides, tutorials',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => _showComingSoon(context, 'Help Center'),
           ),
-          
           ListTile(
-            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.green.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.support_agent, size: 20, color: Colors.green)),
-            title: const Text('Contact Support', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('24/7 driver support', style: TextStyle(color: secondaryTextColor)),
+            leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.support_agent,
+                    size: 20, color: Colors.green)),
+            title: const Text('Contact Support',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('24/7 driver support',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => _showContactSupport(context),
           ),
-          
           ListTile(
-            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.orange.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.report_problem, size: 20, color: Colors.orange)),
-            title: const Text('Report an Issue', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('Technical support, delivery problems', style: TextStyle(color: secondaryTextColor)),
+            leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.report_problem,
+                    size: 20, color: Colors.orange)),
+            title: const Text('Report an Issue',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('Technical support, delivery problems',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => _showReportIssue(context),
           ),
-          
           ListTile(
-            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.yellow.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.rate_review, size: 20, color: AppTheme.yellow)),
-            title: const Text('Rate the App', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('Help us improve', style: TextStyle(color: secondaryTextColor)),
+            leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: AppTheme.yellow.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.rate_review,
+                    size: 20, color: AppTheme.yellow)),
+            title: const Text('Rate the App',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('Help us improve',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => _rateApp(context),
           ),
@@ -1621,8 +1970,9 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
 
   // ==================== ABOUT CARD ====================
   Widget _buildAboutCard(bool isDark, Color cardBg) {
-    final secondaryTextColor = isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
-    
+    final secondaryTextColor =
+        isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -1635,30 +1985,55 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('ABOUT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1)),
+            child: Text('ABOUT',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
           ),
           const Divider(height: 1, color: AppTheme.deepCrimson),
-          
           ListTile(
-            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppTheme.primaryRed.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.info_outline, size: 20, color: AppTheme.primaryRed)),
-            title: const Text('App Version', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('Version 1.0.0', style: TextStyle(color: secondaryTextColor)),
+            leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: AppTheme.primaryRed.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.info_outline,
+                    size: 20, color: AppTheme.primaryRed)),
+            title: const Text('App Version',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('Version 1.0.0',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => _showVersionInfo(context),
           ),
-          
           ListTile(
-            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.purple.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.security, size: 20, color: Colors.purple)),
-            title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('How we handle your data', style: TextStyle(color: secondaryTextColor)),
+            leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12)),
+                child:
+                    const Icon(Icons.security, size: 20, color: Colors.purple)),
+            title: const Text('Privacy Policy',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('How we handle your data',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => _showComingSoon(context, 'Privacy Policy'),
           ),
-          
           ListTile(
-            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.teal.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.description, size: 20, color: Colors.teal)),
-            title: const Text('Terms of Service', style: TextStyle(fontWeight: FontWeight.w500)),
-            subtitle: Text('Driver agreement terms', style: TextStyle(color: secondaryTextColor)),
+            leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: Colors.teal.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.description,
+                    size: 20, color: Colors.teal)),
+            title: const Text('Terms of Service',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+            subtitle: Text('Driver agreement terms',
+                style: TextStyle(color: secondaryTextColor)),
             trailing: const Icon(Icons.chevron_right, size: 20),
             onTap: () => _showComingSoon(context, 'Terms of Service'),
           ),
@@ -1678,9 +2053,11 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
           foregroundColor: AppTheme.error,
           side: const BorderSide(color: AppTheme.error),
           minimumSize: const Size(double.infinity, 50),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: const Text('Log Out', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        child: const Text('Log Out',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -1689,17 +2066,23 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   void _showLanguageDialog(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
+        backgroundColor:
+            isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
         title: const Text('Select Language'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(title: const Text('English'), trailing: const Icon(Icons.check, color: AppTheme.primaryRed), onTap: () => Navigator.pop(context)),
-            ListTile(title: const Text('Chichewa'), onTap: () => Navigator.pop(context)),
+            ListTile(
+                title: const Text('English'),
+                trailing: const Icon(Icons.check, color: AppTheme.primaryRed),
+                onTap: () => Navigator.pop(context)),
+            ListTile(
+                title: const Text('Chichewa'),
+                onTap: () => Navigator.pop(context)),
           ],
         ),
       ),
@@ -1709,21 +2092,44 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   void _showNotificationSettings(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
-    
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor:
+          isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Notification Settings', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkPrimaryText : AppTheme.lightPrimaryText)),
+            Text('Notification Settings',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? AppTheme.darkPrimaryText
+                        : AppTheme.lightPrimaryText)),
             const SizedBox(height: 16),
-            SwitchListTile(title: const Text('Push Notifications'), subtitle: const Text('Receive order alerts'), value: true, onChanged: (value) {}, activeColor: AppTheme.primaryRed),
-            SwitchListTile(title: const Text('Sound'), subtitle: const Text('Play sound for new orders'), value: true, onChanged: (value) {}, activeColor: AppTheme.primaryRed),
-            SwitchListTile(title: const Text('Vibration'), subtitle: const Text('Vibrate for new orders'), value: true, onChanged: (value) {}, activeColor: AppTheme.primaryRed),
+            SwitchListTile(
+                title: const Text('Push Notifications'),
+                subtitle: const Text('Receive order alerts'),
+                value: true,
+                onChanged: (value) {},
+                activeColor: AppTheme.primaryRed),
+            SwitchListTile(
+                title: const Text('Sound'),
+                subtitle: const Text('Play sound for new orders'),
+                value: true,
+                onChanged: (value) {},
+                activeColor: AppTheme.primaryRed),
+            SwitchListTile(
+                title: const Text('Vibration'),
+                subtitle: const Text('Vibrate for new orders'),
+                value: true,
+                onChanged: (value) {},
+                activeColor: AppTheme.primaryRed),
           ],
         ),
       ),
@@ -1733,18 +2139,31 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   void _showContactSupport(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
+        backgroundColor:
+            isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
         title: const Text('Contact Support'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(leading: const Icon(Icons.phone, color: AppTheme.primaryRed), title: const Text('Call Support'), subtitle: const Text('+265 123 456 789'), onTap: () => Navigator.pop(context)),
-            ListTile(leading: const Icon(Icons.email, color: AppTheme.primaryRed), title: const Text('Email Support'), subtitle: const Text('support@foodieexpress.com'), onTap: () => Navigator.pop(context)),
-            ListTile(leading: const Icon(Icons.chat, color: AppTheme.primaryRed), title: const Text('Live Chat'), subtitle: const Text('Available 24/7'), onTap: () => Navigator.pop(context)),
+            ListTile(
+                leading: const Icon(Icons.phone, color: AppTheme.primaryRed),
+                title: const Text('Call Support'),
+                subtitle: const Text('+265 123 456 789'),
+                onTap: () => Navigator.pop(context)),
+            ListTile(
+                leading: const Icon(Icons.email, color: AppTheme.primaryRed),
+                title: const Text('Email Support'),
+                subtitle: const Text('support@foodieexpress.com'),
+                onTap: () => Navigator.pop(context)),
+            ListTile(
+                leading: const Icon(Icons.chat, color: AppTheme.primaryRed),
+                title: const Text('Live Chat'),
+                subtitle: const Text('Available 24/7'),
+                onTap: () => Navigator.pop(context)),
           ],
         ),
       ),
@@ -1754,30 +2173,41 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   void _showReportIssue(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
+        backgroundColor:
+            isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
         title: const Text('Report an Issue'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Describe your issue:'),
             const SizedBox(height: 8),
-            TextField(maxLines: 3, decoration: InputDecoration(hintText: 'Enter details here...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+            TextField(
+                maxLines: 3,
+                decoration: InputDecoration(
+                    hintText: 'Enter details here...',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)))),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Submit')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Submit')),
         ],
       ),
     );
   }
 
   void _rateApp(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thank you for rating!')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Thank you for rating!')));
   }
 
   void _showVersionInfo(BuildContext context) {
@@ -1785,7 +2215,8 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
       context: context,
       applicationName: 'Foodie Express Driver',
       applicationVersion: 'Version 1.0.0',
-      applicationIcon: const Icon(Icons.delivery_dining, size: 50, color: AppTheme.primaryRed),
+      applicationIcon: const Icon(Icons.delivery_dining,
+          size: 50, color: AppTheme.primaryRed),
       children: const [
         Text('© 2024 Foodie Express. All rights reserved.'),
         SizedBox(height: 8),
@@ -1795,24 +2226,29 @@ class _DriverSettingsScreenState extends State<DriverSettingsScreen> {
   }
 
   void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$feature coming soon!')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('$feature coming soon!')));
   }
 
   void _showLogoutConfirmation(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final isDark = themeProvider.isDarkMode;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
+        backgroundColor:
+            isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground,
         title: const Text('Log Out'),
         content: const Text('Are you sure you want to log out?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
-              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              final authProvider =
+                  Provider.of<AuthProvider>(context, listen: false);
               authProvider.logout();
               Navigator.pop(context);
               context.go('/login');

@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ✅ Add this
+import '../../config/theme.dart';
+import '../../services/api_service.dart';
 
 class RegistrationScreen extends StatefulWidget {
   final String? selectedRole;
@@ -84,41 +89,59 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   Future<void> _handleRegister() async {
-    if (_nameController.text.trim().isEmpty) {
-      _showError('Please enter your Username');
-      return;
-    }
-    if (_emailController.text.trim().isEmpty) {
-      _showError('Please enter your email address');
-      return;
-    }
-    if (!_isValidEmail(_emailController.text.trim())) {
-      _showError('Please enter a valid email address');
-      return;
-    }
-    if (_phoneController.text.trim().isEmpty) {
-      _showError('Please enter your phone number');
-      return;
-    }
-    if (!_isValidPhone(_phoneController.text.trim())) {
-      _showError('Please enter a valid 10-digit phone number');
-      return;
-    }
-    if (_passwordController.text.isEmpty) {
-      _showError('Please enter a password');
-      return;
-    }
-    if (_passwordController.text.length < 6) {
-      _showError('Password must be at least 6 characters');
-      return;
-    }
-    if (_passwordController.text != _confirmPasswordController.text) {
-      _showError('Passwords do not match');
-      return;
-    }
-    if (!_agreeToTerms) {
-      _showError('Please agree to the Terms & Conditions');
-      return;
+    Future<void> _handleRegister() async {
+      // ... existing validation code ...
+
+      setState(() => _isLoading = true);
+
+      try {
+        final result = await _apiService.register(
+          username: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          role: _selectedRole,
+          phone: _phoneController.text.trim(),
+        );
+
+        print('Registration successful: $result');
+
+        // ✅ FIX: Auto-login after registration
+        if (result['success'] == true && result['tokens'] != null) {
+          // Save tokens and user data
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('access_token', result['tokens']['access']);
+          await prefs.setString('refresh_token', result['tokens']['refresh']);
+          await prefs.setString('user_role', _selectedRole);
+
+          // Store user info
+          await prefs.setString('user_id', result['user']['id'].toString());
+          await prefs.setString('username', result['user']['username']);
+
+          _showSuccess('Account created successfully!');
+
+          // Navigate directly based on role without logging in again
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (_selectedRole == 'driver') {
+              context.go('/driver');
+            } else if (_selectedRole == 'restaurant') {
+              context.go('/restaurant-setup');
+            } else {
+              context.go('/home');
+            }
+          });
+        } else {
+          // If auto-login fails, go to login page
+          _showSuccess('Account created successfully! Please login.');
+          Future.delayed(const Duration(seconds: 1), () {
+            context.go('/login');
+          });
+        }
+      } catch (e) {
+        print('Registration error: $e');
+        _showError(e.toString().replaceAll('Exception: ', ''));
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
 
     setState(() => _isLoading = true);
@@ -308,8 +331,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         : Icons.visibility,
                     color: AppTheme.getMutedTextColor(context),
                   ),
-                  onPressed: () => setState(() =>
-                      _obscureConfirmPassword = !_obscureConfirmPassword),
+                  onPressed: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword),
                 ),
               ),
 

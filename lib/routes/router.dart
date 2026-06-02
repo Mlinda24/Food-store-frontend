@@ -20,6 +20,10 @@ import '../screens/restaurant/restaurant_profile_screen.dart';
 import '../screens/restaurant/withdraw_screen.dart';
 import '../screens/restaurant/restaurant_setup_screen.dart';
 import '../screens/driver/driver_dashboard_screen.dart';
+import '../screens/driver/available_orders_screen.dart';
+import '../screens/driver/delivery_history_screen.dart';
+import '../screens/driver/driver_earnings_screen.dart';
+import '../screens/driver/driver_settings_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../models/models.dart';
 import '../providers/auth_provider.dart';
@@ -33,7 +37,7 @@ final GoRouter router = GoRouter(
         Provider.of<RestaurantProvider>(context, listen: false);
 
     await Future.delayed(Duration.zero);
-    
+
     final isAuthenticated = authProvider.isAuthenticated;
     final user = authProvider.currentUser;
 
@@ -181,11 +185,31 @@ final GoRouter router = GoRouter(
       name: 'withdraw',
       builder: (context, state) => const WithdrawScreen(),
     ),
-    // Driver Route
+    // Driver Routes
     GoRoute(
       path: '/driver',
       name: 'driver',
       builder: (context, state) => const DriverDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/driver/available-orders',
+      name: 'driver-available-orders',
+      builder: (context, state) => const AvailableOrdersScreen(),
+    ),
+    GoRoute(
+      path: '/driver/delivery-history',
+      name: 'driver-delivery-history',
+      builder: (context, state) => const DeliveryHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/driver/earnings',
+      name: 'driver-earnings',
+      builder: (context, state) => const DriverEarningsScreen(),
+    ),
+    GoRoute(
+      path: '/driver/settings',
+      name: 'driver-settings',
+      builder: (context, state) => const DriverSettingsScreen(),
     ),
   ],
 );

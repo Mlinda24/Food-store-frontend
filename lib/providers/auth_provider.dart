@@ -18,6 +18,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   bool get isRestaurant => _currentUser?.role == UserRole.restaurant;
   bool get isCustomer => _currentUser?.role == UserRole.customer;
+  bool get isDriver => _currentUser?.role == UserRole.driver;
 
   AuthProvider() {
     checkAuthStatus();
@@ -63,6 +64,17 @@ class AuthProvider extends ChangeNotifier {
         } catch (e) {
           print('Error loading cart after login: $e');
         }
+
+        // Navigate based on role
+        if (context.mounted) {
+          if (_currentUser!.role == UserRole.customer) {
+            context.go('/home');
+          } else if (_currentUser!.role == UserRole.restaurant) {
+            context.go('/restaurant');
+          } else if (_currentUser!.role == UserRole.driver) {
+            context.go('/driver');
+          }
+        }
       }
 
       _isLoading = false;
@@ -93,7 +105,7 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
         role: role.toLowerCase(),
-        phone: phone,
+        phone: phone ?? '',
       );
       _isLoading = false;
       notifyListeners();
@@ -125,7 +137,7 @@ class AuthProvider extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-      
+
       // Navigate to login screen after logout
       if (context != null && context.mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -138,7 +150,7 @@ class AuthProvider extends ChangeNotifier {
       print('Error during logout: $e');
       _isLoading = false;
       notifyListeners();
-      
+
       if (context != null && context.mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
