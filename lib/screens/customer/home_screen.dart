@@ -95,14 +95,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
 
-  int _getNavIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/cart')) return 1;
-    if (location.startsWith('/my-orders')) return 2;
-    if (location.startsWith('/settings')) return 3;
-    return 0;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -223,7 +215,6 @@ class _HomeScreenState extends State<HomeScreen> {
         final String itemCategory = _getCategoryName(item['category']);
         categorySet.add(itemCategory);
 
-        // FIXED: Use ApiService.getImageUrl for all images
         final String imageUrl = _apiService.getImageUrl(item['image']);
 
         final String restaurantName = item['restaurant_name']?.toString() ??
@@ -413,24 +404,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _onItemTapped(int index) async {
-    switch (index) {
-      case 0:
-        context.go('/home');
-        break;
-      case 1:
-        await context.read<CartProvider>().loadCart();
-        context.go('/cart');
-        break;
-      case 2:
-        context.go('/my-orders');
-        break;
-      case 3:
-        context.go('/settings');
-        break;
-    }
-  }
-
   Future<void> _addToCart(Map<String, dynamic> itemData) async {
     try {
       final cartProvider = context.read<CartProvider>();
@@ -487,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = Provider.of<AuthProvider>(context);
     final userName = authProvider.currentUser?.name?.split('@')[0] ?? 'Guest';
-    final currentNavIndex = _getNavIndex(context);
+    final isDriver = authProvider.isDriver;
     final featuredMeals = _selectedCategory == 'All'
         ? _featuredMeals
         : _allMenuItemsSource
@@ -518,13 +491,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         ? _buildErrorWidget(context)
                         : _isSearching
                             ? _buildSearchResults(context)
-                            : _buildMainContent(context, featuredMeals),
+                            : _buildMainContent(
+                                context, featuredMeals, isDriver),
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(context, currentNavIndex),
     );
   }
 
@@ -685,8 +658,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMainContent(
-      BuildContext context, List<Map<String, dynamic>> featuredMeals) {
+  Widget _buildMainContent(BuildContext context,
+      List<Map<String, dynamic>> featuredMeals, bool isDriver) {
     return NotificationListener<ScrollNotification>(
       onNotification: (scrollInfo) {
         if (scrollInfo.metrics.pixels >=
@@ -701,7 +674,7 @@ class _HomeScreenState extends State<HomeScreen> {
         controller: _scrollController,
         child: Column(
           children: [
-            const DeliveryStatusCard(),
+            if (isDriver) const DeliveryStatusCard(),
             if (_categories.length > 1) _buildCategoriesSection(context),
             if (_topRestaurants.isNotEmpty)
               _buildFeaturedRestaurantsSection(context),
@@ -1107,112 +1080,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         }
-      },
-    );
-  }
-
-  Widget _buildBottomNavBar(BuildContext context, int currentNavIndex) {
-    return Consumer<CartProvider>(
-      builder: (context, cartProvider, child) {
-        final itemCount = cartProvider.itemCount;
-        return Container(
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: BottomNavigationBar(
-            currentIndex: currentNavIndex,
-            onTap: _onItemTapped,
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: AppTheme.getCardColor(context),
-            selectedItemColor: AppTheme.primaryRed,
-            unselectedItemColor: AppTheme.getMutedTextColor(context),
-            elevation: 0,
-            items: [
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.shopping_cart_outlined),
-                    if (itemCount > 0)
-                      Positioned(
-                        right: -6,
-                        top: -6,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryRed,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          constraints:
-                              const BoxConstraints(minWidth: 18, minHeight: 18),
-                          child: Text(
-                            '$itemCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                activeIcon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.shopping_cart),
-                    if (itemCount > 0)
-                      Positioned(
-                        right: -6,
-                        top: -6,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryRed,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          constraints:
-                              const BoxConstraints(minWidth: 18, minHeight: 18),
-                          child: Text(
-                            '$itemCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                label: 'Cart',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.receipt_outlined),
-                activeIcon: Icon(Icons.receipt),
-                label: 'Orders',
-              ),
-              const BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                activeIcon: Icon(Icons.settings),
-                label: 'Settings',
-              ),
-            ],
-          ),
-        );
       },
     );
   }

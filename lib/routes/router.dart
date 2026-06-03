@@ -6,15 +6,16 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/registration_screen.dart';
 import '../screens/auth/role_selection_screen.dart';
 import '../screens/landing/landing_screen.dart';
-import '../screens/customer/home_screen.dart';
+// REMOVE these individual imports:
+// import '../screens/customer/shopping_cart_screen.dart';
+// import '../screens/customer/my_orders_screen.dart';
+// import '../screens/customer/settings_screen.dart';
+// import '../screens/customer/customer_profile_screen.dart';
 import '../screens/customer/restaurant_details_screen.dart';
 import '../screens/customer/checkout_screen.dart';
-import '../screens/customer/shopping_cart_screen.dart';
-import '../screens/customer/my_orders_screen.dart';
 import '../screens/customer/search_screen.dart';
-import '../screens/customer/customer_profile_screen.dart';
-import '../screens/customer/settings_screen.dart';
 import '../screens/customer/food_detail_screen.dart';
+import '../screens/customer/customer_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_profile_screen.dart';
 import '../screens/restaurant/withdraw_screen.dart';
@@ -47,12 +48,10 @@ final GoRouter router = GoRouter(
 
     final isPublicRoute = state.matchedLocation == '/landing';
 
-    // If not authenticated and trying to access protected route
     if (!isAuthenticated && !isAuthRoute && !isPublicRoute) {
       return '/login';
     }
 
-    // If authenticated and trying to access auth routes, redirect based on role
     if (isAuthenticated && isAuthRoute) {
       if (user != null) {
         if (user.role == UserRole.customer) return '/home';
@@ -80,6 +79,7 @@ final GoRouter router = GoRouter(
       name: 'landing',
       builder: (context, state) => const LandingScreen(),
     ),
+
     // Auth Routes
     GoRoute(
       path: '/role-selection',
@@ -99,12 +99,17 @@ final GoRouter router = GoRouter(
       name: 'login',
       builder: (context, state) => const LoginScreen(),
     ),
-    // Customer Routes
+
+    // Customer Routes - ALL go through CustomerDashboardScreen
+    // The dashboard uses IndexedStack to switch between tabs
     GoRoute(
       path: '/home',
       name: 'home',
-      builder: (context, state) => const HomeScreen(),
+      builder: (context, state) => const CustomerDashboardScreen(),
     ),
+
+    // These screens are pushed ON TOP of the dashboard (they don't replace it)
+    // They should be dialogs or push to a new screen, not replace the dashboard
     GoRoute(
       path: '/search',
       name: 'search',
@@ -127,19 +132,9 @@ final GoRouter router = GoRouter(
       },
     ),
     GoRoute(
-      path: '/cart',
-      name: 'cart',
-      builder: (context, state) => const ShoppingCartScreen(),
-    ),
-    GoRoute(
       path: '/checkout',
       name: 'checkout',
       builder: (context, state) => const CheckoutScreen(),
-    ),
-    GoRoute(
-      path: '/my-orders',
-      name: 'my-orders',
-      builder: (context, state) => const MyOrdersScreen(),
     ),
     GoRoute(
       path: '/order-tracking',
@@ -150,20 +145,17 @@ final GoRouter router = GoRouter(
       },
     ),
     GoRoute(
-      path: '/profile',
-      name: 'profile',
-      builder: (context, state) => const CustomerProfileScreen(),
-    ),
-    GoRoute(
-      path: '/settings',
-      name: 'settings',
-      builder: (context, state) => const SettingsScreen(),
-    ),
-    GoRoute(
       path: '/notifications',
       name: 'notifications',
       builder: (context, state) => const NotificationsScreen(),
     ),
+
+    // REMOVED INDIVIDUAL ROUTES:
+    // - /cart (now handled by dashboard IndexedStack)
+    // - /my-orders (now handled by dashboard IndexedStack)
+    // - /settings (now handled by dashboard IndexedStack)
+    // - /profile (now handled by dashboard IndexedStack)
+
     // Restaurant Routes
     GoRoute(
       path: '/restaurant',
@@ -185,6 +177,7 @@ final GoRouter router = GoRouter(
       name: 'withdraw',
       builder: (context, state) => const WithdrawScreen(),
     ),
+
     // Driver Routes
     GoRoute(
       path: '/driver',
