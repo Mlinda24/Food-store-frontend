@@ -294,7 +294,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Real PayChangu payment with real order ID
       final result = await _paymentProvider.initiateSimplePayment(
         amount: total,
-        orderId: orderId, // Use REAL order ID, not 'temp'
+        orderId: orderId,
       );
 
       final checkoutUrl = result['checkout_url'] as String?;
@@ -314,7 +314,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             checkoutUrl: checkoutUrl,
             reference: paymentReference ?? '',
             amount: total,
-            orderId: orderId, // Pass order ID for wallet sync
+            orderId: orderId,
           ),
         ),
       );
@@ -354,8 +354,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         setState(() => _isProcessingPayment = false);
 
         if (paymentConfirmed) {
-          // Update order status to confirmed
-          await _apiService.updateOrderStatus(orderIdForSync, 'confirmed');
+          // ✅ DO NOT set order status to 'confirmed' here.
+          // order.status stays 'pending' — restaurant must confirm.
+          // Only order.payment_status = 'paid' is set by the backend (_distribute_to_wallet).
           await _completeOrder(orderIdForSync);
         } else {
           _showError(
@@ -418,12 +419,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+  /// Clears cart and navigates to order tracking.
+  /// Does NOT touch order.status — restaurant confirmation does that.
   Future<void> _completeOrder(String orderId) async {
     // Clear cart AFTER successful payment
     final cartProvider = context.read<CartProvider>();
     await cartProvider.clearCart();
 
-    // Refresh wallet balance in restaurant provider if available
+    // Refresh restaurant provider data if available
     try {
       final restaurantProvider =
           Provider.of<RestaurantProvider>(context, listen: false);
@@ -440,9 +443,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _showSuccess('Order placed successfully!');
 
     if (mounted) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          context.go('/order-tracking', extra: {'order_id': orderId});
+      Future.delayed(const Duration(milliseconds: 500), () async {
+        if (!mounted) return;
+
+        try {
+          final orderProvider =
+              Provider.of<OrderProvider>(context, listen: false);
+          final order = await orderProvider.getOrder(orderId);
+
+          if (mounted) {
+            if (order != null) {
+              context.go('/order-tracking', extra: order);
+            } else {
+              context.go('/my-orders');
+            }
+          }
+        } catch (e) {
+          print('❌ Could not fetch order for tracking: $e');
+          if (mounted) context.go('/my-orders');
         }
       });
     }
@@ -741,7 +759,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         }
                         final instructionController =
                             _itemInstructions[item.menuItemId]!;
-                        // Use ApiService to get the correct image URL
                         final imageUrl = _apiService.getImageUrl(item.image);
 
                         return Container(
@@ -991,7 +1008,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Place order button - Creates order first, then payment
+                    // Place order button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(

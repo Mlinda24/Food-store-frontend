@@ -6,16 +6,16 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/registration_screen.dart';
 import '../screens/auth/role_selection_screen.dart';
 import '../screens/landing/landing_screen.dart';
-// REMOVE these individual imports:
-// import '../screens/customer/shopping_cart_screen.dart';
-// import '../screens/customer/my_orders_screen.dart';
-// import '../screens/customer/settings_screen.dart';
-// import '../screens/customer/customer_profile_screen.dart';
 import '../screens/customer/restaurant_details_screen.dart';
 import '../screens/customer/checkout_screen.dart';
+import '../screens/customer/shopping_cart_screen.dart';
+import '../screens/customer/my_orders_screen.dart';
 import '../screens/customer/search_screen.dart';
+import '../screens/customer/customer_profile_screen.dart';
+import '../screens/customer/settings_screen.dart';
 import '../screens/customer/food_detail_screen.dart';
 import '../screens/customer/customer_dashboard_screen.dart';
+import '../screens/customer/payment_result_screen.dart'; // ADD THIS
 import '../screens/restaurant/restaurant_dashboard_screen.dart';
 import '../screens/restaurant/restaurant_profile_screen.dart';
 import '../screens/restaurant/withdraw_screen.dart';
@@ -46,7 +46,9 @@ final GoRouter router = GoRouter(
         state.matchedLocation == '/register' ||
         state.matchedLocation == '/role-selection';
 
-    final isPublicRoute = state.matchedLocation == '/landing';
+    final isPublicRoute = state.matchedLocation == '/landing' ||
+        state.matchedLocation ==
+            '/payment-result'; // Allow unauthenticated access to payment result
 
     if (!isAuthenticated && !isAuthRoute && !isPublicRoute) {
       return '/login';
@@ -100,16 +102,26 @@ final GoRouter router = GoRouter(
       builder: (context, state) => const LoginScreen(),
     ),
 
-    // Customer Routes - ALL go through CustomerDashboardScreen
-    // The dashboard uses IndexedStack to switch between tabs
+    // Payment Result Screen (handles redirect back from Paychangu)
+    GoRoute(
+      path: '/payment-result',
+      name: 'payment-result',
+      builder: (context, state) {
+        final paymentStatus = state.uri.queryParameters['status'] ?? '';
+        final reference = state.uri.queryParameters['reference'] ?? '';
+        return PaymentResultScreen(
+          status: paymentStatus,
+          reference: reference,
+        );
+      },
+    ),
+
+    // Customer Routes
     GoRoute(
       path: '/home',
       name: 'home',
       builder: (context, state) => const CustomerDashboardScreen(),
     ),
-
-    // These screens are pushed ON TOP of the dashboard (they don't replace it)
-    // They should be dialogs or push to a new screen, not replace the dashboard
     GoRoute(
       path: '/search',
       name: 'search',
@@ -132,9 +144,19 @@ final GoRouter router = GoRouter(
       },
     ),
     GoRoute(
+      path: '/cart',
+      name: 'cart',
+      builder: (context, state) => const ShoppingCartScreen(),
+    ),
+    GoRoute(
       path: '/checkout',
       name: 'checkout',
       builder: (context, state) => const CheckoutScreen(),
+    ),
+    GoRoute(
+      path: '/my-orders',
+      name: 'my-orders',
+      builder: (context, state) => const MyOrdersScreen(),
     ),
     GoRoute(
       path: '/order-tracking',
@@ -145,16 +167,20 @@ final GoRouter router = GoRouter(
       },
     ),
     GoRoute(
+      path: '/profile',
+      name: 'profile',
+      builder: (context, state) => const CustomerProfileScreen(),
+    ),
+    GoRoute(
+      path: '/settings',
+      name: 'settings',
+      builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
       path: '/notifications',
       name: 'notifications',
       builder: (context, state) => const NotificationsScreen(),
     ),
-
-    // REMOVED INDIVIDUAL ROUTES:
-    // - /cart (now handled by dashboard IndexedStack)
-    // - /my-orders (now handled by dashboard IndexedStack)
-    // - /settings (now handled by dashboard IndexedStack)
-    // - /profile (now handled by dashboard IndexedStack)
 
     // Restaurant Routes
     GoRoute(

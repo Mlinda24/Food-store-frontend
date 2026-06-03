@@ -102,6 +102,8 @@ class ApiService {
 
   Future<Map<String, String>> getHeaders() async {
     final token = await getToken();
+    print(
+        '🔑 Token being sent: ${token != null ? "Yes (${token.substring(0, token.length > 20 ? 20 : token.length)}...)" : "No"}');
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -603,81 +605,286 @@ class ApiService {
   }
 
   // ============================================
+  // DRIVER API ENDPOINTS (FIXED WITH LOGGING)
+  // ============================================
+
+  // ============================================
   // DRIVER API ENDPOINTS (FIXED)
   // ============================================
 
   Future<Map<String, dynamic>> getDriverProfile() async {
-    return await get('/api/drivers/drivers/profile/');
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final url = Uri.parse('$baseUrl/api/drivers/drivers/profile/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to get driver profile: ${response.statusCode}');
+    }
   }
 
   Future<Map<String, dynamic>> updateDriverProfile(
       Map<String, dynamic> data) async {
-    return await patch('/api/drivers/drivers/update_profile/', data);
+    print('📡 Updating driver profile...');
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final url = Uri.parse('$baseUrl/api/drivers/drivers/update_profile/');
+    final response = await http.patch(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode(data),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      print('✅ Driver profile updated');
+      return json.decode(response.body);
+    } else {
+      throw Exception(
+          'Failed to update driver profile: ${response.statusCode}');
+    }
   }
 
   Future<Map<String, dynamic>> updateDriverStatus(String status) async {
     print('📡 Updating driver status to: $status');
+
+    final token = await getToken();
+    if (token == null) {
+      print('❌ No token found!');
+      throw Exception('Not authenticated');
+    }
+
+    final url = Uri.parse('$baseUrl/api/drivers/drivers/profile_status/');
+    print('🔗 URL: $url');
+
     try {
-      final response = await patch(
-          '/api/drivers/drivers/profile_status/', {'status': status});
-      print('✅ Driver status updated successfully');
-      return response;
+      final response = await http.patch(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'status': status}),
+      );
+
+      print('📊 Response status: ${response.statusCode}');
+      print('📄 Response body: ${response.body}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = json.decode(response.body);
+        print('✅ Status updated successfully');
+        return data;
+      } else {
+        print('❌ Failed with status: ${response.statusCode}');
+        throw Exception('Failed to update status: ${response.statusCode}');
+      }
     } catch (e) {
-      print('❌ Failed to update driver status: $e');
+      print('❌ Error: $e');
       rethrow;
     }
   }
 
   Future<Map<String, dynamic>> updateDriverLocation(
       double latitude, double longitude) async {
-    return await post('/api/drivers/drivers/location_update/', {
-      'latitude': latitude,
-      'longitude': longitude,
-    });
-  }
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
 
-  Future<List<dynamic>> getAvailableOrders() async {
-    final response = await get('/api/drivers/deliveries/available/');
-    return response is List ? response : [];
-  }
+    final url = Uri.parse('$baseUrl/api/drivers/drivers/location_update/');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode({
+        'latitude': latitude,
+        'longitude': longitude,
+      }),
+    );
 
-  Future<List<dynamic>> getMyDeliveries() async {
-    final response = await get('/api/drivers/deliveries/my/');
-    return response is List ? response : [];
-  }
-
-  Future<Map<String, dynamic>> getActiveDelivery() async {
-    try {
-      final response = await get('/api/drivers/deliveries/active/');
-      if (response is Map && response.isNotEmpty) {
-        return response as Map<String, dynamic>;
-      }
-      return {};
-    } catch (e) {
-      return {};
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to update location: ${response.statusCode}');
     }
   }
 
+  Future<List<dynamic>> getAvailableOrders() async {
+    final token = await getToken();
+    if (token == null) return [];
+
+    final url = Uri.parse('$baseUrl/api/drivers/deliveries/available/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = json.decode(response.body);
+      return data is List ? data : [];
+    }
+    return [];
+  }
+
+  Future<List<dynamic>> getMyDeliveries() async {
+    final token = await getToken();
+    if (token == null) return [];
+
+    final url = Uri.parse('$baseUrl/api/drivers/deliveries/my/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = json.decode(response.body);
+      return data is List ? data : [];
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> getActiveDelivery() async {
+    final token = await getToken();
+    if (token == null) return {};
+
+    final url = Uri.parse('$baseUrl/api/drivers/deliveries/active/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = json.decode(response.body);
+      return data is Map ? data as Map<String, dynamic> : {};
+    }
+    return {};
+  }
+
   Future<Map<String, dynamic>> acceptDelivery(String deliveryId) async {
-    return await post('/api/drivers/deliveries/$deliveryId/accept/', null);
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final url =
+        Uri.parse('$baseUrl/api/drivers/deliveries/$deliveryId/accept/');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to accept delivery: ${response.statusCode}');
+    }
   }
 
   Future<Map<String, dynamic>> declineDelivery(String deliveryId) async {
-    return await post('/api/drivers/deliveries/$deliveryId/decline/', null);
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final url =
+        Uri.parse('$baseUrl/api/drivers/deliveries/$deliveryId/decline/');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to decline delivery: ${response.statusCode}');
+    }
   }
 
   Future<Map<String, dynamic>> updateDeliveryStatus(
       String deliveryId, String status) async {
-    return await patch(
-        '/api/drivers/deliveries/$deliveryId/status/', {'status': status});
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final url =
+        Uri.parse('$baseUrl/api/drivers/deliveries/$deliveryId/status/');
+    final response = await http.patch(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode({'status': status}),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body);
+    } else {
+      throw Exception(
+          'Failed to update delivery status: ${response.statusCode}');
+    }
   }
 
   Future<Map<String, dynamic>> getEarningsSummary() async {
-    return await get('/api/drivers/drivers/earnings/');
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final url = Uri.parse('$baseUrl/api/drivers/drivers/earnings/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to get earnings: ${response.statusCode}');
+    }
   }
 
   Future<Map<String, dynamic>> getDeliveryHistory() async {
-    return await get('/api/drivers/drivers/delivery_history/');
+    final token = await getToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final url = Uri.parse('$baseUrl/api/drivers/drivers/delivery_history/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to get delivery history: ${response.statusCode}');
+    }
   }
 
   // ============================================

@@ -25,6 +25,13 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     const SettingsScreen(),
   ];
 
+  final List<String> _titles = [
+    'Foodie Express',
+    'My Cart',
+    'My Orders',
+    'Settings',
+  ];
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -35,6 +42,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.getBackgroundColor(context),
+      // Remove the AppBar from here - it's already in each screen
       body: IndexedStack(
         index: _selectedIndex,
         children: _screens,
