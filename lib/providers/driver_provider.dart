@@ -46,6 +46,7 @@ class DriverProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isOnline = false;
   DriverStats _stats = DriverStats.empty();
+  String? _errorMessage;
 
   List<DeliveryRequest> get availableOrders => _availableOrders;
   List<DeliveryRequest> get deliveryHistory => _deliveryHistory;
@@ -56,13 +57,28 @@ class DriverProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isOnline => _isOnline;
   DriverStats get stats => _stats;
+  String? get errorMessage => _errorMessage;
 
   Future<void> refresh() async {
     await loadAvailableOrders();
     await loadActiveDelivery();
     await loadDeliveryHistory();
     await loadEarningsSummary();
+    await loadDriverStatus();
     notifyListeners();
+  }
+
+  Future<void> loadDriverStatus() async {
+    try {
+      final profile = await _apiService.getDriverProfile();
+      if (profile.containsKey('status')) {
+        _isOnline = profile['status'] == 'online';
+        print('🟢 Loaded driver status: ${_isOnline ? "ONLINE" : "OFFLINE"}');
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading driver status: $e');
+    }
   }
 
   Future<void> loadAvailableOrders() async {
@@ -73,6 +89,7 @@ class DriverProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Error loading available orders: $e');
+      _errorMessage = 'Failed to load available orders';
     }
   }
 
@@ -116,40 +133,63 @@ class DriverProvider extends ChangeNotifier {
   Future<void> toggleOnlineStatus(bool value) async {
     print('🔄 Toggle clicked: ${value ? "ON" : "OFF"}');
 
-    // Update UI immediately for better UX
-    _isOnline = value;
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
+      // REMOVED: await _apiService.ensureDriverProfile(); - This method doesn't exist
+
       final status = value ? 'online' : 'offline';
       print('📡 Sending status to API: $status');
 
-      await _apiService.updateDriverStatus(status);
+      final response = await _apiService.updateDriverStatus(status);
       print('✅ Status updated successfully on server');
+      print('📦 Server response: $response');
 
-      if (value) {
-        await loadAvailableOrders();
+      // Update local state based on server response
+      if (response.containsKey('status')) {
+        _isOnline = response['status'] == 'online';
+      } else {
+        _isOnline = value;
       }
+
+      print('🟢 Driver is now ${_isOnline ? "ONLINE" : "OFFLINE"}');
+
+      if (_isOnline) {
+        await loadAvailableOrders();
+      } else {
+        _availableOrders.clear();
+      }
+
+      _isLoading = false;
+      notifyListeners();
     } catch (e) {
       print('❌ Failed to update status: $e');
-      // Revert the toggle if API call failed
-      _isOnline = !value;
+      _errorMessage = 'Failed to update status. Please check your connection.';
+      _isLoading = false;
       notifyListeners();
 
-      // Show error message
       throw Exception('Failed to update status. Please check your connection.');
     }
   }
 
   Future<void> acceptOrder(DeliveryRequest order) async {
     try {
+      _isLoading = true;
+      notifyListeners();
+
       await _apiService.acceptDelivery(order.id);
       _availableOrders.removeWhere((o) => o.id == order.id);
       _activeDelivery = order;
       _acceptedHistory.add(order);
+
+      _isLoading = false;
       notifyListeners();
     } catch (e) {
       print('Error accepting order: $e');
+      _isLoading = false;
+      notifyListeners();
       rethrow;
     }
   }
@@ -167,6 +207,9 @@ class DriverProvider extends ChangeNotifier {
 
   Future<void> updateOrderStatus(String orderId, String status) async {
     try {
+      _isLoading = true;
+      notifyListeners();
+
       await _apiService.updateDeliveryStatus(orderId, status);
 
       if (_activeDelivery != null && _activeDelivery!.id == orderId) {
@@ -191,14 +234,20 @@ class DriverProvider extends ChangeNotifier {
         if (status == 'delivered') {
           _deliveryHistory.insert(0, updatedOrder);
           _activeDelivery = null;
+          await loadDriverStatus();
         } else {
           _activeDelivery = updatedOrder;
         }
 
         notifyListeners();
       }
+
+      _isLoading = false;
+      notifyListeners();
     } catch (e) {
       print('Error updating order status: $e');
+      _isLoading = false;
+      notifyListeners();
       rethrow;
     }
   }
@@ -218,5 +267,10 @@ class DriverProvider extends ChangeNotifier {
     } catch (e) {
       print('Error updating location: $e');
     }
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
   }
 }

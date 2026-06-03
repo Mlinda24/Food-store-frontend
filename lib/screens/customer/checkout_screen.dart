@@ -1,3 +1,5 @@
+// lib/screens/customer/checkout_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -67,8 +69,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _paymentProvider.dispose();
     super.dispose();
   }
-
-  // ─── Location ────────────────────────────────────────────────
 
   Future<void> _getUserLocation() async {
     setState(() {
@@ -155,8 +155,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  // ─── Cart ─────────────────────────────────────────────────────
-
   Future<void> _loadCart() async {
     await context.read<CartProvider>().loadCart();
     _initializeInstructionControllers();
@@ -181,8 +179,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     }
   }
-
-  // ─── Helpers ──────────────────────────────────────────────────
 
   String _getDeliveryAddress() {
     final street = _streetNumberController.text.trim();
@@ -223,8 +219,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  // ─── Payment Flow (Order Created FIRST, THEN Payment) ──────────────
-
   Future<void> _startPayment() async {
     if (_isProcessingPayment || _isPlacingOrder || _isCreatingOrder) {
       print('⏳ Payment already in progress, ignoring duplicate call');
@@ -245,11 +239,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      // STEP 1: CREATE ORDER FIRST
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('📝 STEP 1: Creating order...');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
       final deliveryAddress = _getDeliveryAddress();
 
       final Map<String, String> instructions = {};
@@ -280,22 +269,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         throw Exception('Failed to create order');
       }
 
-      final orderId = placedOrder.id;
+      // FIXED: Convert orderId to String
+      final orderId = placedOrder.id.toString();
       print('✅ Order created with ID: $orderId');
-
-      // STEP 2: INITIATE PAYMENT WITH REAL ORDER ID
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('💳 STEP 2: Initiating real payment for order: $orderId');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       final total = cartProvider.subtotal +
           (_calculatedDeliveryFee ?? cartProvider.deliveryFee);
 
-      // Real PayChangu payment with real order ID
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📤 Sending to initiate_simple:');
+      print('   orderId: $orderId (type: String)');
+      print('   amount: $total');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
       final result = await _paymentProvider.initiateSimplePayment(
         amount: total,
-        orderId: orderId,
+        orderId: orderId, // Passing as String
       );
+
+      print('📦 Payment initiation response: $result');
 
       final checkoutUrl = result['checkout_url'] as String?;
       final paymentReference = result['reference'] as String?;
@@ -304,9 +296,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         throw Exception('Payment service did not return a checkout URL');
       }
 
-      setState(() => _isProcessingPayment = false);
-
-      // Open PayChangu checkout page in WebView
+      // Keep _isProcessingPayment = true while WebView is open
       final webViewResult =
           await Navigator.of(context).push<Map<String, dynamic>>(
         MaterialPageRoute(
@@ -319,7 +309,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       );
 
+      print('📤 WebView returned result: $webViewResult');
+
       if (webViewResult == null || webViewResult['status'] == 'cancelled') {
+        setState(() => _isProcessingPayment = false);
         _showError('Payment was cancelled. Order #$orderId is pending.');
         context.go('/my-orders');
         return;
@@ -327,43 +320,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (webViewResult['status'] == 'submitted') {
         setState(() => _isProcessingPayment = true);
-        final ref =
-            webViewResult['reference'] as String? ?? paymentReference ?? '';
-        final orderIdForSync = webViewResult['order_id'] as String? ?? orderId;
 
-        // Poll for payment confirmation
-        bool paymentConfirmed = await _pollPaymentStatus(ref);
+        await Future.delayed(const Duration(seconds: 3));
 
-        // If polling fails, try manual confirmation
-        if (!paymentConfirmed) {
-          print('⚠️ Polling failed, trying manual confirmation...');
-          try {
-            final manualResult =
-                await _apiService.manualConfirmPayment(orderIdForSync);
-            paymentConfirmed = manualResult['status'] == 'completed';
-            if (paymentConfirmed) {
-              print('✅ Manual confirmation successful');
-              // Sync wallet after manual confirmation
-              await _syncWalletAfterPayment(orderIdForSync);
-            }
-          } catch (e) {
-            print('❌ Manual confirmation failed: $e');
-          }
-        }
+        // Check payment status
+        final statusResponse = await _apiService
+            .getPaymentStatusByReference(paymentReference ?? '');
+        final isPaid = statusResponse['status'] == 'completed';
 
         setState(() => _isProcessingPayment = false);
 
-        if (paymentConfirmed) {
-          // ✅ DO NOT set order status to 'confirmed' here.
-          // order.status stays 'pending' — restaurant must confirm.
-          // Only order.payment_status = 'paid' is set by the backend (_distribute_to_wallet).
-          await _completeOrder(orderIdForSync);
+        if (isPaid) {
+          await _completeOrder(orderId);
         } else {
           _showError(
-              'Payment verification failed. Order #$orderIdForSync is pending.');
+              'Payment verification failed. Order #$orderId is pending.');
           context.go('/my-orders');
         }
-      } else if (webViewResult['status'] == 'failed') {
+      } else {
+        setState(() => _isProcessingPayment = false);
         _showError('Payment failed. Order #$orderId is pending.');
         context.go('/my-orders');
       }
@@ -374,59 +349,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  Future<bool> _pollPaymentStatus(String reference) async {
-    print('🔄 Polling payment status for reference: $reference');
-    for (int attempt = 1; attempt <= 10; attempt++) {
-      await Future.delayed(const Duration(seconds: 2));
-      if (!mounted) return false;
-      try {
-        final statusData =
-            await _paymentProvider.getPaymentStatusByReference(reference);
-        final status = statusData?['status'] as String?;
-        final distributed =
-            statusData?['distributed_to_wallets'] as bool? ?? false;
-
-        print(
-            '🔄 Poll attempt $attempt: status=$status, distributed=$distributed');
-
-        if (status == 'completed') {
-          print('✅ Payment confirmed!');
-          return true;
-        }
-        if (status == 'failed') {
-          print('❌ Payment failed');
-          return false;
-        }
-      } catch (e) {
-        print('Poll attempt $attempt error: $e');
-      }
-    }
-    return false;
-  }
-
-  Future<void> _syncWalletAfterPayment(String orderId) async {
-    try {
-      print('🔄 Syncing wallet for order: $orderId');
-      final result = await _apiService.checkAndUpdateWallet(orderId);
-      if (result['updated'] == true || result['already_updated'] == true) {
-        print(
-            '✅ Wallet synced successfully! Balance: ${result['wallet_balance']}');
-      } else {
-        print('⚠️ Wallet sync returned: ${result['message']}');
-      }
-    } catch (e) {
-      print('❌ Wallet sync failed: $e');
-    }
-  }
-
-  /// Clears cart and navigates to order tracking.
-  /// Does NOT touch order.status — restaurant confirmation does that.
   Future<void> _completeOrder(String orderId) async {
-    // Clear cart AFTER successful payment
     final cartProvider = context.read<CartProvider>();
     await cartProvider.clearCart();
 
-    // Refresh restaurant provider data if available
     try {
       final restaurantProvider =
           Provider.of<RestaurantProvider>(context, listen: false);
@@ -440,10 +366,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Provider.of<NotificationProvider>(context, listen: false);
     await notificationProvider.loadUnreadCount();
 
-    _showSuccess('Order placed successfully!');
+    _showSuccess('Order placed successfully! Payment confirmed.');
 
     if (mounted) {
-      Future.delayed(const Duration(milliseconds: 500), () async {
+      Future.delayed(const Duration(milliseconds: 800), () async {
         if (!mounted) return;
 
         try {
@@ -466,7 +392,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  // ─── UI Widgets ───────────────────────────────────────────────
+  void _goBack() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      context.go('/home');
+    }
+  }
 
   Widget _buildDeliveryInfoCard() {
     final cartProvider = Provider.of<CartProvider>(context);
@@ -583,8 +515,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 if (distance != null)
                   Text(
-                      'Distance: ${DeliveryFeeCalculator.formatDistance(distance)}'
-                      '${tier != null ? " - $tier" : ""}',
+                      'Distance: ${DeliveryFeeCalculator.formatDistance(distance)}${tier != null ? " - $tier" : ""}',
                       style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.getSecondaryTextColor(context))),
@@ -594,13 +525,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                'MK${deliveryFee.toStringAsFixed(0)}',
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryRed),
-              ),
+              Text('MK${deliveryFee.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryRed)),
               if (tier != null)
                 Text(tier,
                     style: TextStyle(
@@ -612,16 +541,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
     );
   }
-
-  void _goBack() {
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    } else {
-      context.go('/home');
-    }
-  }
-
-  // ─── Build ────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -697,13 +616,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: ElevatedButton(
                       onPressed: () => context.go('/home'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        shadowColor: Colors.transparent,
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(22)),
-                      ),
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          shadowColor: Colors.transparent,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(22))),
                       child: const Text('Browse Restaurants'),
                     ),
                   ),
@@ -783,28 +701,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                             width: 50,
                                             height: 50,
                                             fit: BoxFit.cover,
-                                            placeholder: (ctx, url) =>
-                                                Container(
-                                              width: 50,
-                                              height: 50,
-                                              color: isDark
-                                                  ? AppTheme.darkSurface
-                                                  : AppTheme.lightBackground,
-                                              child: const Center(
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                          strokeWidth: 2)),
-                                            ),
+                                            placeholder: (ctx, url) => Container(
+                                                width: 50,
+                                                height: 50,
+                                                color: isDark
+                                                    ? AppTheme.darkSurface
+                                                    : AppTheme.lightBackground,
+                                                child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                            strokeWidth: 2))),
                                             errorWidget: (ctx, url, error) =>
                                                 Container(
-                                              width: 50,
-                                              height: 50,
-                                              color: isDark
-                                                  ? AppTheme.darkSurface
-                                                  : AppTheme.lightBackground,
-                                              child: const Icon(Icons.fastfood,
-                                                  size: 25, color: Colors.grey),
-                                            ),
+                                                    width: 50,
+                                                    height: 50,
+                                                    color: isDark
+                                                        ? AppTheme.darkSurface
+                                                        : AppTheme
+                                                            .lightBackground,
+                                                    child: const Icon(
+                                                        Icons.fastfood,
+                                                        size: 25,
+                                                        color: Colors.grey)),
                                           )
                                         : Container(
                                             width: 50,
@@ -813,8 +731,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                                 ? AppTheme.darkSurface
                                                 : AppTheme.lightBackground,
                                             child: const Icon(Icons.fastfood,
-                                                size: 25, color: Colors.grey),
-                                          ),
+                                                size: 25, color: Colors.grey)),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
@@ -947,16 +864,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // Order summary card
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        gradient: AppTheme.cardGlowGradient(context),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppTheme.deepCrimson.withOpacity(0.3)),
-                      ),
+                          gradient: AppTheme.cardGlowGradient(context),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: AppTheme.deepCrimson.withOpacity(0.3))),
                       child: Column(
                         children: [
                           Row(
@@ -971,7 +885,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     style: TextStyle(
                                         color: isDark
                                             ? AppTheme.darkSecondaryText
-                                            : AppTheme.lightSecondaryText)),
+                                            : AppTheme.lightSecondaryText))
                               ]),
                           const SizedBox(height: 8),
                           Row(
@@ -986,7 +900,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     style: TextStyle(
                                         color: isDark
                                             ? AppTheme.darkSecondaryText
-                                            : AppTheme.lightSecondaryText)),
+                                            : AppTheme.lightSecondaryText))
                               ]),
                           const Divider(
                               height: 24, color: AppTheme.deepCrimson),
@@ -1001,14 +915,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
-                                        color: AppTheme.primaryRed)),
+                                        color: AppTheme.primaryRed))
                               ]),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // Place order button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -1020,11 +932,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ? null
                             : _startPayment,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryRed,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30)),
-                        ),
+                            backgroundColor: AppTheme.primaryRed,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30))),
                         child: (_isLoading ||
                                 _isProcessingPayment ||
                                 _isCreatingOrder)
@@ -1042,8 +953,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ],
                 ),
               ),
-
-              // Payment processing overlay
               if (_isProcessingPayment || _isCreatingOrder)
                 Container(
                   color: Colors.black54,
@@ -1063,21 +972,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             Text(
                               _isCreatingOrder
                                   ? 'Creating your order...'
-                                  : _isProcessingPayment
-                                      ? 'Processing Payment...'
-                                      : 'Please wait...',
+                                  : 'Processing Payment...',
                               style: const TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 8),
-                            Text(
-                              'Please wait',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDark
-                                      ? AppTheme.darkSecondaryText
-                                      : AppTheme.lightSecondaryText),
-                            ),
+                            Text('Please wait',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark
+                                        ? AppTheme.darkSecondaryText
+                                        : AppTheme.lightSecondaryText)),
                           ],
                         ),
                       ),

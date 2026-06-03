@@ -1,3 +1,5 @@
+// lib/providers/payment_provider.dart
+
 import 'package:flutter/material.dart';
 import '../models/payment_model.dart';
 import '../services/api_service.dart';
@@ -62,12 +64,9 @@ class PaymentProvider extends ChangeNotifier {
 
       print('✅ Payment initiated: $result');
 
-      // Store current payment if the response has enough data
       try {
         _currentPayment = Payment.fromJson(result);
-      } catch (_) {
-        // fromJson may fail if checkout_url fields differ — non-fatal
-      }
+      } catch (_) {}
 
       _isLoading = false;
       _safeNotify();
@@ -82,33 +81,34 @@ class PaymentProvider extends ChangeNotifier {
   }
 
   /// Simplified payment initiation - PayChangu handles everything
-  /// User selects payment method and enters phone number on PayChangu checkout page
+  /// Accepts String orderId and converts to int for API
   Future<Map<String, dynamic>> initiateSimplePayment({
     required double amount,
-    required String orderId,
+    required String orderId, // Accept String from checkout
   }) async {
     _isLoading = true;
     _error = null;
     _safeNotify();
 
-    print('💳 Initiating simple payment (PayChangu handles everything):');
+    print('💳 Initiating simple payment:');
     print('   Amount: MK$amount');
-    print('   Order ID: $orderId');
+    print('   Order ID: $orderId (String)');
 
     try {
+      // Convert String to int for the API
+      final orderIdInt = int.tryParse(orderId) ?? int.parse(orderId);
+
       final result = await _apiService.initiateSimplePayment(
         amount: amount,
-        orderId: orderId,
+        orderId: orderIdInt, // Pass as int to API
       );
 
       print('✅ Simple payment initiated: $result');
+      print('🔗 Checkout URL: ${result['checkout_url']}');
 
-      // Store current payment if the response has enough data
       try {
         _currentPayment = Payment.fromJson(result);
-      } catch (_) {
-        // fromJson may fail if checkout_url fields differ — non-fatal
-      }
+      } catch (_) {}
 
       _isLoading = false;
       _safeNotify();
@@ -122,68 +122,27 @@ class PaymentProvider extends ChangeNotifier {
     }
   }
 
-  /// Test payment method (bypasses PayChangu for development)
-  Future<Map<String, dynamic>> initiateTestPayment({
-    required double amount,
-    required String orderId,
-  }) async {
-    _isProcessing = true;
-    _error = null;
-    _safeNotify();
-
-    print('🧪 Initiating TEST payment:');
-    print('   Amount: MK$amount');
-    print('   Order ID: $orderId');
-
-    try {
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 1));
-
-      final result = {
-        'status': 'success',
-        'message': 'Test payment successful (bypassing PayChangu)',
-        'transaction_id': 'TEST_${DateTime.now().millisecondsSinceEpoch}',
-        'payment_url': null,
-        'reference': 'TEST_REF_$orderId',
-        'order_id': orderId,
-      };
-
-      // Store current payment if the response has enough data
-      try {
-        _currentPayment = Payment.fromJson(result);
-      } catch (_) {
-        // fromJson may fail if checkout_url fields differ — non-fatal
-      }
-
-      _isProcessing = false;
-      _safeNotify();
-      return result;
-    } catch (e) {
-      _error = e.toString();
-      _isProcessing = false;
-      _safeNotify();
-      print('❌ Test payment initiation failed: $e');
-      rethrow;
-    }
-  }
-
-  /// Alternative method using paychangu method
+  /// Alternative method using paychangu method with phone number
   Future<Map<String, dynamic>> initiatePayChanguPayment({
     required double amount,
     required String orderId,
+    String phoneNumber = '',
   }) async {
     _isLoading = true;
     _error = null;
     _safeNotify();
 
-    print('💳 Initiating PayChangu payment via dedicated method:');
+    print('💳 Initiating PayChangu payment:');
     print('   Amount: MK$amount');
     print('   Order ID: $orderId');
 
     try {
+      final orderIdInt = int.tryParse(orderId) ?? int.parse(orderId);
+
       final result = await _apiService.initiatePayChanguPayment(
         amount: amount,
-        orderId: orderId,
+        orderId: orderIdInt,
+        phoneNumber: phoneNumber,
       );
 
       print('✅ PayChangu payment initiated: $result');
@@ -204,11 +163,51 @@ class PaymentProvider extends ChangeNotifier {
     }
   }
 
+  /// Test payment method (bypasses PayChangu for development)
+  Future<Map<String, dynamic>> initiateTestPayment({
+    required double amount,
+    required String orderId,
+  }) async {
+    _isProcessing = true;
+    _error = null;
+    _safeNotify();
+
+    print('🧪 Initiating TEST payment:');
+    print('   Amount: MK$amount');
+    print('   Order ID: $orderId');
+
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+
+      final result = {
+        'status': 'success',
+        'message': 'Test payment successful (bypassing PayChangu)',
+        'transaction_id': 'TEST_${DateTime.now().millisecondsSinceEpoch}',
+        'payment_url': null,
+        'reference': 'TEST_REF_$orderId',
+        'order_id': orderId,
+      };
+
+      try {
+        _currentPayment = Payment.fromJson(result);
+      } catch (_) {}
+
+      _isProcessing = false;
+      _safeNotify();
+      return result;
+    } catch (e) {
+      _error = e.toString();
+      _isProcessing = false;
+      _safeNotify();
+      print('❌ Test payment initiation failed: $e');
+      rethrow;
+    }
+  }
+
   // ============================================
   // GROUP 3: PAYMENT VERIFICATION
   // ============================================
 
-  /// Verifies by transaction ID. Returns true if completed.
   Future<bool> verifyPayment(String transactionId) async {
     _isProcessing = true;
     _safeNotify();
@@ -249,8 +248,6 @@ class PaymentProvider extends ChangeNotifier {
     }
   }
 
-  /// Polls GET /api/payments/status_by_reference/?reference=xxx
-  /// Returns the full status map or null on error.
   Future<Map<String, dynamic>?> getPaymentStatusByReference(
       String reference) async {
     try {
