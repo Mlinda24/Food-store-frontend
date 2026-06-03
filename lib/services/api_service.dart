@@ -603,11 +603,40 @@ class ApiService {
   }
 
   // ============================================
-  // DRIVER API ENDPOINTS (FIXED)
+  // DRIVER API ENDPOINTS (UPDATED)
   // ============================================
 
   Future<Map<String, dynamic>> getDriverProfile() async {
-    return await get('/api/drivers/drivers/profile/');
+    print('📡 Fetching driver profile...');
+    try {
+      final response = await get('/api/drivers/drivers/profile/');
+      print('✅ Driver profile fetched successfully');
+      return response;
+    } catch (e) {
+      print('❌ Failed to fetch driver profile: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> ensureDriverProfile() async {
+    try {
+      print('🔧 Ensuring driver profile exists...');
+      final profile = await getDriverProfile();
+      print('✅ Driver profile exists: $profile');
+      return profile;
+    } catch (e) {
+      print('⚠️ Driver profile not found or error, will retry...');
+      // The backend's get_or_create should handle this
+      // Just try to get it again - the backend will create if missing
+      try {
+        final newProfile = await getDriverProfile();
+        print('✅ Driver profile now available: $newProfile');
+        return newProfile;
+      } catch (e2) {
+        print('❌ Failed to get/create driver profile: $e2');
+        rethrow;
+      }
+    }
   }
 
   Future<Map<String, dynamic>> updateDriverProfile(
@@ -617,13 +646,20 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateDriverStatus(String status) async {
     print('📡 Updating driver status to: $status');
+    print('📍 Endpoint: /api/drivers/drivers/profile_status/');
+    print('📦 Payload: {"status": "$status"}');
+    
     try {
       final response = await patch(
-          '/api/drivers/drivers/profile_status/', {'status': status});
+        '/api/drivers/drivers/profile_status/', 
+        {'status': status}
+      );
       print('✅ Driver status updated successfully');
+      print('📥 Response: $response');
       return response;
     } catch (e) {
       print('❌ Failed to update driver status: $e');
+      print('💡 Make sure you are logged in as a driver');
       rethrow;
     }
   }
