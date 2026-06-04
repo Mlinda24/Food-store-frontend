@@ -106,7 +106,7 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // GROUP 3: RESTAURANT CREATION (NEW)
+  // GROUP 3: RESTAURANT CREATION
   // ============================================
 
   Future<bool> createRestaurant({
@@ -124,7 +124,6 @@ class RestaurantProvider extends ChangeNotifier {
       Map<String, dynamic> result;
 
       if (imageFile != null) {
-        // Create with image
         result = await _apiService.createRestaurantWithImage(
           name: name,
           address: address,
@@ -133,7 +132,6 @@ class RestaurantProvider extends ChangeNotifier {
           imageFile: imageFile,
         );
       } else {
-        // Create without image
         result = await _apiService.createRestaurant({
           'name': name,
           'address': address,
@@ -143,7 +141,6 @@ class RestaurantProvider extends ChangeNotifier {
       }
 
       if (result.isNotEmpty) {
-        // Parse the created restaurant
         _restaurant = Restaurant(
           id: result['id']?.toString() ?? '',
           name: result['name']?.toString() ?? name,
@@ -189,6 +186,7 @@ class RestaurantProvider extends ChangeNotifier {
         loadRestaurantInfo(),
         loadMenuItems(),
         loadStats(),
+        loadRestaurantOrders(),
       ]);
     } catch (e) {
       _error = e.toString();
@@ -205,7 +203,6 @@ class RestaurantProvider extends ChangeNotifier {
       print('📦 Restaurant data: $restaurantData');
 
       if (restaurantData.isNotEmpty) {
-        // Parse categories
         List<String> categoryList = [];
         if (restaurantData['categories'] != null) {
           final categories = restaurantData['categories'];
@@ -225,7 +222,6 @@ class RestaurantProvider extends ChangeNotifier {
           categoryList = ['All'];
         }
 
-        // Parse location
         if (restaurantData['latitude'] != null) {
           _restaurantLatitude = _toDouble(restaurantData['latitude']);
           _restaurantLongitude = _toDouble(restaurantData['longitude']);
@@ -233,7 +229,6 @@ class RestaurantProvider extends ChangeNotifier {
               '📍 Restaurant location: $_restaurantLatitude, $_restaurantLongitude');
         }
 
-        // Parse delivery settings
         _baseDeliveryFee =
             _toDouble(restaurantData['base_delivery_fee'] ?? 1000.0);
         _feePerKm = _toDouble(restaurantData['fee_per_km'] ?? 1000.0);
@@ -319,10 +314,6 @@ class RestaurantProvider extends ChangeNotifier {
             .toList();
 
         print('✅ Loaded ${_menuItems.length} menu items into provider');
-        for (var item in _menuItems) {
-          print(
-              '   - ${item.name}: MK${item.price} (${item.isAvailable ? "Available" : "Unavailable"})');
-        }
       } else if (response.statusCode == 401) {
         print('⚠️ Token expired, attempting refresh...');
         await _apiService.refreshToken();
@@ -361,9 +352,6 @@ class RestaurantProvider extends ChangeNotifier {
         totalEarned: _toDouble(statsData['totalEarned'] ?? 0),
       );
       print('✅ Stats loaded: ${_stats?.todayOrders} orders today');
-      print('   Wallet Balance: MK${_stats?.walletBalance}');
-      print('   Total Earned: MK${_stats?.totalEarned}');
-      print('   Total Withdrawn: MK${_stats?.totalWithdrawn}');
       _safeNotify();
     } catch (e) {
       print('⚠️ Error loading stats: $e');
@@ -553,9 +541,14 @@ class RestaurantProvider extends ChangeNotifier {
   Future<bool> updateOrderStatus(String orderId, String status) async {
     try {
       print('📝 Updating order $orderId to status: $status');
-      await _apiService.updateOrderStatus(orderId, status);
-      await loadRestaurantOrders();
-      return true;
+      final result = await _apiService.updateOrderStatus(orderId, status);
+
+      if (result != null &&
+          (result['success'] == true || result['status'] == status)) {
+        await loadRestaurantOrders();
+        return true;
+      }
+      return false;
     } catch (e) {
       _error = e.toString();
       print('❌ Error updating order status: $e');
@@ -712,7 +705,6 @@ class RestaurantProvider extends ChangeNotifier {
 
       print('✅ Withdrawal request submitted: $result');
 
-      // Refresh stats to update wallet balance
       await loadStats();
 
       _isLoading = false;
