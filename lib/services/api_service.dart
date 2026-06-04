@@ -625,13 +625,11 @@ class ApiService {
   // ============================================
   // DRIVER API ENDPOINTS (UPDATED)
   // ============================================
-  //  // ============================================
-  // DRIVER API ENDPOINTS (FULLY FIXED)
-  // ============================================
+  
 
   Future<Map<String, dynamic>> getDriverProfile() async {
     try {
-      final response = await get('/api/drivers/profile/');
+      final response = await get('/api/driver/drivers/profile/');
       print('✅ Driver profile loaded: $response');
       return response;
     } catch (e) {
@@ -642,7 +640,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateDriverProfile(
       Map<String, dynamic> data) async {
-    return await patch('/api/drivers/update_profile/', data);
+    return await patch('/api/driver/drivers/update_profile/', data);
   }
 
   Future<Map<String, dynamic>> updateDriverStatus(String status) async {
@@ -651,7 +649,7 @@ class ApiService {
       final token = await getToken();
       if (token == null) throw Exception('No token');
 
-      final url = Uri.parse('$baseUrl/api/drivers/profile_status/');
+      final url = Uri.parse('$baseUrl/api/driver/drivers/profile_status/');
       print('📍 URL: $url');
 
       final response = await http.patch(
@@ -694,7 +692,7 @@ class ApiService {
 
   Future<List<dynamic>> getAvailableOrders() async {
     try {
-      final response = await get('/api/delivery/orders/available/');
+      final response = await get('/api/driver/orders/available/');
       print(
           '📦 Available orders: ${response is List ? response.length : 0} found');
       return response is List ? response : [];
@@ -706,7 +704,7 @@ class ApiService {
 
   Future<List<dynamic>> getMyDeliveries() async {
     try {
-      final response = await get('/api/delivery/orders/my/');
+      final response = await get('/api/driver/orders/my/');
       return response is List ? response : [];
     } catch (e) {
       print('Error getting my deliveries: $e');
@@ -716,7 +714,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getActiveDelivery() async {
     try {
-      final response = await get('/api/delivery/orders/active/');
+      final response = await get('/api/driver/orders/active/');
       if (response is Map && response.isNotEmpty) {
         return response as Map<String, dynamic>;
       }
@@ -729,22 +727,22 @@ class ApiService {
 
   Future<Map<String, dynamic>> acceptDelivery(String orderId) async {
     print('📝 Accepting order ID: $orderId');
-    return await post('/api/delivery/orders/$orderId/accept/', null);
+    return await post('/api/driver/delivery/orders/$orderId/accept/', null);
   }
 
   Future<Map<String, dynamic>> declineDelivery(String orderId) async {
-    return await post('/api/delivery/orders/$orderId/decline/', null);
+    return await post('/api/driver/orders/$orderId/decline/', null);
   }
 
   Future<Map<String, dynamic>> updateDeliveryStatus(
       String deliveryId, String status) async {
     return await patch(
-        '/api/delivery/orders/$deliveryId/status/', {'status': status});
+        '/api/driver/orders/$deliveryId/status/', {'status': status});
   }
 
   Future<Map<String, dynamic>> getEarningsSummary() async {
     try {
-      final response = await get('/api/drivers/earnings/');
+      final response = await get('/api/driver/drivers/earnings/');
       print('💰 Earnings: $response');
       return response;
     } catch (e) {
@@ -762,7 +760,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getDeliveryHistory() async {
     try {
-      final response = await get('/api/drivers/delivery_history/');
+      final response = await get('/api/driver/drivers/delivery_history/');
       return response is Map<String, dynamic> ? response : {'deliveries': []};
     } catch (e) {
       print('Error getting delivery history: $e');

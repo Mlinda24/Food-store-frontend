@@ -185,48 +185,37 @@ class DriverProvider extends ChangeNotifier {
   }
 
   Future<void> toggleOnlineStatus(bool value) async {
-    print('🔄 Toggle clicked: ${value ? "ON" : "OFF"}');
+  print('🔄 Toggle clicked: ${value ? "ON" : "OFF"}');
+  _isLoading = true;
+  if (_mounted) notifyListeners();
 
-    _isLoading = true;
-    _errorMessage = null;
-    if (_mounted) notifyListeners();
+  try {
+    final statusStr = value ? 'online' : 'offline';
+    final response = await _apiService.updateDriverStatus(statusStr);
+    
+    // ADD THESE:
+    print('🔍 FULL RESPONSE: $response');
+    print('🔍 RESPONSE TYPE: ${response.runtimeType}');
+    print('🔍 KEYS: ${response.keys.toList()}');
+    print('🔍 STATUS VALUE: ${response['status']}');
+    print('🔍 IS ONLINE CHECK: ${response['status'] == 'online'}');
 
-    try {
-      final statusStr = value ? 'online' : 'offline';
-      print('📡 Sending status to API: $statusStr');
-
-      final response = await _apiService.updateDriverStatus(statusStr);
-      print('✅ Status updated successfully on server');
-      print('📦 Server response: $response');
-
-      // Update local state based on response
-      if (response.containsKey('status')) {
-        _isOnline = response['status'] == 'online';
-      } else {
-        _isOnline = value;
-      }
-
-      print('🟢 Driver is now ${_isOnline ? "ONLINE" : "OFFLINE"}');
-
-      if (_isOnline) {
-        await loadAvailableOrders();
-        await loadActiveDelivery();
-        _startAutoRefresh();
-      } else {
-        _availableOrders.clear();
-        _activeDelivery = null;
-        _stopAutoRefresh();
-      }
-
-      _isLoading = false;
-      if (_mounted) notifyListeners();
-    } catch (e) {
-      print('❌ Failed to update status: $e');
-      _errorMessage = 'Failed to update status. Please check your connection.';
-      _isLoading = false;
-      if (_mounted) notifyListeners();
+    if (response.containsKey('status')) {
+      _isOnline = response['status'] == 'online';
+    } else {
+      _isOnline = value; // fallback
     }
+    
+    print('🟢 _isOnline is now: $_isOnline');
+    
+    _isLoading = false;
+    if (_mounted) notifyListeners();
+  } catch (e) {
+    print('❌ FULL ERROR: $e');
+    _isLoading = false;
+    if (_mounted) notifyListeners();
   }
+}
 
   Future<void> acceptOrder(DeliveryRequest order) async {
     try {
