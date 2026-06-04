@@ -1,3 +1,5 @@
+// lib/services/api_service.dart
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -174,7 +176,7 @@ class ApiService {
       if (refreshed) return post(endpoint, data);
       throw Exception('Unauthorized');
     } else {
-      throw Exception('POST failed: ${response.statusCode}');
+      throw Exception('POST failed: ${response.statusCode} - ${response.body}');
     }
   }
 
@@ -394,7 +396,7 @@ class ApiService {
   }
 
   Future<List<dynamic>> getRestaurantOrders() async {
-    final response = await get('/api/orders/');
+    final response = await get('/api/orders/orders/');
     return response is List ? response : [];
   }
 
@@ -450,33 +452,34 @@ class ApiService {
 
   Future<Map<String, dynamic>> getCart() async {
     try {
-      return await get('/api/cart/');
+      return await get('/api/orders/cart/');
     } catch (e) {
       return {'items': [], 'total_price': 0};
     }
   }
 
   Future<Map<String, dynamic>> addToCart(int menuItemId, int quantity) async {
-    return await post('/api/cart/add_item/', {
+    return await post('/api/orders/cart/add_item/', {
       'menu_item_id': menuItemId,
       'quantity': quantity,
     });
   }
 
   Future<Map<String, dynamic>> removeFromCart(int cartItemId) async {
-    return await delete('/api/cart/remove_item/?cart_item_id=$cartItemId');
+    return await delete(
+        '/api/orders/cart/remove_item/?cart_item_id=$cartItemId');
   }
 
   Future<Map<String, dynamic>> updateCartItem(
       int cartItemId, int quantity) async {
-    return await patch('/api/cart/update_item/', {
+    return await patch('/api/orders/cart/update_item/', {
       'cart_item_id': cartItemId,
       'quantity': quantity,
     });
   }
 
   Future<void> clearCart() async {
-    await post('/api/cart/clear_cart/', null);
+    await post('/api/orders/cart/clear_cart/', null);
   }
 
   // ============================================
@@ -485,7 +488,7 @@ class ApiService {
 
   Future<List<dynamic>> getOrders() async {
     try {
-      final response = await get('/api/orders/');
+      final response = await get('/api/orders/orders/');
       if (response is List) return response as List<dynamic>;
       if (response.containsKey('results')) return response['results'];
       return [];
@@ -496,7 +499,7 @@ class ApiService {
 
   Future<List<Order>> getMyOrders() async {
     try {
-      final response = await get('/api/my_orders/');
+      final response = await get('/api/orders/my_orders/');
       List<dynamic> ordersData =
           response is List ? response : (response['results'] ?? []);
       return ordersData.map((json) => Order.fromJson(json)).toList();
@@ -506,22 +509,22 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getOrder(String orderId) async {
-    return await get('/api/orders/$orderId/');
+    return await get('/api/orders/orders/$orderId/');
   }
 
   Future<Map<String, dynamic>> createOrder(
       Map<String, dynamic> orderData) async {
-    return await post('/api/orders/', orderData);
+    return await post('/api/orders/orders/', orderData);
   }
 
   Future<Map<String, dynamic>> updateOrderStatus(
       String orderId, String status) async {
     return await patch(
-        '/api/orders/$orderId/update_status/', {'status': status});
+        '/api/orders/orders/$orderId/update_status/', {'status': status});
   }
 
   // ============================================
-  // PAYMENT ENDPOINTS
+  // PAYMENT ENDPOINTS (UPDATED)
   // ============================================
 
   Future<Map<String, dynamic>> getWalletBalance() async {
@@ -560,56 +563,56 @@ class ApiService {
     });
   }
 
+  // UPDATED: Now accepts int for orderId
   Future<Map<String, dynamic>> initiateSimplePayment({
     required double amount,
-    required String orderId,
+    required int orderId, // FIXED: int instead of String
   }) async {
     print('💳 initiateSimplePayment: amount=$amount, orderId=$orderId');
     final response = await post('/api/payments/initiate_simple/', {
-      'order_id': int.tryParse(orderId) ?? orderId,
+      'order_id': orderId, // Send as int directly
     });
     print('📦 initiateSimplePayment response: $response');
     return response;
   }
 
+  // UPDATED: Now accepts int for orderId
   Future<Map<String, dynamic>> initiatePayChanguPayment({
     required double amount,
-    required String orderId,
+    required int orderId, // FIXED: int instead of String
+    String phoneNumber = '',
   }) async {
-    return await post('/api/payments/initiate/', {
-      'order_id': int.tryParse(orderId) ?? orderId,
+    final data = {
+      'order_id': orderId,
       'method': 'paychangu',
-      'phone_number': '',
-    });
+    };
+    if (phoneNumber.isNotEmpty) {
+      data['phone_number'] = phoneNumber;
+    }
+    return await post('/api/payments/initiate/', data);
   }
 
   Future<Map<String, dynamic>> verifyPayment(String transactionId) async {
     return await get('/api/payments/$transactionId/status/');
   }
 
+  // UPDATED: Properly handles String to int conversion
   Future<Map<String, dynamic>> manualConfirmPayment(String orderId) async {
     return await post('/api/payments/test_confirm_payment/', {
-      'order_id': int.parse(orderId),
+      'order_id': int.parse(orderId), // Convert String to int
+    });
+  }
+
+  // NEW: Sync wallet after payment
+  Future<Map<String, dynamic>> syncWalletAfterPayment(String orderId) async {
+    return await post('/api/payments/sync_payment/', {
+      'order_id': int.parse(orderId), // Convert String to int
     });
   }
 
   Future<Map<String, dynamic>> checkAndUpdateWallet(String orderId) async {
     return await get(
         '/api/payments/check_and_update_wallet/?order_id=$orderId');
-  }
-
-  Future<Map<String, dynamic>> syncPayment(String orderId) async {
-    try {
-      print('🔄 Syncing payment for order: $orderId');
-      final result = await post('/api/payments/sync_payment/', {
-        'order_id': int.tryParse(orderId) ?? orderId,
-      });
-      print('📦 Sync result: $result');
-      return result;
-    } catch (e) {
-      print('❌ syncPayment error: $e');
-      return {'status': 'error', 'message': e.toString()};
-    }
   }
 
   Future<Map<String, dynamic>> getPaymentStatusByReference(
@@ -623,16 +626,17 @@ class ApiService {
   }
 
   // ============================================
-  // DRIVER API ENDPOINTS (FIXED)
+  // DRIVER API ENDPOINTS
+  // ============================================
+  // ============================================
+  // DRIVER API ENDPOINTS (COMPLETE FIXED VERSION)
   // ============================================
 
   Future<Map<String, dynamic>> getDriverProfile() async {
     try {
-      final response = await get('/api/drivers/profile/');
-      print('✅ Driver profile loaded: $response');
-      return response;
+      return await get('/api/drivers/profile/');
     } catch (e) {
-      print('❌ Error getting driver profile: $e');
+      print('Error getting driver profile: $e');
       return {'status': 'offline', 'is_available': false, 'rating': 5.0};
     }
   }
@@ -647,7 +651,7 @@ class ApiService {
     try {
       final response =
           await patch('/api/drivers/profile_status/', {'status': status});
-      print('✅ Driver status updated successfully: $response');
+      print('✅ Driver status updated successfully');
       return response;
     } catch (e) {
       print('❌ Failed to update driver status: $e');
@@ -666,11 +670,9 @@ class ApiService {
   Future<List<dynamic>> getAvailableOrders() async {
     try {
       final response = await get('/api/delivery/orders/available/');
-      print(
-          '📦 Available orders: ${response is List ? response.length : 0} found');
       return response is List ? response : [];
     } catch (e) {
-      print('❌ Error getting available orders: $e');
+      print('Error getting available orders: $e');
       return [];
     }
   }
@@ -714,9 +716,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getEarningsSummary() async {
     try {
-      final response = await get('/api/drivers/earnings/');
-      print('💰 Earnings: $response');
-      return response;
+      return await get('/api/drivers/earnings/');
     } catch (e) {
       print('Error getting earnings: $e');
       return {
@@ -739,46 +739,6 @@ class ApiService {
       return {'deliveries': []};
     }
   }
-
-  // ============================================
-  // NOTIFICATION ENDPOINTS
-  // ============================================
-
-  Future<List<dynamic>> getNotifications() async {
-    try {
-      final response = await get('/api/notifications/notifications/');
-      if (response is List) return response as List<dynamic>;
-      if (response.containsKey('results')) return response['results'];
-      return [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  Future<int> getUnreadNotificationCount() async {
-    try {
-      final response =
-          await get('/api/notifications/notifications/unread_count/');
-      return response['unread_count'] ?? 0;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  Future<Map<String, dynamic>> markNotificationRead(
-      String notificationId) async {
-    return await patch(
-        '/api/notifications/notifications/$notificationId/mark_read/', null);
-  }
-
-  Future<Map<String, dynamic>> markAllNotificationsRead() async {
-    return await post('/api/notifications/notifications/mark_all_read/', null);
-  }
-
-  Future<void> deleteNotification(String notificationId) async {
-    await delete('/api/notifications/notifications/$notificationId/');
-  }
-
   // ============================================
   // UTILITY METHODS
   // ============================================

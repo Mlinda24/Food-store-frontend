@@ -625,8 +625,8 @@ class ApiService {
   // ============================================
   // DRIVER API ENDPOINTS (UPDATED)
   // ============================================
-  // ============================================
-  // DRIVER API ENDPOINTS (FIXED)
+  //  // ============================================
+  // DRIVER API ENDPOINTS (FULLY FIXED)
   // ============================================
 
   Future<Map<String, dynamic>> getDriverProfile() async {
@@ -648,29 +648,36 @@ class ApiService {
   Future<Map<String, dynamic>> updateDriverStatus(String status) async {
     print('📡 Updating driver status to: $status');
     try {
-      // Try multiple possible endpoints
-      List<String> endpoints = [
-        '/api/drivers/profile_status/',
-        '/api/drivers/status/',
-        '/api/drivers/update_status/',
-      ];
+      final token = await getToken();
+      if (token == null) throw Exception('No token');
 
-      dynamic response;
-      Exception? lastError;
+      final url = Uri.parse('$baseUrl/api/drivers/profile_status/');
+      print('📍 URL: $url');
 
-      for (var endpoint in endpoints) {
-        try {
-          response = await patch(endpoint, {'status': status});
-          print('✅ Success with endpoint: $endpoint');
-          print('✅ Response: $response');
-          return response;
-        } catch (e) {
-          lastError = e as Exception;
-          print('❌ Failed with endpoint $endpoint: $e');
-        }
+      final response = await http.patch(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'status': status}),
+      );
+
+      print('📡 Response status: ${response.statusCode}');
+      print('📡 Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        print('✅ Driver status updated successfully');
+        return data;
+      } else if (response.statusCode == 401) {
+        final refreshed = await refreshToken();
+        if (refreshed) return updateDriverStatus(status);
+        throw Exception('Unauthorized');
+      } else {
+        throw Exception(
+            'PATCH failed: ${response.statusCode} - ${response.body}');
       }
-
-      throw lastError ?? Exception('No working endpoint found');
     } catch (e) {
       print('❌ Failed to update driver status: $e');
       rethrow;
@@ -687,7 +694,7 @@ class ApiService {
 
   Future<List<dynamic>> getAvailableOrders() async {
     try {
-      final response = await get('/api/drivers/delivery/orders/available/');
+      final response = await get('/api/delivery/orders/available/');
       print(
           '📦 Available orders: ${response is List ? response.length : 0} found');
       return response is List ? response : [];
@@ -699,7 +706,7 @@ class ApiService {
 
   Future<List<dynamic>> getMyDeliveries() async {
     try {
-      final response = await get('/api/drivers/delivery/orders/my/');
+      final response = await get('/api/delivery/orders/my/');
       return response is List ? response : [];
     } catch (e) {
       print('Error getting my deliveries: $e');
@@ -709,7 +716,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getActiveDelivery() async {
     try {
-      final response = await get('/api/drivers/delivery/orders/active/');
+      final response = await get('/api/delivery/orders/active/');
       if (response is Map && response.isNotEmpty) {
         return response as Map<String, dynamic>;
       }
@@ -720,18 +727,19 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> acceptDelivery(String deliveryId) async {
-    return await post('/api/drivers/delivery/orders/$deliveryId/accept/', null);
+  Future<Map<String, dynamic>> acceptDelivery(String orderId) async {
+    print('📝 Accepting order ID: $orderId');
+    return await post('/api/delivery/orders/$orderId/accept/', null);
   }
 
-  Future<Map<String, dynamic>> declineDelivery(String deliveryId) async {
-    return await post('/api/drivers/delivery/orders/$deliveryId/decline/', null);
+  Future<Map<String, dynamic>> declineDelivery(String orderId) async {
+    return await post('/api/delivery/orders/$orderId/decline/', null);
   }
 
   Future<Map<String, dynamic>> updateDeliveryStatus(
       String deliveryId, String status) async {
     return await patch(
-        '/api/drivers/delivery/orders/$deliveryId/status/', {'status': status});
+        '/api/delivery/orders/$deliveryId/status/', {'status': status});
   }
 
   Future<Map<String, dynamic>> getEarningsSummary() async {

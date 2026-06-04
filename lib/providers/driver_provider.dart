@@ -73,10 +73,6 @@ class DriverProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  // ============================================
-  // AUTO REFRESH
-  // ============================================
-
   void _startAutoRefresh() {
     _stopAutoRefresh();
     _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
@@ -95,10 +91,6 @@ class DriverProvider extends ChangeNotifier {
     print('⏹️ Auto-refresh stopped');
   }
 
-  // ============================================
-  // LOAD METHODS
-  // ============================================
-
   Future<void> refresh() async {
     await loadAvailableOrders();
     await loadActiveDelivery();
@@ -111,17 +103,28 @@ class DriverProvider extends ChangeNotifier {
   Future<void> loadDriverStatus() async {
     try {
       final profile = await _apiService.getDriverProfile();
+      print('📱 Driver profile response: $profile');
+
       if (profile.containsKey('status')) {
         final wasOnline = _isOnline;
         _isOnline = profile['status'] == 'online';
 
+        print('🟢 Server says driver is: ${profile['status']}');
+        print('🟢 Local state updated to: ${_isOnline ? "ONLINE" : "OFFLINE"}');
+
         if (_isOnline && !wasOnline) {
           _startAutoRefresh();
+          await loadAvailableOrders();
+          await loadActiveDelivery();
         } else if (!_isOnline && wasOnline) {
           _stopAutoRefresh();
+          _availableOrders.clear();
+          _activeDelivery = null;
         }
 
         if (_mounted) notifyListeners();
+      } else {
+        print('⚠️ No status field in profile: $profile');
       }
     } catch (e) {
       print('Error loading driver status: $e');
@@ -181,10 +184,6 @@ class DriverProvider extends ChangeNotifier {
     }
   }
 
-  // ============================================
-  // ONLINE STATUS
-  // ============================================
-
   Future<void> toggleOnlineStatus(bool value) async {
     print('🔄 Toggle clicked: ${value ? "ON" : "OFF"}');
 
@@ -198,7 +197,9 @@ class DriverProvider extends ChangeNotifier {
 
       final response = await _apiService.updateDriverStatus(statusStr);
       print('✅ Status updated successfully on server');
+      print('📦 Server response: $response');
 
+      // Update local state based on response
       if (response.containsKey('status')) {
         _isOnline = response['status'] == 'online';
       } else {
@@ -224,49 +225,53 @@ class DriverProvider extends ChangeNotifier {
       _errorMessage = 'Failed to update status. Please check your connection.';
       _isLoading = false;
       if (_mounted) notifyListeners();
-      throw Exception('Failed to update status. Please check your connection.');
     }
   }
-
-  // ============================================
-  // ORDER ACTIONS
-  // ============================================
 
   Future<void> acceptOrder(DeliveryRequest order) async {
     try {
       _isLoading = true;
       if (_mounted) notifyListeners();
 
-      await _apiService.acceptDelivery(order.id);
+      print('📝 Accepting order ID: ${order.id}');
+      final response = await _apiService.acceptDelivery(order.id);
+      print('✅ Accept response: $response');
 
-      _availableOrders.removeWhere((o) => o.id == order.id);
+      if (response['success'] == true) {
+        _availableOrders.removeWhere((o) => o.id == order.id);
 
-      // Create updated order with 'accepted' status
-      final acceptedOrder = DeliveryRequest(
-        id: order.id,
-        restaurantName: order.restaurantName,
-        restaurantAddress: order.restaurantAddress,
-        customerName: order.customerName,
-        customerPhone: order.customerPhone,
-        deliveryAddress: order.deliveryAddress,
-        items: order.items,
-        earnings: order.earnings,
-        distance: order.distance,
-        estimatedTime: order.estimatedTime,
-        status: 'accepted',
-        assignedAt: DateTime.now(),
-        deliveredAt: null,
-      );
+        final acceptedOrder = DeliveryRequest(
+          id: order.id,
+          restaurantName: order.restaurantName,
+          restaurantAddress: order.restaurantAddress,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          deliveryAddress: order.deliveryAddress,
+          items: order.items,
+          earnings: order.earnings,
+          distance: order.distance,
+          estimatedTime: order.estimatedTime,
+          status: 'accepted',
+          assignedAt: DateTime.now(),
+          deliveredAt: null,
+        );
 
-      _activeDelivery = acceptedOrder;
-      _acceptedHistory.add(acceptedOrder);
+        _activeDelivery = acceptedOrder;
+        _acceptedHistory.add(acceptedOrder);
+
+        // Refresh driver status (should become 'busy')
+        await loadDriverStatus();
+
+        print('✅ Order ${order.id} accepted successfully');
+      } else {
+        throw Exception('Accept failed: ${response['error']}');
+      }
 
       _isLoading = false;
       if (_mounted) notifyListeners();
-
-      print('✅ Order ${order.id} accepted successfully');
     } catch (e) {
       print('Error accepting order: $e');
+      _errorMessage = e.toString();
       _isLoading = false;
       if (_mounted) notifyListeners();
       rethrow;
@@ -334,10 +339,6 @@ class DriverProvider extends ChangeNotifier {
       rethrow;
     }
   }
-
-  // ============================================
-  // UTILITY
-  // ============================================
 
   Future<void> refreshAvailableOrders() async {
     await loadAvailableOrders();
