@@ -394,7 +394,7 @@ class ApiService {
   }
 
   Future<List<dynamic>> getRestaurantOrders() async {
-    final response = await get('/api/orders/orders/');
+    final response = await get('/api/orders/');
     return response is List ? response : [];
   }
 
@@ -450,34 +450,33 @@ class ApiService {
 
   Future<Map<String, dynamic>> getCart() async {
     try {
-      return await get('/api/orders/cart/');
+      return await get('/api/cart/');
     } catch (e) {
       return {'items': [], 'total_price': 0};
     }
   }
 
   Future<Map<String, dynamic>> addToCart(int menuItemId, int quantity) async {
-    return await post('/api/orders/cart/add_item/', {
+    return await post('/api/cart/add_item/', {
       'menu_item_id': menuItemId,
       'quantity': quantity,
     });
   }
 
   Future<Map<String, dynamic>> removeFromCart(int cartItemId) async {
-    return await delete(
-        '/api/orders/cart/remove_item/?cart_item_id=$cartItemId');
+    return await delete('/api/cart/remove_item/?cart_item_id=$cartItemId');
   }
 
   Future<Map<String, dynamic>> updateCartItem(
       int cartItemId, int quantity) async {
-    return await patch('/api/orders/cart/update_item/', {
+    return await patch('/api/cart/update_item/', {
       'cart_item_id': cartItemId,
       'quantity': quantity,
     });
   }
 
   Future<void> clearCart() async {
-    await post('/api/orders/cart/clear_cart/', null);
+    await post('/api/cart/clear_cart/', null);
   }
 
   // ============================================
@@ -486,7 +485,7 @@ class ApiService {
 
   Future<List<dynamic>> getOrders() async {
     try {
-      final response = await get('/api/orders/orders/');
+      final response = await get('/api/orders/');
       if (response is List) return response as List<dynamic>;
       if (response.containsKey('results')) return response['results'];
       return [];
@@ -497,7 +496,7 @@ class ApiService {
 
   Future<List<Order>> getMyOrders() async {
     try {
-      final response = await get('/api/orders/my_orders/');
+      final response = await get('/api/my_orders/');
       List<dynamic> ordersData =
           response is List ? response : (response['results'] ?? []);
       return ordersData.map((json) => Order.fromJson(json)).toList();
@@ -507,18 +506,18 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getOrder(String orderId) async {
-    return await get('/api/orders/orders/$orderId/');
+    return await get('/api/orders/$orderId/');
   }
 
   Future<Map<String, dynamic>> createOrder(
       Map<String, dynamic> orderData) async {
-    return await post('/api/orders/orders/', orderData);
+    return await post('/api/orders/', orderData);
   }
 
   Future<Map<String, dynamic>> updateOrderStatus(
       String orderId, String status) async {
     return await patch(
-        '/api/orders/orders/$orderId/update_status/', {'status': status});
+        '/api/orders/$orderId/update_status/', {'status': status});
   }
 
   // ============================================
@@ -598,9 +597,6 @@ class ApiService {
     return await get(
         '/api/payments/check_and_update_wallet/?order_id=$orderId');
   }
-
-  // Add this method to ApiService, in the PAYMENT ENDPOINTS section
-  // Place it after the checkAndUpdateWallet method
 
   Future<Map<String, dynamic>> syncPayment(String orderId) async {
     try {
