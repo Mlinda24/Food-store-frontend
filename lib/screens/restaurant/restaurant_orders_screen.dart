@@ -79,18 +79,6 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     final bool isAccepting = newStatus == 'confirmed';
     final bool isDeclining = newStatus == 'cancelled';
 
-    // Guard: cannot accept an unpaid order
-    if (isAccepting) {
-      final paymentStatus = order['payment_status']?.toString() ?? 'unpaid';
-      if (paymentStatus != 'paid') {
-        _showSnackBar(
-          'Cannot accept — order payment status is "$paymentStatus". Wait for payment.',
-          isError: true,
-        );
-        return;
-      }
-    }
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -645,23 +633,19 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    // Disabled when not paid — restaurant cannot accept unpaid orders
-                    onPressed: isPaid
-                        ? () =>
-                            _updateOrderStatus(order, 'confirmed', 'Confirmed')
-                        : null,
+                    onPressed: () =>
+                        _updateOrderStatus(order, 'confirmed', 'Confirmed'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.success,
-                      disabledBackgroundColor: Colors.grey.shade300,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20)),
                     ),
-                    child: Text(
-                      isPaid ? 'Accept Order' : 'Awaiting Payment',
+                    child: const Text(
+                      'Accept Order',
                       style: TextStyle(
                           fontSize: 13,
-                          color: isPaid ? Colors.white : Colors.grey.shade600,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold),
                     ),
                   ),
