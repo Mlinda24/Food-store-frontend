@@ -95,12 +95,9 @@ class PaymentProvider extends ChangeNotifier {
     print('   Order ID: $orderId (String)');
 
     try {
-      // Convert String to int for the API
-      final orderIdInt = int.tryParse(orderId) ?? int.parse(orderId);
-
       final result = await _apiService.initiateSimplePayment(
         amount: amount,
-        orderId: orderIdInt, // Pass as int to API
+        orderId: orderId,
       );
 
       print('✅ Simple payment initiated: $result');
@@ -122,11 +119,10 @@ class PaymentProvider extends ChangeNotifier {
     }
   }
 
-  /// Alternative method using paychangu method with phone number
+  /// Alternative method using paychangu method
   Future<Map<String, dynamic>> initiatePayChanguPayment({
     required double amount,
     required String orderId,
-    String phoneNumber = '',
   }) async {
     _isLoading = true;
     _error = null;
@@ -137,12 +133,9 @@ class PaymentProvider extends ChangeNotifier {
     print('   Order ID: $orderId');
 
     try {
-      final orderIdInt = int.tryParse(orderId) ?? int.parse(orderId);
-
       final result = await _apiService.initiatePayChanguPayment(
         amount: amount,
-        orderId: orderIdInt,
-        phoneNumber: phoneNumber,
+        orderId: orderId,
       );
 
       print('✅ PayChangu payment initiated: $result');

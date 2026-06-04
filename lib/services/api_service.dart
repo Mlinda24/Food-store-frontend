@@ -599,6 +599,23 @@ class ApiService {
         '/api/payments/check_and_update_wallet/?order_id=$orderId');
   }
 
+  // Add this method to ApiService, in the PAYMENT ENDPOINTS section
+  // Place it after the checkAndUpdateWallet method
+
+  Future<Map<String, dynamic>> syncPayment(String orderId) async {
+    try {
+      print('🔄 Syncing payment for order: $orderId');
+      final result = await post('/api/payments/sync_payment/', {
+        'order_id': int.tryParse(orderId) ?? orderId,
+      });
+      print('📦 Sync result: $result');
+      return result;
+    } catch (e) {
+      print('❌ syncPayment error: $e');
+      return {'status': 'error', 'message': e.toString()};
+    }
+  }
+
   Future<Map<String, dynamic>> getPaymentStatusByReference(
       String reference) async {
     return await get('/api/payments/status_by_reference/?reference=$reference');

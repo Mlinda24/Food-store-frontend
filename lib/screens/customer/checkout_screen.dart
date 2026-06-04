@@ -1,19 +1,14 @@
-// lib/screens/customer/checkout_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
-import '../../models/payment_model.dart';
 import '../../services/api_service.dart';
 import '../../services/location_service.dart';
 import '../../utils/delivery_fee_calculator.dart';
@@ -32,11 +27,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _houseNumberController = TextEditingController();
   final _floorNumberController = TextEditingController();
   final Map<String, TextEditingController> _itemInstructions = {};
+
   bool _isLoading = false;
   bool _isProcessingPayment = false;
-  bool _isPlacingOrder = false;
   bool _isCreatingOrder = false;
-  Order? _pendingOrder;
 
   // Delivery
   Position? _currentLocation;
@@ -48,12 +42,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String? _locationError;
 
   final ApiService _apiService = ApiService();
-  late final PaymentProvider _paymentProvider;
 
   @override
   void initState() {
     super.initState();
-    _paymentProvider = PaymentProvider();
     _loadCart();
     _getUserLocation();
   }
@@ -66,16 +58,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     for (var controller in _itemInstructions.values) {
       controller.dispose();
     }
-    _paymentProvider.dispose();
     super.dispose();
   }
+
+  // ─── Location ─────────────────────────────────────────────────────────────
 
   Future<void> _getUserLocation() async {
     setState(() {
       _isLoadingLocation = true;
       _locationError = null;
     });
-
     try {
       final location = await LocationService.getCurrentLocation();
       if (location != null) {
@@ -85,28 +77,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         setState(() => _locationError = 'Unable to get your location');
       }
     } catch (e) {
-      print('Error getting location: $e');
       setState(() =>
           _locationError = 'Please enable location to calculate delivery fee');
     } finally {
-      setState(() {
-        _isLoadingLocation = false;
-      });
+      setState(() => _isLoadingLocation = false);
     }
   }
 
   Future<void> _calculateDeliveryFee() async {
     if (_currentLocation == null) return;
-
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final items = cartProvider.items;
     if (items.isEmpty) return;
 
     final restaurantId = items.first.restaurantId;
-
     try {
       final restaurantData = await _apiService.getRestaurant(restaurantId);
-
       final restaurantLat = restaurantData['latitude'] != null
           ? double.parse(restaurantData['latitude'].toString())
           : null;
@@ -121,7 +107,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _currentLocation!.latitude,
           _currentLocation!.longitude,
         );
-
         final fee = DeliveryFeeCalculator.calculateFee(distanceInMeters);
         final canDeliver = DeliveryFeeCalculator.canDeliver(distanceInMeters);
         final tier = DeliveryFeeCalculator.getDeliveryTier(distanceInMeters);
@@ -132,7 +117,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _canDeliver = canDeliver;
           _deliveryTier = tier;
         });
-
         cartProvider.setCalculatedDeliveryFee(_calculatedDeliveryFee!);
         cartProvider.setDeliveryInfo(
           distanceInMeters: distanceInMeters,
@@ -147,7 +131,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         });
       }
     } catch (e) {
-      print('Error calculating delivery fee: $e');
       setState(() {
         _locationError = 'Could not calculate delivery fee';
         _calculatedDeliveryFee = cartProvider.deliveryFee;
@@ -155,10 +138,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+  // ─── Cart ──────────────────────────────────────────────────────────────────
+
   Future<void> _loadCart() async {
     await context.read<CartProvider>().loadCart();
     _initializeInstructionControllers();
-
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     if (cartProvider.deliveryFee > 0 && cartProvider.deliveryFee != 2000.0) {
       setState(() {
@@ -179,6 +163,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     }
   }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
 
   String _getDeliveryAddress() {
     final street = _streetNumberController.text.trim();
@@ -208,52 +194,53 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: AppTheme.error),
     );
   }
 
   void _showSuccess(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: AppTheme.success),
     );
   }
 
+  // ─── Payment Flow ──────────────────────────────────────────────────────────
+
   Future<void> _startPayment() async {
-    if (_isProcessingPayment || _isPlacingOrder || _isCreatingOrder) {
-      print('⏳ Payment already in progress, ignoring duplicate call');
+    if (_isProcessingPayment || _isCreatingOrder) {
+      print('⏳ Payment already in progress');
       return;
     }
 
     final cartProvider = context.read<CartProvider>();
-
     if (cartProvider.items.isEmpty) {
       _showError('Your cart is empty. Please add items first.');
       return;
     }
-
     if (!_validateFields()) return;
 
-    setState(() {
-      _isProcessingPayment = true;
-    });
+    setState(() => _isCreatingOrder = true);
 
     try {
-      final deliveryAddress = _getDeliveryAddress();
+      // ── STEP 1: Create order ──────────────────────────────────────────────
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📝 STEP 1: Creating order...');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+      final deliveryAddress = _getDeliveryAddress();
       final Map<String, String> instructions = {};
       _itemInstructions.forEach((key, controller) {
         if (controller.text.isNotEmpty) instructions[key] = controller.text;
       });
-
       final instructionsText = instructions.isNotEmpty
           ? 'Item Instructions: ${instructions.entries.map((e) => 'Item ${e.key}: ${e.value}').join('; ')}'
           : '';
 
-      final restaurantId = cartProvider.items.first.restaurantId;
-
       final orderData = {
-        'restaurant_id': int.parse(restaurantId),
+        'restaurant_id': int.parse(cartProvider.items.first.restaurantId),
         'delivery_address': deliveryAddress,
         'note': instructionsText,
         'latitude': _currentLocation?.latitude,
@@ -261,42 +248,55 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       };
 
       print('📤 Order data: $orderData');
-
       final orderProvider = context.read<OrderProvider>();
       final placedOrder = await orderProvider.placeOrder(orderData);
 
       if (placedOrder == null) {
-        throw Exception('Failed to create order');
+        throw Exception('Failed to create order — server returned null');
       }
 
-      // FIXED: Convert orderId to String
-      final orderId = placedOrder.id.toString();
+      final orderId = placedOrder.id;
       print('✅ Order created with ID: $orderId');
+      setState(() {
+        _isCreatingOrder = false;
+        _isProcessingPayment = true;
+      });
+
+      // ── STEP 2: Initiate payment ──────────────────────────────────────────
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('💳 STEP 2: Initiating payment for order: $orderId');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       final total = cartProvider.subtotal +
           (_calculatedDeliveryFee ?? cartProvider.deliveryFee);
 
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('📤 Sending to initiate_simple:');
-      print('   orderId: $orderId (type: String)');
-      print('   amount: $total');
-      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      // Use ApiService directly — avoids Provider tree issues
+      Map<String, dynamic> result;
+      try {
+        result = await _apiService.initiateSimplePayment(
+          amount: total,
+          orderId: orderId,
+        );
+      } catch (e) {
+        print('❌ Payment initiation error: $e');
+        throw Exception('Could not initiate payment: $e');
+      }
 
-      final result = await _paymentProvider.initiateSimplePayment(
-        amount: total,
-        orderId: orderId, // Passing as String
-      );
-
-      print('📦 Payment initiation response: $result');
+      print('📦 Payment result: $result');
 
       final checkoutUrl = result['checkout_url'] as String?;
       final paymentReference = result['reference'] as String?;
 
       if (checkoutUrl == null || checkoutUrl.isEmpty) {
-        throw Exception('Payment service did not return a checkout URL');
+        print('❌ No checkout_url in response: $result');
+        throw Exception(
+            'Payment service did not return a checkout URL. Response: $result');
       }
 
-      // Keep _isProcessingPayment = true while WebView is open
+      print('🔗 Checkout URL: $checkoutUrl');
+      setState(() => _isProcessingPayment = false);
+
+      // ── STEP 3: Open WebView ──────────────────────────────────────────────
       final webViewResult =
           await Navigator.of(context).push<Map<String, dynamic>>(
         MaterialPageRoute(
@@ -309,11 +309,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       );
 
-      print('📤 WebView returned result: $webViewResult');
+      if (!mounted) return;
 
       if (webViewResult == null || webViewResult['status'] == 'cancelled') {
-        setState(() => _isProcessingPayment = false);
-        _showError('Payment was cancelled. Order #$orderId is pending.');
+        _showError(
+            'Payment was cancelled. Your order #$orderId is saved under My Orders.');
         context.go('/my-orders');
         return;
       }
@@ -321,38 +321,85 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (webViewResult['status'] == 'submitted') {
         setState(() => _isProcessingPayment = true);
 
-        await Future.delayed(const Duration(seconds: 3));
+        final ref =
+            webViewResult['reference'] as String? ?? paymentReference ?? '';
+        final orderIdForSync = webViewResult['order_id'] as String? ?? orderId;
 
-        // Check payment status
-        final statusResponse = await _apiService
-            .getPaymentStatusByReference(paymentReference ?? '');
-        final isPaid = statusResponse['status'] == 'completed';
+        // ── STEP 4: Poll for payment confirmation ─────────────────────────
+        bool paymentConfirmed = await _pollPaymentStatus(ref);
+
+        if (!paymentConfirmed) {
+          print('⚠️ Polling failed, trying sync...');
+          try {
+            final syncResult = await _apiService.syncPayment(orderIdForSync);
+            paymentConfirmed = syncResult['status'] == 'success';
+            print(paymentConfirmed
+                ? '✅ Sync successful'
+                : '⚠️ Sync: ${syncResult['status']}');
+          } catch (e) {
+            print('❌ Sync failed: $e');
+          }
+        }
 
         setState(() => _isProcessingPayment = false);
 
-        if (isPaid) {
-          await _completeOrder(orderId);
+        if (paymentConfirmed) {
+          // Payment confirmed — DO NOT set order to confirmed
+          // Restaurant must confirm. Just navigate.
+          await _completeOrder(orderIdForSync);
         } else {
           _showError(
-              'Payment verification failed. Order #$orderId is pending.');
+              'Payment submitted. Check My Orders for the latest status.');
           context.go('/my-orders');
         }
-      } else {
-        setState(() => _isProcessingPayment = false);
-        _showError('Payment failed. Order #$orderId is pending.');
+      } else if (webViewResult['status'] == 'failed') {
+        _showError(
+            'Payment failed. Your order #$orderId is saved under My Orders.');
         context.go('/my-orders');
       }
     } catch (e) {
-      setState(() => _isProcessingPayment = false);
+      setState(() {
+        _isCreatingOrder = false;
+        _isProcessingPayment = false;
+      });
+      print('❌ Checkout error: $e');
       _showError('Error: ${e.toString()}');
-      print('❌ Error: $e');
     }
   }
 
-  Future<void> _completeOrder(String orderId) async {
-    final cartProvider = context.read<CartProvider>();
-    await cartProvider.clearCart();
+  Future<bool> _pollPaymentStatus(String reference) async {
+    if (reference.isEmpty) return false;
+    print('🔄 Polling payment status for: $reference');
 
+    for (int attempt = 1; attempt <= 10; attempt++) {
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return false;
+      try {
+        final statusData =
+            await _apiService.getPaymentStatusByReference(reference);
+        final status = statusData['status'] as String?;
+        print('🔄 Poll $attempt/10: status=$status');
+        if (status == 'completed') {
+          print('✅ Payment confirmed!');
+          return true;
+        }
+        if (status == 'failed') {
+          print('❌ Payment failed');
+          return false;
+        }
+      } catch (e) {
+        print('⚠️ Poll attempt $attempt error: $e');
+      }
+    }
+    print('⏱️ Polling timed out');
+    return false;
+  }
+
+  Future<void> _completeOrder(String orderId) async {
+    // Clear cart
+    await context.read<CartProvider>().clearCart();
+
+    // Refresh restaurant data if applicable
     try {
       final restaurantProvider =
           Provider.of<RestaurantProvider>(context, listen: false);
@@ -362,43 +409,38 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       print('⚠️ Could not refresh restaurant data: $e');
     }
 
-    final notificationProvider =
-        Provider.of<NotificationProvider>(context, listen: false);
-    await notificationProvider.loadUnreadCount();
+    try {
+      await Provider.of<NotificationProvider>(context, listen: false)
+          .loadUnreadCount();
+    } catch (e) {
+      print('⚠️ Could not refresh notifications: $e');
+    }
 
-    _showSuccess('Order placed successfully! Payment confirmed.');
+    _showSuccess(
+        'Payment successful! Waiting for restaurant to confirm your order.');
 
-    if (mounted) {
-      Future.delayed(const Duration(milliseconds: 800), () async {
-        if (!mounted) return;
+    if (!mounted) return;
 
-        try {
-          final orderProvider =
-              Provider.of<OrderProvider>(context, listen: false);
-          final order = await orderProvider.getOrder(orderId);
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
 
-          if (mounted) {
-            if (order != null) {
-              context.go('/order-tracking', extra: order);
-            } else {
-              context.go('/my-orders');
-            }
-          }
-        } catch (e) {
-          print('❌ Could not fetch order for tracking: $e');
-          if (mounted) context.go('/my-orders');
+    try {
+      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      final order = await orderProvider.getOrder(orderId);
+      if (mounted) {
+        if (order != null) {
+          context.go('/order-tracking', extra: order);
+        } else {
+          context.go('/my-orders');
         }
-      });
+      }
+    } catch (e) {
+      print('❌ Could not fetch order for tracking: $e');
+      if (mounted) context.go('/my-orders');
     }
   }
 
-  void _goBack() {
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    } else {
-      context.go('/home');
-    }
-  }
+  // ─── UI ───────────────────────────────────────────────────────────────────
 
   Widget _buildDeliveryInfoCard() {
     final cartProvider = Provider.of<CartProvider>(context);
@@ -515,7 +557,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 if (distance != null)
                   Text(
-                      'Distance: ${DeliveryFeeCalculator.formatDistance(distance)}${tier != null ? " - $tier" : ""}',
+                      'Distance: ${DeliveryFeeCalculator.formatDistance(distance)}'
+                      '${tier != null ? " - $tier" : ""}',
                       style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.getSecondaryTextColor(context))),
@@ -540,6 +583,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ],
       ),
     );
+  }
+
+  void _goBack() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      context.go('/home');
+    }
   }
 
   @override
@@ -616,12 +667,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: ElevatedButton(
                       onPressed: () => context.go('/home'),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.white,
-                          shadowColor: Colors.transparent,
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(22))),
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(22)),
+                      ),
                       child: const Text('Browse Restaurants'),
                     ),
                   ),
@@ -701,28 +753,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                             width: 50,
                                             height: 50,
                                             fit: BoxFit.cover,
-                                            placeholder: (ctx, url) => Container(
-                                                width: 50,
-                                                height: 50,
-                                                color: isDark
-                                                    ? AppTheme.darkSurface
-                                                    : AppTheme.lightBackground,
-                                                child: const Center(
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                            strokeWidth: 2))),
+                                            placeholder: (ctx, url) =>
+                                                Container(
+                                              width: 50,
+                                              height: 50,
+                                              color: isDark
+                                                  ? AppTheme.darkSurface
+                                                  : AppTheme.lightBackground,
+                                              child: const Center(
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2)),
+                                            ),
                                             errorWidget: (ctx, url, error) =>
                                                 Container(
-                                                    width: 50,
-                                                    height: 50,
-                                                    color: isDark
-                                                        ? AppTheme.darkSurface
-                                                        : AppTheme
-                                                            .lightBackground,
-                                                    child: const Icon(
-                                                        Icons.fastfood,
-                                                        size: 25,
-                                                        color: Colors.grey)),
+                                              width: 50,
+                                              height: 50,
+                                              color: isDark
+                                                  ? AppTheme.darkSurface
+                                                  : AppTheme.lightBackground,
+                                              child: const Icon(Icons.fastfood,
+                                                  size: 25, color: Colors.grey),
+                                            ),
                                           )
                                         : Container(
                                             width: 50,
@@ -731,7 +783,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                                 ? AppTheme.darkSurface
                                                 : AppTheme.lightBackground,
                                             child: const Icon(Icons.fastfood,
-                                                size: 25, color: Colors.grey)),
+                                                size: 25, color: Colors.grey),
+                                          ),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
@@ -867,10 +920,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                          gradient: AppTheme.cardGlowGradient(context),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: AppTheme.deepCrimson.withOpacity(0.3))),
+                        gradient: AppTheme.cardGlowGradient(context),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppTheme.deepCrimson.withOpacity(0.3)),
+                      ),
                       child: Column(
                         children: [
                           Row(
@@ -885,7 +939,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     style: TextStyle(
                                         color: isDark
                                             ? AppTheme.darkSecondaryText
-                                            : AppTheme.lightSecondaryText))
+                                            : AppTheme.lightSecondaryText)),
                               ]),
                           const SizedBox(height: 8),
                           Row(
@@ -900,7 +954,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     style: TextStyle(
                                         color: isDark
                                             ? AppTheme.darkSecondaryText
-                                            : AppTheme.lightSecondaryText))
+                                            : AppTheme.lightSecondaryText)),
                               ]),
                           const Divider(
                               height: 24, color: AppTheme.deepCrimson),
@@ -915,7 +969,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
-                                        color: AppTheme.primaryRed))
+                                        color: AppTheme.primaryRed)),
                               ]),
                         ],
                       ),
@@ -927,15 +981,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         onPressed: (_isLoading ||
                                 !_canDeliver ||
                                 _isProcessingPayment ||
-                                _isPlacingOrder ||
                                 _isCreatingOrder)
                             ? null
                             : _startPayment,
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryRed,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30))),
+                          backgroundColor: AppTheme.primaryRed,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30)),
+                        ),
                         child: (_isLoading ||
                                 _isProcessingPayment ||
                                 _isCreatingOrder)
@@ -953,6 +1007,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ],
                 ),
               ),
+
+              // Processing overlay
               if (_isProcessingPayment || _isCreatingOrder)
                 Container(
                   color: Colors.black54,
