@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
-import '../../models/models.dart';
 import '../../providers/restaurant_provider.dart';
 
 class RestaurantOrdersScreen extends StatefulWidget {
@@ -14,6 +14,7 @@ class RestaurantOrdersScreen extends StatefulWidget {
 class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
   String _selectedTab = 'Active';
   final List<String> _tabs = ['Active', 'Ready', 'Past'];
+  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -21,19 +22,37 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadOrders();
     });
+    // Auto-refresh every 15 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) _silentRefresh();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadOrders() async {
     final provider = Provider.of<RestaurantProvider>(context, listen: false);
     await provider.loadRestaurantOrders();
+    await provider.loadStats();
+  }
+
+  Future<void> _silentRefresh() async {
+    final provider = Provider.of<RestaurantProvider>(context, listen: false);
+    await provider.loadRestaurantOrders();
+    await provider.loadStats();
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: isError ? AppTheme.error : AppTheme.success,
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -53,26 +72,23 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     return 'MK${numValue.toStringAsFixed(0)}';
   }
 
-  String _formatNumber(dynamic value) {
-    if (value == null) return '0';
-    if (value is int) return value.toString();
-    if (value is double) return value.toInt().toString();
-    if (value is String) return int.tryParse(value)?.toString() ?? '0';
-    return '0';
-  }
-
   Future<void> _updateOrderStatus(
       dynamic order, String newStatus, String statusName) async {
     final provider = Provider.of<RestaurantProvider>(context, listen: false);
     final orderId = order['id'].toString();
+    final bool isAccepting = newStatus == 'confirmed';
+    final bool isDeclining = newStatus == 'cancelled';
 
-    bool isAccepting = false;
-    bool isDeclining = false;
-
-    if (newStatus == 'confirmed') {
-      isAccepting = true;
-    } else if (newStatus == 'cancelled') {
-      isDeclining = true;
+    // Guard: cannot accept an unpaid order
+    if (isAccepting) {
+      final paymentStatus = order['payment_status']?.toString() ?? 'unpaid';
+      if (paymentStatus != 'paid') {
+        _showSnackBar(
+          'Cannot accept — order payment status is "$paymentStatus". Wait for payment.',
+          isError: true,
+        );
+        return;
+      }
     }
 
     final confirmed = await showDialog<bool>(
@@ -85,7 +101,9 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         ),
         title: Text(isAccepting
             ? 'Accept Order'
-            : (isDeclining ? 'Decline Order' : 'Update Order Status')),
+            : isDeclining
+                ? 'Decline Order'
+                : 'Update Order Status'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,20 +114,34 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               Text('Order Total: ${_formatCurrency(order['total_price'])}'),
               const SizedBox(height: 4),
               Text(
-                  'Delivery Fee: ${_formatCurrency(order['delivery_fee'] ?? 2000)}'),
+                'Platform Fee (10%): ${_formatCurrency(
+                  (double.tryParse(order['total_price']?.toString() ?? '0') ??
+                          0) *
+                      0.1,
+                )}',
+              ),
               const SizedBox(height: 4),
               Text(
-                  'Platform Fee (10%): ${_formatCurrency((double.tryParse(order['total_price']?.toString() ?? '0') ?? 0) * 0.1)}'),
+                'Your earnings: ${_formatCurrency(
+                  (double.tryParse(order['total_price']?.toString() ?? '0') ??
+                          0) *
+                      0.9,
+                )}',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: AppTheme.success),
+              ),
               const SizedBox(height: 8),
               Text(
-                'Accepting this order will credit MK${_formatCurrency((double.tryParse(order['total_price']?.toString() ?? '0') ?? 0) * 0.9)} to your wallet after delivery.',
-                style: TextStyle(fontSize: 12, color: AppTheme.success),
+                'Earnings will be credited to your wallet immediately upon confirmation.',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.getSecondaryTextColor(context)),
               ),
             ],
             if (isDeclining)
-              Text('Are you sure you want to decline this order?'),
+              const Text('Are you sure you want to decline this order?'),
             if (!isAccepting && !isDeclining)
-              Text('Are you sure you want to mark order as $statusName?'),
+              Text('Mark order as $statusName?'),
           ],
         ),
         actions: [
@@ -124,38 +156,64 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: isAccepting
                   ? AppTheme.success
-                  : (isDeclining ? AppTheme.error : AppTheme.primaryRed),
+                  : isDeclining
+                      ? AppTheme.error
+                      : AppTheme.primaryRed,
             ),
             child: Text(isAccepting
                 ? 'Yes, Accept'
-                : (isDeclining ? 'Yes, Decline' : 'Yes, $statusName')),
+                : isDeclining
+                    ? 'Yes, Decline'
+                    : 'Yes, $statusName'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
-      final success = await provider.updateOrderStatus(orderId, newStatus);
+    if (confirmed != true) return;
 
-      if (success) {
-        // Refresh orders
-        await _loadOrders();
+    // Show loading snackbar
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white)),
+              SizedBox(width: 12),
+              Text('Updating order...'),
+            ],
+          ),
+          duration: Duration(seconds: 15),
+        ),
+      );
+    }
 
-        // Refresh restaurant stats to update wallet balance
-        await provider.loadRestaurantData();
-        await provider.loadStats();
+    final success = await provider.updateOrderStatus(orderId, newStatus);
 
-        if (isAccepting) {
-          _showSnackBar(
-              'Order #${order['id']} accepted! Wallet will be credited upon delivery.');
-        } else if (isDeclining) {
-          _showSnackBar('Order #${order['id']} declined');
-        } else {
-          _showSnackBar('Order #${order['id']} marked as $statusName');
-        }
+    if (mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    if (success) {
+      // Reload both orders and stats so counts update immediately
+      await provider.loadRestaurantOrders();
+      await provider.loadStats();
+
+      if (isAccepting) {
+        _showSnackBar(
+            'Order #${order['id']} accepted! Earnings credited to your wallet.');
+      } else if (isDeclining) {
+        _showSnackBar('Order #${order['id']} declined.');
       } else {
-        _showSnackBar('Failed to update order status', isError: true);
+        _showSnackBar('Order #${order['id']} marked as $statusName.');
       }
+    } else {
+      _showSnackBar(
+        'Failed to update order. Please try again.',
+        isError: true,
+      );
     }
   }
 
@@ -164,7 +222,6 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
     final provider = Provider.of<RestaurantProvider>(context);
     final isLoading = provider.isLoadingOrders;
     final allOrders = provider.orders;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final activeOrders = allOrders
         .where((o) =>
@@ -182,7 +239,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
             o['status'] == 'cancelled')
         .toList();
 
-    List<dynamic> orders;
+    final List<dynamic> orders;
     if (_selectedTab == 'Active') {
       orders = activeOrders;
     } else if (_selectedTab == 'Ready') {
@@ -193,11 +250,18 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
 
     return Column(
       children: [
+        // ── Tab Bar with live counts ─────────────────────────────────────────
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: _tabs.map((tab) {
               final isSelected = _selectedTab == tab;
+
+              int count = 0;
+              if (tab == 'Active') count = activeOrders.length;
+              if (tab == 'Ready') count = readyOrders.length;
+              if (tab == 'Past') count = pastOrders.length;
+
               return Expanded(
                 child: GestureDetector(
                   onTap: () => setState(() => _selectedTab = tab),
@@ -216,15 +280,40 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                               color: AppTheme.getMutedTextColor(context)
                                   .withOpacity(0.3)),
                     ),
-                    child: Text(
-                      tab,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : AppTheme.getSecondaryTextColor(context),
-                        fontWeight: FontWeight.w500,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          tab,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.getSecondaryTextColor(context),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (count > 0) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white.withOpacity(0.3)
+                                  : AppTheme.primaryRed,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$count',
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
@@ -232,6 +321,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
             }).toList(),
           ),
         ),
+
+        // ── Order List ───────────────────────────────────────────────────────
         Expanded(
           child: isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -254,16 +345,12 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                       ),
                     )
                   : RefreshIndicator(
-                      onRefresh: () async {
-                        await _loadOrders();
-                        await provider.loadStats();
-                      },
+                      onRefresh: _loadOrders,
                       child: ListView.builder(
                         padding: const EdgeInsets.all(10),
                         itemCount: orders.length,
-                        itemBuilder: (context, index) {
-                          return _buildOrderCard(context, orders[index]);
-                        },
+                        itemBuilder: (context, index) =>
+                            _buildOrderCard(context, orders[index]),
                       ),
                     ),
         ),
@@ -274,7 +361,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
   Widget _buildOrderCard(BuildContext context, dynamic order) {
     final items = order['items'] as List? ?? [];
     final status = order['status'] ?? 'pending';
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paymentStatus = order['payment_status']?.toString() ?? 'unpaid';
+    final isPaid = paymentStatus == 'paid';
 
     DateTime orderTime;
     try {
@@ -293,7 +381,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
 
     String customerName = 'Customer';
     String customerPhone = 'No phone';
-    String customerAddress = order['delivery_address'] ?? '';
+    final customerAddress = order['delivery_address'] ?? '';
 
     if (order['customer_name'] != null) {
       customerName = order['customer_name'].toString();
@@ -305,18 +393,13 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
         customerName = 'Customer #${order['customer']}';
       }
     }
-
     if (order['customer_phone'] != null) {
       customerPhone = order['customer_phone'].toString();
     }
 
-    // Calculate earnings for confirmed order
-    double orderTotal =
+    final orderTotal =
         double.tryParse(order['total_price']?.toString() ?? '0') ?? 0;
-    double deliveryFee =
-        double.tryParse(order['delivery_fee']?.toString() ?? '2000') ?? 2000;
-    double restaurantEarnings =
-        (orderTotal + deliveryFee) * 0.9; // 10% platform fee
+    final restaurantEarnings = orderTotal * 0.9;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -329,11 +412,14 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header ────────────────────────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+              Wrap(
+                spacing: 6,
                 children: [
+                  // Order status badge
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -344,13 +430,29 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                     child: Text(
                       _getStatusText(status),
                       style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: _getStatusColor(status),
-                      ),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: _getStatusColor(status)),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  // Payment status badge
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isPaid
+                          ? AppTheme.success.withOpacity(0.15)
+                          : AppTheme.warning.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      isPaid ? '💰 Paid' : '⏳ Unpaid',
+                      style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: isPaid ? AppTheme.success : AppTheme.warning),
+                    ),
+                  ),
                   Text(
                     'ORD-${order['id']}',
                     style: TextStyle(
@@ -367,6 +469,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
             ],
           ),
           const SizedBox(height: 8),
+
+          // ── Customer info ─────────────────────────────────────────────────
           Row(
             children: [
               Container(
@@ -383,25 +487,22 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      customerName,
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          color: AppTheme.getPrimaryTextColor(context)),
-                    ),
-                    Text(
-                      customerPhone,
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.getSecondaryTextColor(context)),
-                    ),
+                    Text(customerName,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: AppTheme.getPrimaryTextColor(context))),
+                    Text(customerPhone,
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.getSecondaryTextColor(context))),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 6),
+
           if (customerAddress.isNotEmpty)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,9 +522,10 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 ),
               ],
             ),
+
           const Divider(height: 16, color: AppTheme.deepCrimson),
 
-          // Order items preview
+          // ── Items ─────────────────────────────────────────────────────────
           if (items.isNotEmpty) ...[
             Column(
               children: (items as List).take(2).map((item) {
@@ -454,28 +556,23 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
               }).toList(),
             ),
             if (items.length > 2)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  '+${items.length - 2} more items',
-                  style: TextStyle(
-                      fontSize: 11, color: AppTheme.getMutedTextColor(context)),
-                ),
+              Text(
+                '+${items.length - 2} more items',
+                style: TextStyle(
+                    fontSize: 11, color: AppTheme.getMutedTextColor(context)),
               ),
             const Divider(height: 16, color: AppTheme.deepCrimson),
           ],
 
-          // Order total
+          // ── Total ─────────────────────────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Order Total:',
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.getPrimaryTextColor(context)),
-              ),
+              Text('Order Total:',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.getPrimaryTextColor(context))),
               Text(
                 _formatCurrency(order['total_price']),
                 style: const TextStyle(
@@ -486,7 +583,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
             ],
           ),
 
-          // Earnings info for accepted orders
+          // ── Earnings badge ────────────────────────────────────────────────
           if (status == 'confirmed' ||
               status == 'preparing' ||
               status == 'ready' ||
@@ -506,13 +603,11 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                       Icon(Icons.account_balance_wallet,
                           size: 14, color: AppTheme.success),
                       const SizedBox(width: 4),
-                      Text(
-                        'Your Earnings:',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.success),
-                      ),
+                      Text('Your Earnings:',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.success)),
                     ],
                   ),
                   Text(
@@ -528,7 +623,8 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
 
           const SizedBox(height: 12),
 
-          // Action Buttons
+          // ── Action Buttons ────────────────────────────────────────────────
+
           if (status == 'pending')
             Row(
               children: [
@@ -549,62 +645,61 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () =>
-                        _updateOrderStatus(order, 'confirmed', 'Confirmed'),
+                    // Disabled when not paid — restaurant cannot accept unpaid orders
+                    onPressed: isPaid
+                        ? () =>
+                            _updateOrderStatus(order, 'confirmed', 'Confirmed')
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.success,
+                      disabledBackgroundColor: Colors.grey.shade300,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20)),
                     ),
-                    child: const Text('Accept Order',
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold)),
+                    child: Text(
+                      isPaid ? 'Accept Order' : 'Awaiting Payment',
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: isPaid ? Colors.white : Colors.grey.shade600,
+                          fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],
             ),
 
           if (status == 'confirmed')
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        _updateOrderStatus(order, 'preparing', 'Preparing'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.warning,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
-                    ),
-                    child: const Text('Start Preparing',
-                        style: TextStyle(fontSize: 13, color: Colors.white)),
-                  ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () =>
+                    _updateOrderStatus(order, 'preparing', 'Preparing'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.warning,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
                 ),
-              ],
+                child: const Text('Start Preparing',
+                    style: TextStyle(fontSize: 13, color: Colors.white)),
+              ),
             ),
 
           if (status == 'preparing')
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        _updateOrderStatus(order, 'ready', 'Ready'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.teal,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
-                    ),
-                    child: const Text('Mark as Ready',
-                        style: TextStyle(fontSize: 13, color: Colors.white)),
-                  ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _updateOrderStatus(order, 'ready', 'Ready'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.teal,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
                 ),
-              ],
+                child: const Text('Mark as Ready',
+                    style: TextStyle(fontSize: 13, color: Colors.white)),
+              ),
             ),
 
           if (status == 'ready')
@@ -620,7 +715,7 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
                           borderRadius: BorderRadius.circular(20)),
                       side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
                     ),
-                    child: Text('Cancel Order',
+                    child: Text('Cancel',
                         style: TextStyle(fontSize: 13, color: AppTheme.error)),
                   ),
                 ),
@@ -643,24 +738,20 @@ class _RestaurantOrdersScreenState extends State<RestaurantOrdersScreen> {
             ),
 
           if (status == 'picked_up')
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () =>
-                        _updateOrderStatus(order, 'delivered', 'Delivered'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
-                      side: BorderSide(color: AppTheme.success, width: 1.5),
-                    ),
-                    child: Text('Mark Delivered',
-                        style:
-                            TextStyle(fontSize: 13, color: AppTheme.success)),
-                  ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () =>
+                    _updateOrderStatus(order, 'delivered', 'Delivered'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  side: BorderSide(color: AppTheme.success, width: 1.5),
                 ),
-              ],
+                child: Text('Mark Delivered',
+                    style: TextStyle(fontSize: 13, color: AppTheme.success)),
+              ),
             ),
         ],
       ),
