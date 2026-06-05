@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
+import '../../models/models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/restaurant_provider.dart';
 import 'restaurant_orders_screen.dart';
@@ -306,6 +307,138 @@ class _DashboardContent extends StatelessWidget {
 
           const SizedBox(height: 16),
 
+          // ── TODAY'S ORDERS SECTION ──────────────────────────────────────
+          Consumer<RestaurantProvider>(
+            builder: (context, prov, _) {
+              final active = prov.activeOrders;
+              final ready = prov.readyOrders;
+              final all = [...active, ...ready];
+
+              if (all.isEmpty) return const SizedBox.shrink();
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.getSurfaceColor(context),
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: AppTheme.deepCrimson.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Today's Schedule",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.getPrimaryTextColor(context),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryRed.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${all.length} orders',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.primaryRed,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ...all.map((order) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryRed.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '#${order.id}',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryRed,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    order.customerName,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          AppTheme.getPrimaryTextColor(context),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${order.items.length} items • MK${order.total.toInt()}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.getSecondaryTextColor(
+                                          context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: order.status == OrderStatus.ready
+                                    ? AppTheme.success.withOpacity(0.1)
+                                    : AppTheme.warning.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                order.status == OrderStatus.ready
+                                    ? 'Ready'
+                                    : order.status == OrderStatus.confirmed
+                                        ? 'Confirmed'
+                                        : order.status == OrderStatus.preparing
+                                            ? 'Preparing'
+                                            : 'Pending',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: order.status == OrderStatus.ready
+                                      ? AppTheme.success
+                                      : AppTheme.warning,
+                                ),
+                              ),
+                            ),
+                          ]),
+                        )),
+                  ],
+                ),
+              );
+            },
+          ),
+          // ── END TODAY'S ORDERS SECTION ─────────────────────────────────
+
           // Open/Close Toggle
           Container(
             margin: const EdgeInsets.only(bottom: 16),
@@ -580,18 +713,21 @@ class __SettingsContentState extends State<_SettingsContent> {
         title: Text('Logout',
             style: TextStyle(color: AppTheme.getPrimaryTextColor(context))),
         content: Text('Are you sure you want to logout?',
-            style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+            style:
+                TextStyle(color: AppTheme.getSecondaryTextColor(context))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text('Cancel',
-                style: TextStyle(color: AppTheme.getSecondaryTextColor(context))),
+                style: TextStyle(
+                    color: AppTheme.getSecondaryTextColor(context))),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30)),
             ),
             child: const Text('Logout'),
           ),
@@ -608,7 +744,6 @@ class __SettingsContentState extends State<_SettingsContent> {
           ),
         );
       }
-      
       await authProvider.logout(context: context);
     }
   }
@@ -667,8 +802,8 @@ class __SettingsContentState extends State<_SettingsContent> {
           const SizedBox(height: 8),
 
           ListTile(
-            leading:
-                const Icon(Icons.restaurant_menu, color: AppTheme.primaryRed),
+            leading: const Icon(Icons.restaurant_menu,
+                color: AppTheme.primaryRed),
             title: const Text('Manage Menu'),
             subtitle: const Text('Add, edit or remove menu items'),
             trailing: const Icon(Icons.chevron_right),
@@ -684,7 +819,8 @@ class __SettingsContentState extends State<_SettingsContent> {
           const Divider(),
 
           ListTile(
-            leading: const Icon(Icons.receipt, color: AppTheme.primaryRed),
+            leading:
+                const Icon(Icons.receipt, color: AppTheme.primaryRed),
             title: const Text('View Orders'),
             subtitle: const Text('Manage incoming orders'),
             trailing: const Icon(Icons.chevron_right),
@@ -700,7 +836,8 @@ class __SettingsContentState extends State<_SettingsContent> {
           const Divider(),
 
           ListTile(
-            leading: const Icon(Icons.person, color: AppTheme.primaryRed),
+            leading:
+                const Icon(Icons.person, color: AppTheme.primaryRed),
             title: const Text('Restaurant Profile'),
             subtitle: const Text('View and edit profile information'),
             trailing: const Icon(Icons.chevron_right),
@@ -710,9 +847,11 @@ class __SettingsContentState extends State<_SettingsContent> {
           const Divider(),
 
           ListTile(
-            leading: const Icon(Icons.wallet, color: AppTheme.primaryRed),
+            leading:
+                const Icon(Icons.wallet, color: AppTheme.primaryRed),
             title: const Text('Withdraw Funds'),
-            subtitle: const Text('Withdraw your earnings to mobile money'),
+            subtitle:
+                const Text('Withdraw your earnings to mobile money'),
             trailing: const Icon(Icons.chevron_right),
             onTap: widget.onNavigateToWithdraw,
           ),
@@ -721,8 +860,10 @@ class __SettingsContentState extends State<_SettingsContent> {
 
           ListTile(
             leading: const Icon(Icons.logout, color: AppTheme.error),
-            title: Text('Logout', style: TextStyle(color: AppTheme.error)),
-            trailing: Icon(Icons.chevron_right, color: AppTheme.error),
+            title:
+                Text('Logout', style: TextStyle(color: AppTheme.error)),
+            trailing:
+                Icon(Icons.chevron_right, color: AppTheme.error),
             onTap: () => _showLogoutDialog(context),
           ),
         ],

@@ -107,8 +107,7 @@ class DriverProvider extends ChangeNotifier {
 
       if (profile.containsKey('status')) {
         final wasOnline = _isOnline;
-        _isOnline = profile['status'] == 'online';
-
+        _isOnline = profile['status'] == 'online' || profile['status'] == 'busy';
         print('🟢 Server says driver is: ${profile['status']}');
         print('🟢 Local state updated to: ${_isOnline ? "ONLINE" : "OFFLINE"}');
 
@@ -231,6 +230,7 @@ class DriverProvider extends ChangeNotifier {
 
         final acceptedOrder = DeliveryRequest(
           id: order.id,
+          deliveryId: response['id']?.toString() ?? '',
           restaurantName: order.restaurantName,
           restaurantAddress: order.restaurantAddress,
           customerName: order.customerName,
@@ -240,7 +240,7 @@ class DriverProvider extends ChangeNotifier {
           earnings: order.earnings,
           distance: order.distance,
           estimatedTime: order.estimatedTime,
-          status: 'accepted',
+          status: 'driver_assigned',
           assignedAt: DateTime.now(),
           deliveredAt: null,
         );
@@ -268,66 +268,88 @@ class DriverProvider extends ChangeNotifier {
   }
 
   Future<void> declineOrder(DeliveryRequest order) async {
-    try {
-      await _apiService.declineDelivery(order.id);
-      _availableOrders.removeWhere((o) => o.id == order.id);
-      _declinedOrders.add(order);
-      if (_mounted) notifyListeners();
-      print('📝 Order ${order.id} declined');
-    } catch (e) {
-      print('Error declining order: $e');
-    }
+  try {
+    await _apiService.declineDelivery(order.id);
+    _availableOrders.removeWhere((o) => o.id == order.id);
+    
+    // Create a copy with status set to 'declined'
+    final declinedOrder = DeliveryRequest(
+      id: order.id,
+      restaurantName: order.restaurantName,
+      restaurantAddress: order.restaurantAddress,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      deliveryAddress: order.deliveryAddress,
+      items: order.items,
+      earnings: order.earnings,
+      distance: order.distance,
+      estimatedTime: order.estimatedTime,
+      status: 'declined',  // SET STATUS HERE
+      assignedAt: order.assignedAt,
+      deliveredAt: null,
+    );
+    
+    _declinedOrders.add(declinedOrder);
+    if (_mounted) notifyListeners();
+    print('📝 Order ${order.id} declined');
+  } catch (e) {
+    print('Error declining order: $e');
   }
+}
 
-  Future<void> updateOrderStatus(String orderId, String status) async {
-    try {
-      _isLoading = true;
-      if (_mounted) notifyListeners();
+  Future<void> updateOrderStatus(String orderId, String newStatus) async {
+  try {
+    _isLoading = true;
+    if (_mounted) notifyListeners();
 
-      await _apiService.updateDeliveryStatus(orderId, status);
+    // Use deliveryId (DeliveryAssignment ID), not order ID
+    final deliveryId = _activeDelivery?.deliveryId;
+    if (deliveryId == null || deliveryId.isEmpty) {
+      throw Exception('No active delivery ID found');
+    }
 
-      if (_activeDelivery != null && _activeDelivery!.id == orderId) {
-        final updatedOrder = DeliveryRequest(
-          id: _activeDelivery!.id,
-          restaurantName: _activeDelivery!.restaurantName,
-          restaurantAddress: _activeDelivery!.restaurantAddress,
-          customerName: _activeDelivery!.customerName,
-          customerPhone: _activeDelivery!.customerPhone,
-          deliveryAddress: _activeDelivery!.deliveryAddress,
-          items: _activeDelivery!.items,
-          earnings: _activeDelivery!.earnings,
-          distance: _activeDelivery!.distance,
-          estimatedTime: _activeDelivery!.estimatedTime,
-          status: status,
-          assignedAt: _activeDelivery!.assignedAt,
-          deliveredAt: status == 'delivered'
-              ? DateTime.now()
-              : _activeDelivery!.deliveredAt,
-        );
+    await _apiService.updateDeliveryStatus(deliveryId, newStatus);
 
-        if (status == 'delivered') {
-          _deliveryHistory.insert(0, updatedOrder);
-          _activeDelivery = null;
-          await loadDriverStatus();
-          await loadEarningsSummary();
-        } else {
-          _activeDelivery = updatedOrder;
-        }
+    if (_activeDelivery != null && _activeDelivery!.id == orderId) {
+      final updatedOrder = DeliveryRequest(
+        id: _activeDelivery!.id,
+        deliveryId: _activeDelivery!.deliveryId,  // KEEP deliveryId
+        restaurantName: _activeDelivery!.restaurantName,
+        restaurantAddress: _activeDelivery!.restaurantAddress,
+        customerName: _activeDelivery!.customerName,
+        customerPhone: _activeDelivery!.customerPhone,
+        deliveryAddress: _activeDelivery!.deliveryAddress,
+        items: _activeDelivery!.items,
+        earnings: _activeDelivery!.earnings,
+        distance: _activeDelivery!.distance,
+        estimatedTime: _activeDelivery!.estimatedTime,
+        status: newStatus,
+        assignedAt: _activeDelivery!.assignedAt,
+        deliveredAt: newStatus == 'delivered' ? DateTime.now() : _activeDelivery!.deliveredAt,
+      );
 
-        if (_mounted) notifyListeners();
+      if (newStatus == 'delivered') {
+        _deliveryHistory.insert(0, updatedOrder);
+        _activeDelivery = null;
+        await loadDriverStatus();
+        await loadEarningsSummary();
+      } else {
+        _activeDelivery = updatedOrder;
       }
 
-      _isLoading = false;
       if (_mounted) notifyListeners();
-
-      print('✅ Order $orderId status updated to $status');
-    } catch (e) {
-      print('Error updating order status: $e');
-      _isLoading = false;
-      if (_mounted) notifyListeners();
-      rethrow;
     }
+
+    _isLoading = false;
+    if (_mounted) notifyListeners();
+    print('✅ Order $orderId status updated to $newStatus');
+  } catch (e) {
+    print('Error updating order status: $e');
+    _isLoading = false;
+    if (_mounted) notifyListeners();
+    rethrow;
   }
+}
 
   Future<void> refreshAvailableOrders() async {
     await loadAvailableOrders();

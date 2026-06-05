@@ -1,5 +1,6 @@
 class DeliveryRequest {
   final String id;
+  final String deliveryId;
   final String restaurantName;
   final String restaurantAddress;
   final String customerName;
@@ -15,6 +16,7 @@ class DeliveryRequest {
 
   DeliveryRequest({
     required this.id,
+    this.deliveryId = '', 
     required this.restaurantName,
     required this.restaurantAddress,
     required this.customerName,
@@ -32,6 +34,7 @@ class DeliveryRequest {
   factory DeliveryRequest.fromJson(Map<String, dynamic> json) {
     return DeliveryRequest(
       id: json['id']?.toString() ?? '',
+       deliveryId: json['id']?.toString() ?? '',  
       restaurantName: json['restaurant_name'] ?? json['restaurantName'] ?? '',
       restaurantAddress:
           json['restaurant_address'] ?? json['restaurantAddress'] ?? '',

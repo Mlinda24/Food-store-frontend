@@ -278,13 +278,11 @@ class CartItem {
     String? imageUrl;
     String? imagePath;
 
-    // Try to get image from menu_item_image
     if (json['menu_item_image'] != null) {
       imagePath = json['menu_item_image'].toString();
       imageUrl = getImageUrl(imagePath);
     }
 
-    // Also check if menu_item_data has image
     if (json['menu_item_data'] != null && json['menu_item_data'] is Map) {
       final menuItemData = json['menu_item_data'] as Map;
       if (menuItemData['image'] != null) {
@@ -311,6 +309,7 @@ enum OrderStatus {
   confirmed,
   preparing,
   ready,
+  driverAssigned,
   pickedUp,
   onTheWay,
   outForDelivery,
@@ -331,6 +330,8 @@ extension OrderStatusExtension on OrderStatus {
         return 'preparing';
       case OrderStatus.ready:
         return 'ready';
+      case OrderStatus.driverAssigned:
+        return 'driver_assigned';
       case OrderStatus.pickedUp:
         return 'picked_up';
       case OrderStatus.onTheWay:
@@ -358,6 +359,8 @@ extension OrderStatusExtension on OrderStatus {
         return 'Preparing';
       case OrderStatus.ready:
         return 'Ready';
+      case OrderStatus.driverAssigned:
+        return 'Driver Assigned';
       case OrderStatus.pickedUp:
         return 'Picked Up';
       case OrderStatus.onTheWay:
@@ -385,6 +388,8 @@ extension OrderStatusExtension on OrderStatus {
         return OrderStatus.preparing;
       case 'ready':
         return OrderStatus.ready;
+      case 'driver_assigned':
+        return OrderStatus.driverAssigned;
       case 'picked_up':
         return OrderStatus.pickedUp;
       case 'on_the_way':
@@ -524,11 +529,11 @@ class Order {
     );
   }
 
-  // Helper getters
   bool get isPending => status == OrderStatus.pending;
   bool get isConfirmed => status == OrderStatus.confirmed;
   bool get isPreparing => status == OrderStatus.preparing;
   bool get isReady => status == OrderStatus.ready;
+  bool get isDriverAssigned => status == OrderStatus.driverAssigned;
   bool get isOutForDelivery => status == OrderStatus.outForDelivery;
   bool get isDelivered => status == OrderStatus.delivered;
   bool get isCancelled => status == OrderStatus.cancelled;
@@ -536,7 +541,6 @@ class Order {
   bool get isReceived => status == OrderStatus.received;
 }
 
-// Rest of the models remain the same...
 class RestaurantOrder {
   final String id;
   final String customerName;

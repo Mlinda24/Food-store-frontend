@@ -816,7 +816,7 @@ class _OrderDetailSheet extends StatelessWidget {
         final isNowActive = liveActive != null && liveActive.id == orderId;
         final order = isNowActive ? liveActive : initialOrder;
 
-        if (isNowActive && order.status == 'delivered') {
+        if (!isNowActive && !isAvailable && order.status == 'delivered'){
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (Navigator.canPop(ctx)) Navigator.pop(ctx);
           });

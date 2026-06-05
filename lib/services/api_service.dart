@@ -727,7 +727,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> acceptDelivery(String orderId) async {
     print('📝 Accepting order ID: $orderId');
-    return await post('/api/driver/delivery/orders/$orderId/accept/', null);
+    return await post('/api/driver/orders/$orderId/accept/', null);
   }
 
   Future<Map<String, dynamic>> declineDelivery(String orderId) async {

@@ -336,42 +336,34 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   Future<void> loadStats() async {
-    try {
-      final statsData = await _apiService.getRestaurantStats();
-      _stats = RestaurantStats(
-        todayEarnings: _toDouble(statsData['todayEarnings']),
-        todayOrders: _toInt(statsData['todayOrders']),
-        totalEarnings: _toDouble(statsData['totalEarnings']),
-        totalOrders: _toInt(statsData['totalOrders']),
-        averageRating: _toDouble(statsData['averageRating']),
-        activeOrders: _toInt(statsData['activeOrders']),
-        monthlyEarnings: _toDouble(statsData['monthlyEarnings']),
-        monthlyOrders: _toInt(statsData['monthlyOrders']),
-        walletBalance: _toDouble(statsData['walletBalance'] ?? 0),
-        totalWithdrawn: _toDouble(statsData['totalWithdrawn'] ?? 0),
-        totalEarned: _toDouble(statsData['totalEarned'] ?? 0),
-      );
-      print('✅ Stats loaded: ${_stats?.todayOrders} orders today');
-      _safeNotify();
-    } catch (e) {
-      print('⚠️ Error loading stats: $e');
-      _stats = RestaurantStats(
-        todayEarnings: 0,
-        todayOrders: 0,
-        totalEarnings: 0,
-        totalOrders: 0,
-        averageRating: 0,
-        activeOrders: 0,
-        monthlyEarnings: 0,
-        monthlyOrders: 0,
-        walletBalance: 0,
-        totalWithdrawn: 0,
-        totalEarned: 0,
-      );
-      _safeNotify();
-    }
+  try {
+    final statsData = await _apiService.getRestaurantStats();
+    _stats = RestaurantStats(
+      todayEarnings: _toDouble(statsData['todayEarnings']),
+      todayOrders: _toInt(statsData['todayOrders']),
+      totalEarnings: _toDouble(statsData['totalEarnings']),
+      totalOrders: _toInt(statsData['totalOrders']),
+      averageRating: _toDouble(statsData['averageRating']),
+      activeOrders: _toInt(statsData['activeOrders']),
+      monthlyEarnings: _toDouble(statsData['monthlyEarnings']),
+      monthlyOrders: _toInt(statsData['monthlyOrders']),
+      walletBalance: _toDouble(statsData['walletBalance']),
+      totalWithdrawn: _toDouble(statsData['totalWithdrawn']),
+      totalEarned: _toDouble(statsData['totalEarned']),
+    );
+    print('✅ Stats loaded: ${_stats?.todayOrders} orders today');
+    _safeNotify();
+  } catch (e) {
+    print('⚠️ Error loading stats: $e');
+    _stats = RestaurantStats(
+      todayEarnings: 0, todayOrders: 0, totalEarnings: 0,
+      totalOrders: 0, averageRating: 0, activeOrders: 0,
+      monthlyEarnings: 0, monthlyOrders: 0, walletBalance: 0,
+      totalWithdrawn: 0, totalEarned: 0,
+    );
+    _safeNotify();
   }
-
+}
   Future<void> loadWalletBalance() async {
     try {
       final walletData = await _apiService.getWalletBalance();
@@ -482,11 +474,13 @@ class RestaurantProvider extends ChangeNotifier {
       }
 
       _activeOrders = allRestaurantOrders
-          .where((o) =>
-              o.status == OrderStatus.pending ||
-              o.status == OrderStatus.confirmed ||
-              o.status == OrderStatus.preparing)
-          .toList();
+    .where((o) =>
+        o.status == OrderStatus.pending ||
+        o.status == OrderStatus.confirmed ||
+        o.status == OrderStatus.preparing ||
+        o.status == OrderStatus.ready ||
+        o.status == OrderStatus.driverAssigned) // ADD
+    .toList();
 
       _readyOrders = allRestaurantOrders
           .where((o) => o.status == OrderStatus.ready)
@@ -518,25 +512,18 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   OrderStatus _getOrderStatus(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return OrderStatus.pending;
-      case 'confirmed':
-        return OrderStatus.confirmed;
-      case 'preparing':
-        return OrderStatus.preparing;
-      case 'ready':
-        return OrderStatus.ready;
-      case 'picked_up':
-        return OrderStatus.pickedUp;
-      case 'delivered':
-        return OrderStatus.delivered;
-      case 'cancelled':
-        return OrderStatus.cancelled;
-      default:
-        return OrderStatus.pending;
-    }
+  switch (status.toLowerCase()) {
+    case 'pending': return OrderStatus.pending;
+    case 'confirmed': return OrderStatus.confirmed;
+    case 'preparing': return OrderStatus.preparing;
+    case 'ready': return OrderStatus.ready;
+    case 'driver_assigned': return OrderStatus.driverAssigned; // ADD
+    case 'picked_up': return OrderStatus.pickedUp;
+    case 'delivered': return OrderStatus.delivered;
+    case 'cancelled': return OrderStatus.cancelled;
+    default: return OrderStatus.pending;
   }
+}
 
   Future<bool> updateOrderStatus(String orderId, String status) async {
     try {

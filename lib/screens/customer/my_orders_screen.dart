@@ -34,6 +34,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         return 'Preparing';
       case OrderStatus.ready:
         return 'Ready';
+      case OrderStatus.driverAssigned:
+        return 'Driver Assigned';
       case OrderStatus.pickedUp:
         return 'Picked Up';
       case OrderStatus.onTheWay:
@@ -61,6 +63,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         return AppTheme.warning;
       case OrderStatus.ready:
         return AppTheme.teal;
+      case OrderStatus.driverAssigned:
+        return AppTheme.orange;
       case OrderStatus.pickedUp:
         return AppTheme.orange;
       case OrderStatus.onTheWay:
@@ -284,7 +288,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Order Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -332,7 +335,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
                 const SizedBox(height: 12),
 
-                // Restaurant Info
                 Row(
                   children: [
                     Container(
@@ -364,7 +366,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
                 const SizedBox(height: 12),
 
-                // Order Items
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -443,7 +444,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
                 const SizedBox(height: 12),
 
-                // Delivery Address
                 if (order.deliveryAddress.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(8),
@@ -475,7 +475,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
                 const SizedBox(height: 12),
 
-                // Order Date & Time
                 Row(
                   children: [
                     Icon(Icons.access_time,
@@ -498,7 +497,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
                 const SizedBox(height: 12),
 
-                // Track Order Button
                 Container(
                   width: double.infinity,
                   height: 40,

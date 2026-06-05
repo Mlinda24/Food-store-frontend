@@ -8,7 +8,7 @@ class ProgressTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final steps = ['accepted', 'driver_arrived', 'picked_up', 'delivered'];
+    final steps = ['driver_assigned', 'driver_arrived', 'picked_up', 'delivered'];
     final currentIndex = steps.indexOf(status.toLowerCase());
     
     return Column(
@@ -55,23 +55,23 @@ class ProgressTimeline extends StatelessWidget {
     );
   }
 
-  IconData _getStepIcon(String step) {
-    switch (step) {
-      case 'accepted': return Icons.check_circle;
-      case 'driver_arrived': return Icons.location_on;
-      case 'picked_up': return Icons.shopping_bag;
-      case 'delivered': return Icons.home;
-      default: return Icons.circle;
-    }
+ String _getStepLabel(String step) {
+  switch (step) {
+    case 'driver_assigned': return 'Assigned';  // ✅ was 'accepted'
+    case 'driver_arrived': return 'Arrived';
+    case 'picked_up': return 'Picked Up';
+    case 'delivered': return 'Delivered';
+    default: return step;
   }
+}
 
-  String _getStepLabel(String step) {
-    switch (step) {
-      case 'accepted': return 'Accepted';
-      case 'driver_arrived': return 'Arrived';
-      case 'picked_up': return 'Picked Up';
-      case 'delivered': return 'Delivered';
-      default: return step;
-    }
+IconData _getStepIcon(String step) {
+  switch (step) {
+    case 'driver_assigned': return Icons.check_circle;  // ✅ was 'accepted'
+    case 'driver_arrived': return Icons.location_on;
+    case 'picked_up': return Icons.shopping_bag;
+    case 'delivered': return Icons.home;
+    default: return Icons.circle;
   }
+}
 }
